@@ -8,44 +8,118 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Chrome, Eye, EyeOff, Mic, AlertCircle } from 'lucide-react';
+import { Chrome, Eye, EyeOff, Mic, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { api, ApiError, SignInRequest } from '@/lib/api';
+import { authManager } from '@/lib/auth';
+
+interface FormData {
+  email: string;
+  password: string;
+}
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  general?: string;
+}
 
 export default function SignIn() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState<FormData>({
+    email: '',
+    password: '',
+  });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<FormErrors>({});
   const router = useRouter();
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear specific field error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
+
     setIsLoading(true);
-    setError('');
-    
-    // Simulate loading
-    setTimeout(() => {
-      if (email && password) {
-        // Mock successful login
-        localStorage.setItem('authToken', 'mock-token');
-        localStorage.setItem('user', JSON.stringify({
-          id: 1,
-          firstName: 'John',
-          lastName: 'Doe',
-          email: email,
-          isVerified: true
-        }));
+
+    try {
+      const signInData: SignInRequest = {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+      };
+
+      const response = await api.signIn(signInData);
+
+      if (response.success && response.data) {
+        // Store authentication data
+        authManager.setAuth(response.data.user, response.data.token);
+        
+        // Redirect to dashboard
         router.push('/dashboard');
-      } else {
-        setError('Please enter both email and password');
-        setIsLoading(false);
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Sign in error:', error);
+      
+      if (error instanceof ApiError) {
+        if (error.statusCode === 401) {
+          setErrors({ general: 'Invalid email or password' });
+        } else if (error.statusCode === 400 && error.data?.errors) {
+          // Handle validation errors from server
+          const serverErrors: FormErrors = {};
+          error.data.errors.forEach((err: any) => {
+            if (err.property) {
+              serverErrors[err.property as keyof FormErrors] = err.constraints 
+                ? Object.values(err.constraints)[0] as string 
+                : err.message;
+            }
+          });
+          setErrors(serverErrors);
+        } else {
+          setErrors({ general: error.message });
+        }
+      } else {
+        setErrors({ general: 'An unexpected error occurred. Please try again.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
-    setError('Google sign-in is not implemented yet. Please use email/password.');
+    setErrors({ general: 'Google sign-in is not implemented yet. Please use email/password.' });
   };
 
   return (
@@ -64,10 +138,10 @@ export default function SignIn() {
             </p>
           </div>
 
-          {error && (
+          {errors.general && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{errors.general}</AlertDescription>
             </Alert>
           )}
 
@@ -77,6 +151,7 @@ export default function SignIn() {
               onClick={handleGoogleSignIn}
               variant="outline"
               className="w-full bg-white hover:bg-gray-50 border-gray-300 text-gray-700 h-12 font-medium"
+              disabled={isLoading}
             >
               <Chrome className="w-5 h-5 mr-3 text-blue-600" />
               Continue with Google
@@ -98,13 +173,20 @@ export default function SignIn() {
                 </Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="Your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 focus:border-blue-500 focus:ring-blue-500"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
+                  disabled={isLoading}
                   required
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -114,17 +196,22 @@ export default function SignIn() {
                 <div className="relative">
                   <Input
                     id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 pr-10 focus:border-blue-500 focus:ring-blue-500"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 pr-10 focus:border-blue-500 focus:ring-blue-500 ${
+                      errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
+                    disabled={isLoading}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -133,6 +220,9 @@ export default function SignIn() {
                     )}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+                )}
               </div>
 
               <Button
@@ -140,7 +230,14 @@ export default function SignIn() {
                 disabled={isLoading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 font-medium transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign in'
+                )}
               </Button>
             </form>
 

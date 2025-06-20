@@ -8,11 +8,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Chrome, Eye, EyeOff, ArrowLeft, Mic, AlertCircle, CheckCircle } from 'lucide-react';
+import { Chrome, Eye, EyeOff, ArrowLeft, Mic, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { api, ApiError, SignUpRequest } from '@/lib/api';
+import { authManager } from '@/lib/auth';
+
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface FormErrors {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  confirmPassword?: string;
+  general?: string;
+}
 
 export default function SignUp() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     firstName: '',
     lastName: '',
     email: '',
@@ -20,63 +41,140 @@ export default function SignUp() {
     password: '',
     confirmPassword: '',
   });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<FormErrors>({});
   const [success, setSuccess] = useState('');
   const router = useRouter();
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    // First name validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters';
+    }
+
+    // Last name validation
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters';
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+
+    // Phone validation (optional but if provided, should be valid)
+    if (formData.phone.trim()) {
+      const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
+      if (!phoneRegex.test(formData.phone)) {
+        newErrors.phone = 'Please enter a valid phone number';
+      }
+    }
+
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+    }
+
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear specific field error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setErrors({});
     setSuccess('');
-    
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
-    
-    // Simulate loading
-    setTimeout(() => {
-      if (formData.firstName && formData.lastName && formData.email && formData.password) {
-        // Mock successful signup
-        localStorage.setItem('authToken', 'mock-token');
-        localStorage.setItem('user', JSON.stringify({
-          id: 1,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          isVerified: true
-        }));
+
+    try {
+      const signUpData: SignUpRequest = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        ...(formData.phone.trim() && { phone: formData.phone.trim() }),
+      };
+
+      const response = await api.signUp(signUpData);
+
+      if (response.success && response.data) {
+        // Store authentication data
+        authManager.setAuth(response.data.user, response.data.token);
         
         setSuccess('Account created successfully! Redirecting to dashboard...');
         
+        // Redirect to dashboard after a short delay
         setTimeout(() => {
           router.push('/dashboard');
-        }, 2000);
-      } else {
-        setError('Please fill in all required fields');
-        setIsLoading(false);
+        }, 1500);
       }
-    }, 1000);
+    } catch (error) {
+      console.error('Sign up error:', error);
+      
+      if (error instanceof ApiError) {
+        if (error.statusCode === 409) {
+          setErrors({ email: 'An account with this email already exists' });
+        } else if (error.statusCode === 400 && error.data?.errors) {
+          // Handle validation errors from server
+          const serverErrors: FormErrors = {};
+          error.data.errors.forEach((err: any) => {
+            if (err.property) {
+              serverErrors[err.property as keyof FormErrors] = err.constraints 
+                ? Object.values(err.constraints)[0] as string 
+                : err.message;
+            }
+          });
+          setErrors(serverErrors);
+        } else {
+          setErrors({ general: error.message });
+        }
+      } else {
+        setErrors({ general: 'An unexpected error occurred. Please try again.' });
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleSignUp = () => {
-    setError('Google sign-up is not implemented yet. Please use the form below.');
+    setErrors({ general: 'Google sign-up is not implemented yet. Please use the form below.' });
   };
 
   return (
@@ -102,10 +200,10 @@ export default function SignUp() {
             </div>
           </div>
 
-          {error && (
+          {errors.general && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{errors.general}</AlertDescription>
             </Alert>
           )}
 
@@ -122,6 +220,7 @@ export default function SignUp() {
               onClick={handleGoogleSignUp}
               variant="outline"
               className="w-full bg-white hover:bg-gray-50 border-gray-300 text-gray-700 h-12 font-medium"
+              disabled={isLoading}
             >
               <Chrome className="w-5 h-5 mr-3 text-blue-600" />
               Continue with Google
@@ -140,7 +239,7 @@ export default function SignUp() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="firstName" className="text-gray-700 text-sm font-medium">
-                    First Name
+                    First Name *
                   </Label>
                   <Input
                     id="firstName"
@@ -149,13 +248,19 @@ export default function SignUp() {
                     placeholder="John"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500"
+                    className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500 ${
+                      errors.firstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
+                    disabled={isLoading}
                     required
                   />
+                  {errors.firstName && (
+                    <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName" className="text-gray-700 text-sm font-medium">
-                    Last Name
+                    Last Name *
                   </Label>
                   <Input
                     id="lastName"
@@ -164,15 +269,21 @@ export default function SignUp() {
                     placeholder="Doe"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500"
+                    className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500 ${
+                      errors.lastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
+                    disabled={isLoading}
                     required
                   />
+                  {errors.lastName && (
+                    <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-700 text-sm font-medium">
-                  Email
+                  Email *
                 </Label>
                 <Input
                   id="email"
@@ -181,9 +292,15 @@ export default function SignUp() {
                   placeholder="john@example.com"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500"
+                  className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
+                  disabled={isLoading}
                   required
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -197,13 +314,19 @@ export default function SignUp() {
                   placeholder="+1 (555) 000-0000"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500"
+                  className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                  }`}
+                  disabled={isLoading}
                 />
+                {errors.phone && (
+                  <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-gray-700 text-sm font-medium">
-                  Password
+                  Password *
                 </Label>
                 <div className="relative">
                   <Input
@@ -213,13 +336,17 @@ export default function SignUp() {
                     placeholder="Create a strong password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 pr-10 focus:border-blue-500 focus:ring-blue-500"
+                    className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 pr-10 focus:border-blue-500 focus:ring-blue-500 ${
+                      errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
+                    disabled={isLoading}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -228,11 +355,14 @@ export default function SignUp() {
                     )}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-gray-700 text-sm font-medium">
-                  Confirm Password
+                  Confirm Password *
                 </Label>
                 <div className="relative">
                   <Input
@@ -242,13 +372,17 @@ export default function SignUp() {
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 pr-10 focus:border-blue-500 focus:ring-blue-500"
+                    className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-11 pr-10 focus:border-blue-500 focus:ring-blue-500 ${
+                      errors.confirmPassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    }`}
+                    disabled={isLoading}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    disabled={isLoading}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="w-4 h-4" />
@@ -257,6 +391,9 @@ export default function SignUp() {
                     )}
                   </button>
                 </div>
+                {errors.confirmPassword && (
+                  <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
+                )}
               </div>
 
               <Button
@@ -264,7 +401,14 @@ export default function SignUp() {
                 disabled={isLoading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 font-medium transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Creating account...' : 'Create account'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  'Create account'
+                )}
               </Button>
             </form>
 

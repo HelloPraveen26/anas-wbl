@@ -6,40 +6,30 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogOut, User, Settings, Mic, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-interface UserData {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  isVerified: boolean;
-}
+import { authManager } from '@/lib/auth';
+import { User as UserType } from '@/lib/api';
 
 export default function Dashboard() {
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is authenticated
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('user');
-
-    if (!token || !userData) {
+    // Check authentication status
+    const authState = authManager.getAuthState();
+    
+    if (!authState.isAuthenticated) {
       router.push('/');
       return;
     }
 
     try {
-      const parsedUser = JSON.parse(userData);
-      setUser(parsedUser);
+      setUser(authState.user);
     } catch (err) {
-      console.error('Error parsing user data:', err);
+      console.error('Error loading user data:', err);
       setError('Invalid user data. Please sign in again.');
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+      authManager.clearAuth();
       router.push('/');
       return;
     }
@@ -48,8 +38,7 @@ export default function Dashboard() {
   }, [router]);
 
   const handleSignOut = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+    authManager.clearAuth();
     router.push('/');
   };
 
@@ -145,9 +134,12 @@ export default function Dashboard() {
               )}
               <div>
                 <p className="text-sm text-gray-600">Account Status</p>
-                <p className={`font-medium ${user?.isVerified ? 'text-green-600' : 'text-yellow-600'}`}>
-                  {user?.isVerified ? 'Verified' : 'Pending Verification'}
-                </p>
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${user?.isVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                  <p className={`font-medium ${user?.isVerified ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {user?.isVerified ? 'Verified' : 'Pending Verification'}
+                  </p>
+                </div>
               </div>
             </div>
           </CardContent>
