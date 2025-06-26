@@ -1,204 +1,162 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, User, Settings, Mic, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+  User, 
+  Zap,
+  ChevronRight,
+  TrendingUp
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { authManager } from '@/lib/auth';
 import { User as UserType } from '@/lib/api';
 
-export default function Dashboard() {
+export default function DashboardOverview() {
   const [user, setUser] = useState<UserType | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const router = useRouter();
 
   useEffect(() => {
-    // Check authentication status
     const authState = authManager.getAuthState();
-    
-    if (!authState.isAuthenticated) {
-      router.push('/');
-      return;
-    }
-
-    try {
-      setUser(authState.user);
-    } catch (err) {
-      console.error('Error loading user data:', err);
-      setError('Invalid user data. Please sign in again.');
-      authManager.clearAuth();
-      router.push('/');
-      return;
-    }
-
-    setIsLoading(false);
-  }, [router]);
-
-  const handleSignOut = () => {
-    authManager.clearAuth();
-    router.push('/');
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
-            <Mic className="w-5 h-5 text-white animate-pulse" />
-          </div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+    setUser(authState.user);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <nav className="bg-white/80 border-b border-gray-200/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Mic className="w-5 h-5 text-white" />
+    <div className="p-6">
+      <div className="space-y-6">
+        {/* Welcome Header */}
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900">Welcome {user?.firstName}</h1>
+        </div>
+
+        {/* Assistant Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-white/80 border-gray-200/50 hover:bg-white/90 transition-colors cursor-pointer group shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Single-prompt Assistant</h3>
+                    <p className="text-gray-600 text-sm">Most useful for freeform conversations</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900">Voice Assistant Dashboard</h1>
-            </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/80 border-gray-200/50 hover:bg-white/90 transition-colors cursor-pointer group shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Multi-prompt Workflow</h3>
+                    <p className="text-gray-600 text-sm">Fitting for structured complex conversation flows</p>
+                    <span className="inline-block bg-blue-600 text-white text-xs px-2 py-1 rounded-full mt-1">New</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Metrics Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">Metrics</h2>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600 hidden sm:block">
-                Welcome, {user?.firstName}!
-              </span>
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                <User className="w-4 h-4 mr-2" />
-                Profile
-              </Button>
-              <Button 
-                onClick={handleSignOut}
-                variant="ghost" 
-                size="sm" 
-                className="text-gray-600 hover:text-gray-900"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
+              <select className="bg-white border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 shadow-sm">
+                <option>All Assistants</option>
+              </select>
+              <select className="bg-white border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 shadow-sm">
+                <option>Last Month</option>
+              </select>
             </div>
           </div>
-        </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.firstName}!
-          </h2>
-          <p className="text-gray-600">Manage your autonomous voice assistants all in one place.</p>
-        </div>
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-white/80 border-gray-200/50 shadow-lg">
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <p className="text-gray-600 text-sm">Number of Calls</p>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl font-bold text-gray-900">2</span>
+                    <span className="text-green-600 text-sm flex items-center">
+                      <TrendingUp className="w-3 h-3 mr-1" />
+                      +100.0%
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* User Info Card */}
-        <Card className="mb-8 bg-white/80 border border-gray-200/50">
-          <CardHeader>
-            <CardTitle className="text-gray-900">Account Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Name</p>
-                <p className="font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium text-gray-900">{user?.email}</p>
-              </div>
-              {user?.phone && (
+            <Card className="bg-white/80 border-gray-200/50 shadow-lg">
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <p className="text-gray-600 text-sm">Avg Duration</p>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl font-bold text-gray-900">0:00</span>
+                    <span className="text-gray-500 text-sm">— 0.0%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/80 border-gray-200/50 shadow-lg">
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <p className="text-gray-600 text-sm">Total Cost</p>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl font-bold text-gray-900">0</span>
+                    <span className="text-gray-600 text-sm">credits</span>
+                    <span className="text-gray-500 text-sm">— 0.0%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/80 border-gray-200/50 shadow-lg">
+              <CardContent className="p-6">
+                <div className="space-y-2">
+                  <p className="text-gray-600 text-sm">Avg Cost</p>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-3xl font-bold text-gray-900">0</span>
+                    <span className="text-gray-600 text-sm">¢/call</span>
+                    <span className="text-gray-500 text-sm">— 0.0%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Call Success */}
+          <Card className="bg-white/80 border-gray-200/50 shadow-lg">
+            <CardContent className="p-6">
+              <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600">Phone</p>
-                  <p className="font-medium text-gray-900">{user.phone}</p>
+                  <h3 className="text-lg font-semibold text-gray-900">Call Success</h3>
+                  <div className="flex items-baseline space-x-2 mt-2">
+                    <span className="text-4xl font-bold text-gray-900">100%</span>
+                    <span className="text-green-600 text-sm">+100.0% Compared to previous period</span>
+                  </div>
                 </div>
-              )}
-              <div>
-                <p className="text-sm text-gray-600">Account Status</p>
-                <div className="flex items-center space-x-2">
-                  <div className={`w-2 h-2 rounded-full ${user?.isVerified ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                  <p className={`font-medium ${user?.isVerified ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {user?.isVerified ? 'Verified' : 'Pending Verification'}
-                  </p>
+                
+                {/* Placeholder for chart */}
+                <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200">
+                  <p className="text-gray-500">Chart visualization would go here</p>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="bg-white/80 border border-gray-200/50">
-            <CardHeader>
-              <CardTitle className="text-gray-900 flex items-center">
-                <Mic className="w-5 h-5 mr-2 text-blue-600" />
-                Active Assistants
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-600 mb-2">3</div>
-              <p className="text-gray-600 text-sm">Currently running</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/80 border border-gray-200/50">
-            <CardHeader>
-              <CardTitle className="text-gray-900">Total Conversations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-600 mb-2">1,247</div>
-              <p className="text-gray-600 text-sm">This month</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/80 border border-gray-200/50">
-            <CardHeader>
-              <CardTitle className="text-gray-900">Success Rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-emerald-600 mb-2">94.2%</div>
-              <p className="text-gray-600 text-sm">Average this week</p>
             </CardContent>
           </Card>
         </div>
-
-        <Card className="mt-8 bg-white/80 border border-gray-200/50">
-          <CardHeader>
-            <CardTitle className="text-gray-900">Getting Started</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-gray-600">
-              Welcome to your voice assistant management dashboard. Here you can monitor, configure, and optimize your autonomous voice assistants.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                Create New Assistant
-              </Button>
-              <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
-                View Documentation
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
+      </div>
     </div>
   );
 }

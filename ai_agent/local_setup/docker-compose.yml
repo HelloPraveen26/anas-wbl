@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+
+  bolna-app:
+    build:
+      context: .
+      dockerfile: dockerfiles/bolna_server.Dockerfile
+    image: bolna-app:latest  # This will tag the built image
+    ports:
+      - "5001:5001"
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ../agent_data:/app/agent_data
+      - $HOME/.aws/credentials:/root/.aws/credentials:ro
+      - $HOME/.aws/config:/root/.aws/config:ro
+
+  # redis service used as a persistent storage
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
