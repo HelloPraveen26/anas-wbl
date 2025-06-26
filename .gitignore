@@ -9,6 +9,8 @@ server/node_modules/
 server/dist/
 server/.env
 
+ai_agent/.env
+
 # Node artifact files
 node_modules/
 dist/
