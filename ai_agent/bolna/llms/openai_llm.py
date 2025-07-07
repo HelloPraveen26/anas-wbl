@@ -40,6 +40,9 @@ class OpenAiLLM(BaseLLM):
             api_key = kwargs.get('llm_key', None)
             self.async_client = AsyncOpenAI(base_url=base_url, api_key= api_key)
         else:
+            logger.info("llllllllllllllll9999999999999999999")
+            logger.info(os.getenv('OPENAI_API_KEY'))
+            logger.info("llllllllllllllll9999999999999999999")
             llm_key = kwargs.get('llm_key', os.getenv('OPENAI_API_KEY'))
             self.async_client = AsyncOpenAI(api_key=llm_key)
             api_key = llm_key

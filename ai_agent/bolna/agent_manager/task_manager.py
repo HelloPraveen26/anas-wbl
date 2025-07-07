@@ -1756,7 +1756,7 @@ class TaskManager(BaseManager):
         self.time_since_first_interim_result = (time.time() * 1000) - 1000
 
     """
-    When the welcome message is playing we accumulate the transcript in the self.transcriber_message variable and once 
+    When the welcome message is playing we accumulate the transcript in the self.transcriber_message variable and once
     the welcome message is completely played we send this transcript for further processing.
     """
     async def __handle_accumulated_message(self):
@@ -1991,7 +1991,7 @@ class TaskManager(BaseManager):
                     # Only play ambient noise if no content is being transmitted
                     # Check if any real content audio (sequence_id > 0) is being played
                     is_content_playing = self.tools["input"].is_audio_being_played_to_user()
-                    
+
                     if not is_content_playing:
                         logger.info(f"Transmitting ambient noise {len(chunk)}")
                         await self.tools["output"].handle(create_ws_data_packet(chunk, meta_info=meta_info))
@@ -2087,6 +2087,11 @@ class TaskManager(BaseManager):
                     await self.sync_history(self.mark_event_meta_data.mark_event_meta_data.items(), current_ts)
                 logger.info("Conversation completed")
                 self.conversation_ended = True
+
+                # Properly close WebSocket connection when conversation completes
+                if "input" in self.tools:
+                    logger.info("Closing WebSocket connection as conversation completed")
+                    await self.tools["input"].stop_handler()
             else:
                 # Run agent followup tasks
                 try:

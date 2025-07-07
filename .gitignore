@@ -5,11 +5,16 @@
 client/node_modules/
 client/.next
 
+ui/node_modules
+
 server/node_modules/
 server/dist/
 server/.env
 
 ai_agent/.env
+ai_agent/logs/
+ai_agent/dump.rdb
+ai_agent/agent_data/
 
 # Node artifact files
 node_modules/

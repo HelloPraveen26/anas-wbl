@@ -139,7 +139,7 @@ async def delete_agent(agent_id: str):
         agent_exists = await redis_client.exists(agent_id)
         if not agent_exists:
             raise HTTPException(status_code=404, detail="Agent not found")
-            
+
         await redis_client.delete(agent_id)
         return {"agent_id": agent_id, "state": "deleted"}
 
@@ -153,10 +153,10 @@ async def get_all_agents():
     """Fetches all agents stored in Redis."""
     try:
 
-        agent_keys = await redis_client.keys("*")  
-        
+        agent_keys = await redis_client.keys("*")
+
         if not agent_keys:
-            return {"agents": []}  
+            return {"agents": []}
         agents_data = []
         for key in agent_keys:
             try:
@@ -175,31 +175,65 @@ async def get_all_agents():
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-############################################################################################# 
-# Websocket 
 #############################################################################################
+# Websocket
+#############################################################################################
+
+# Simple test endpoint to debug WebSocket connection
+@app.websocket("/test")
+async def test_websocket(websocket: WebSocket):
+    print("TEST: WebSocket connection attempt")
+    logger.info("TEST: WebSocket connection attempt")
+    await websocket.accept()
+    print("TEST: WebSocket connection accepted")
+    logger.info("TEST: WebSocket connection accepted")
+    try:
+        await websocket.send_text("Hello from server!")
+        print("TEST: Test message sent")
+        logger.info("TEST: Test message sent")
+        while True:
+            data = await websocket.receive_text()
+            print(f"TEST: Received: {data}")
+            logger.info(f"TEST: Received: {data}")
+            await websocket.send_text(f"Echo: {data}")
+    except WebSocketDisconnect:
+        print("TEST: WebSocket disconnected")
+        logger.info("TEST: WebSocket disconnected")
+
 @app.websocket("/chat/v1/{agent_id}")
 async def websocket_endpoint(agent_id: str, websocket: WebSocket, user_agent: str = Query(None)):
-    logger.info("Connected to ws")
+    print(f"MAIN: WebSocket connection attempt for agent {agent_id}")
+    logger.info(f"MAIN: WebSocket connection attempt for agent {agent_id}")
     await websocket.accept()
+    print("MAIN: WebSocket connection accepted")
+    logger.info("MAIN: WebSocket connection accepted")
     active_websockets.append(websocket)
     agent_config, context_data = None, None
     try:
         retrieved_agent_config = await redis_client.get(agent_id)
-        logger.info(
-            f"Retrieved agent config: {retrieved_agent_config}")
+        print(f"MAIN: Retrieved agent config: {retrieved_agent_config is not None}")
+        logger.info(f"MAIN: Retrieved agent config: {retrieved_agent_config}")
         agent_config = json.loads(retrieved_agent_config)
     except Exception as e:
+        print(f"MAIN: Error getting agent config: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=404, detail="Agent not found")
 
+    print("MAIN: Creating AssistantManager")
+    logger.info("MAIN: Creating AssistantManager")
     assistant_manager = AssistantManager(agent_config, websocket, agent_id)
 
     try:
+        print("MAIN: Starting assistant manager")
+        logger.info("MAIN: Starting assistant manager")
         async for index, task_output in assistant_manager.run(local=True):
-            logger.info(task_output)
+            print(f"MAIN: Task output: {task_output}")
+            logger.info(f"MAIN: Task output: {task_output}")
     except WebSocketDisconnect:
+        print("MAIN: WebSocket disconnected")
+        logger.info("MAIN: WebSocket disconnected")
         active_websockets.remove(websocket)
     except Exception as e:
+        print(f"MAIN: Error in assistant manager: {e}")
         traceback.print_exc()
         logger.error(f"error in executing {e}")
