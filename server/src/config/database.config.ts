@@ -8,6 +8,7 @@ import {
   SynthesizerModel,
   SynthesizerVoice,
 } from "../synthesizer/entities";
+import { Assistant } from "../assistant/entities";
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -27,6 +28,7 @@ export const databaseConfig = (
     SynthesizerProvider,
     SynthesizerModel,
     SynthesizerVoice,
+    Assistant,
   ],
   synchronize: configService.get("NODE_ENV") === "development",
   logging: configService.get("NODE_ENV") === "development",

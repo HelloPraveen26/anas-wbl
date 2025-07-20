@@ -11,6 +11,7 @@ import { HealthModule } from "./health/health.module";
 import { LlmModule } from "./llm/llm.module";
 import { TranscriberModule } from "./transcriber/transcriber.module";
 import { SynthesizerModule } from "./synthesizer/synthesizer.module";
+import { AssistantModule } from "./assistant/assistant.module";
 import { winstonConfig } from "./config/winston.config";
 import { databaseConfig } from "./config/database.config";
 import { throttlerConfig } from "./config/throttler.config";
@@ -53,6 +54,7 @@ import { throttlerConfig } from "./config/throttler.config";
     LlmModule,
     TranscriberModule,
     SynthesizerModule,
+    AssistantModule,
   ],
 })
 export class AppModule {}

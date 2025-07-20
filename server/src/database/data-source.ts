@@ -9,6 +9,7 @@ import {
   SynthesizerModel,
   SynthesizerVoice,
 } from "../synthesizer/entities";
+import { Assistant } from "../assistant/entities";
 
 config();
 
@@ -30,6 +31,7 @@ export const AppDataSource = new DataSource({
     SynthesizerProvider,
     SynthesizerModel,
     SynthesizerVoice,
+    Assistant,
   ],
   migrations: [__dirname + "/migrations/*.{ts,js}"],
   migrationsTableName: "migrations",
