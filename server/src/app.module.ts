@@ -1,40 +1,46 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { WinstonModule } from 'nest-winston';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-import { DatabaseModule } from './database/database.module';
-import { CommonModule } from './common/common.module';
-import { HealthModule } from './health/health.module';
-import { winstonConfig } from './config/winston.config';
-import { databaseConfig } from './config/database.config';
-import { throttlerConfig } from './config/throttler.config';
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { WinstonModule } from "nest-winston";
+import { AuthModule } from "./auth/auth.module";
+import { UsersModule } from "./users/users.module";
+import { DatabaseModule } from "./database/database.module";
+import { CommonModule } from "./common/common.module";
+import { HealthModule } from "./health/health.module";
+import { LlmModule } from "./llm/llm.module";
+import { TranscriberModule } from "./transcriber/transcriber.module";
+import { SynthesizerModule } from "./synthesizer/synthesizer.module";
+import { winstonConfig } from "./config/winston.config";
+import { databaseConfig } from "./config/database.config";
+import { throttlerConfig } from "./config/throttler.config";
 
 @Module({
   imports: [
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: ".env",
     }),
 
     // Winston Logger
     WinstonModule.forRootAsync({
-      useFactory: (configService: ConfigService) => winstonConfig(configService),
+      useFactory: (configService: ConfigService) =>
+        winstonConfig(configService),
       inject: [ConfigService],
     }),
 
     // Database
     TypeOrmModule.forRootAsync({
-      useFactory: (configService: ConfigService) => databaseConfig(configService),
+      useFactory: (configService: ConfigService) =>
+        databaseConfig(configService),
       inject: [ConfigService],
     }),
 
     // Rate Limiting
     ThrottlerModule.forRootAsync({
-      useFactory: (configService: ConfigService) => throttlerConfig(configService),
+      useFactory: (configService: ConfigService) =>
+        throttlerConfig(configService),
       inject: [ConfigService],
     }),
 
@@ -44,6 +50,9 @@ import { throttlerConfig } from './config/throttler.config';
     HealthModule,
     AuthModule,
     UsersModule,
+    LlmModule,
+    TranscriberModule,
+    SynthesizerModule,
   ],
 })
 export class AppModule {}

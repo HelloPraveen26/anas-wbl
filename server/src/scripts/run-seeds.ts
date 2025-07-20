@@ -1,0 +1,34 @@
+import { AppDataSource } from "../database/data-source";
+import { LlmSeed } from "../database/seeds/llm-seed";
+import { TranscriberSeed } from "../database/seeds/transcriber-seed";
+import { SynthesizerSeed } from "../database/seeds/synthesizer-seed";
+
+async function runSeeds() {
+  try {
+    console.log("Initializing database connection...");
+    await AppDataSource.initialize();
+    console.log("Database connection established.");
+
+    console.log("Running LLM seed...");
+    const llmSeed = new LlmSeed();
+    await llmSeed.run(AppDataSource);
+
+    console.log("Running Transcriber seed...");
+    const transcriberSeed = new TranscriberSeed();
+    await transcriberSeed.run(AppDataSource);
+
+    console.log("Running Synthesizer seed...");
+    const synthesizerSeed = new SynthesizerSeed();
+    await synthesizerSeed.run(AppDataSource);
+
+    console.log("All seeds completed successfully!");
+  } catch (error) {
+    console.error("Error running seeds:", error);
+    process.exit(1);
+  } finally {
+    await AppDataSource.destroy();
+    console.log("Database connection closed.");
+  }
+}
+
+runSeeds();
