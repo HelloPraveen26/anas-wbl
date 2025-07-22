@@ -134,6 +134,22 @@ async function bootstrap() {
       "users",
       "User management endpoints - Profile management, account operations",
     )
+    .addTag(
+      "assistants",
+      "Assistant management endpoints - Create, read, update, delete assistants",
+    )
+    .addTag(
+      "llm",
+      "LLM providers and models - Language model configuration options",
+    )
+    .addTag(
+      "synthesizer",
+      "Synthesizer providers, models, and voices - Text-to-speech configuration",
+    )
+    .addTag(
+      "transcriber",
+      "Transcriber providers and models - Speech-to-text configuration",
+    )
     .addServer("http://localhost:8000", "Development server")
     .addServer("https://your-production-domain.com", "Production server")
     .setContact(

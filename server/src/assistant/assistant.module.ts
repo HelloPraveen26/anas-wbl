@@ -1,11 +1,21 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Assistant } from "./entities";
+import { AssistantController } from "./assistant.controller";
+import { AssistantService } from "./assistant.service";
+import { LlmModule } from "../llm/llm.module";
+import { TranscriberModule } from "../transcriber/transcriber.module";
+import { SynthesizerModule } from "../synthesizer/synthesizer.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Assistant])],
-  providers: [],
-  controllers: [],
-  exports: [TypeOrmModule],
+  imports: [
+    TypeOrmModule.forFeature([Assistant]),
+    LlmModule,
+    TranscriberModule,
+    SynthesizerModule,
+  ],
+  providers: [AssistantService],
+  controllers: [AssistantController],
+  exports: [TypeOrmModule, AssistantService],
 })
 export class AssistantModule {}
