@@ -99,6 +99,20 @@ export default function AssistantsPage() {
   const [selectedModel, setSelectedModel] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Assistant form states
+  const [assistantName, setAssistantName] = useState("");
+  const [firstMessage, setFirstMessage] = useState("Hello.");
+  const [systemPrompt, setSystemPrompt] = useState(`[Identity]
+You are an AI Hotel Booking Assistant.
+
+[Style]
+- Speak with a warm and welcoming tone.
+- Be concise and clear, offering helpful guidance throughout the booking process.
+
+[Response Guidelines]
+- Use a conversational style and spell out numbers to improve voice realism.
+- Provide dates in a Month Day format (e.g., January 15).`);
+
   // Voice synthesizer states
   const [synthesizerProviders, setSynthesizerProviders] = useState<
     SynthesizerProvider[]
@@ -322,6 +336,62 @@ export default function AssistantsPage() {
       )
     : transcriberModels;
 
+  // Save assistant function
+  const handleSaveAssistant = async () => {
+    if (!assistantName.trim()) {
+      alert("Please enter an assistant name");
+      return;
+    }
+    if (!selectedModel) {
+      alert("Please select a model");
+      return;
+    }
+    if (!selectedTranscriberModel) {
+      alert("Please select a transcriber model");
+      return;
+    }
+    if (!selectedSynthesizerVoice) {
+      alert("Please select a synthesizer voice");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/assistants", {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          Authorization:
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzI0NTgyMiwiZXhwIjoxNzUzODUwNjIyfQ.lLYLSP1mKUceOTOd05S6eHLLpVG2yGG9yv-qq12Sh58",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: assistantName,
+          firstMessage: firstMessage,
+          systemPrompt: systemPrompt,
+          llmModelId: selectedModel,
+          transcriberModelId: selectedTranscriberModel,
+          synthesizerVoiceId: selectedSynthesizerVoice,
+          isActive: true,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Assistant created successfully:", data);
+        alert("Assistant saved successfully!");
+      } else {
+        console.error("Error saving assistant:", response.statusText);
+        alert("Error saving assistant. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error saving assistant:", error);
+      alert("Error saving assistant. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Header */}
@@ -409,8 +479,12 @@ export default function AssistantsPage() {
                 >
                   Talk to Assistant
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Save
+                <Button
+                  onClick={handleSaveAssistant}
+                  disabled={loading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                >
+                  {loading ? "Saving..." : "Save"}
                 </Button>
               </div>
             </div>
@@ -463,6 +537,20 @@ export default function AssistantsPage() {
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-6">
+                        {/* Assistant Name */}
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-700">
+                            Assistant Name
+                          </Label>
+                          <Input
+                            type="text"
+                            value={assistantName}
+                            onChange={(e) => setAssistantName(e.target.value)}
+                            placeholder="Enter assistant name"
+                            className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                          />
+                        </div>
+
                         {/* Model Section */}
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
@@ -489,7 +577,10 @@ export default function AssistantsPage() {
                                 </Label>
                                 <Input
                                   type="text"
-                                  value="Hello."
+                                  value={firstMessage}
+                                  onChange={(e) =>
+                                    setFirstMessage(e.target.value)
+                                  }
                                   className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                                 />
                               </div>
@@ -511,33 +602,14 @@ export default function AssistantsPage() {
                                     </button>
                                   </div>
                                 </div>
-                                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono min-h-[200px]">
-                                  <div className="space-y-2">
-                                    <div>[Identity]</div>
-                                    <div>
-                                      You are an AI Hotel Booking Assistant.
-                                    </div>
-                                    <div></div>
-                                    <div>[Style]</div>
-                                    <div>
-                                      - Speak with a warm and welcoming tone.
-                                    </div>
-                                    <div>
-                                      - Be concise and clear, offering helpful
-                                      guidance throughout the booking process.
-                                    </div>
-                                    <div></div>
-                                    <div>[Response Guidelines]</div>
-                                    <div>
-                                      - Use a conversational style and spell out
-                                      numbers to improve voice realism.
-                                    </div>
-                                    <div>
-                                      - Provide dates in a Month Day format
-                                      (e.g., January 15).
-                                    </div>
-                                  </div>
-                                </div>
+                                <textarea
+                                  value={systemPrompt}
+                                  onChange={(e) =>
+                                    setSystemPrompt(e.target.value)
+                                  }
+                                  className="w-full bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono min-h-[200px] border-0 focus:ring-2 focus:ring-blue-500 resize-none"
+                                  placeholder="Enter system prompt..."
+                                />
                               </div>
                             </div>
                           )}

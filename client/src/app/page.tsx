@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Chrome, Eye, EyeOff, Mic, AlertCircle, Loader2 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { api, ApiError, SignInRequest } from '@/lib/api';
-import { authManager } from '@/lib/auth';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Chrome, Eye, EyeOff, Mic, AlertCircle, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { api, ApiError, SignInRequest } from "@/lib/api";
+import { authManager } from "@/lib/auth";
 
 interface FormData {
   email: string;
@@ -26,10 +26,10 @@ interface FormErrors {
 
 export default function SignIn() {
   const [formData, setFormData] = useState<FormData>({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -41,14 +41,14 @@ export default function SignIn() {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = "Please enter a valid email address";
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     }
 
     setErrors(newErrors);
@@ -57,11 +57,11 @@ export default function SignIn() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
     // Clear specific field error when user starts typing
     if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -86,23 +86,23 @@ export default function SignIn() {
       if (response.success && response.data) {
         // Store authentication data
         authManager.setAuth(response.data.user, response.data.token);
-        
-        // Redirect to dashboard
-        router.push('/dashboard');
+
+        // Redirect to dashboard assistants
+        router.push("/dashboard/assistants");
       }
     } catch (error) {
-      console.error('Sign in error:', error);
-      
+      console.error("Sign in error:", error);
+
       if (error instanceof ApiError) {
         if (error.statusCode === 401) {
-          setErrors({ general: 'Invalid email or password' });
+          setErrors({ general: "Invalid email or password" });
         } else if (error.statusCode === 400 && error.data?.errors) {
           // Handle validation errors from server
           const serverErrors: FormErrors = {};
           error.data.errors.forEach((err: any) => {
             if (err.property) {
-              serverErrors[err.property as keyof FormErrors] = err.constraints 
-                ? Object.values(err.constraints)[0] as string 
+              serverErrors[err.property as keyof FormErrors] = err.constraints
+                ? (Object.values(err.constraints)[0] as string)
                 : err.message;
             }
           });
@@ -111,7 +111,9 @@ export default function SignIn() {
           setErrors({ general: error.message });
         }
       } else {
-        setErrors({ general: 'An unexpected error occurred. Please try again.' });
+        setErrors({
+          general: "An unexpected error occurred. Please try again.",
+        });
       }
     } finally {
       setIsLoading(false);
@@ -119,7 +121,10 @@ export default function SignIn() {
   };
 
   const handleGoogleSignIn = () => {
-    setErrors({ general: 'Google sign-in is not implemented yet. Please use email/password.' });
+    setErrors({
+      general:
+        "Google sign-in is not implemented yet. Please use email/password.",
+    });
   };
 
   return (
@@ -134,7 +139,8 @@ export default function SignIn() {
               Sign into your account
             </h1>
             <p className="text-gray-600 text-sm">
-              Easily manage your autonomous voice assistants all in one dashboard.
+              Easily manage your autonomous voice assistants all in one
+              dashboard.
             </p>
           </div>
 
@@ -168,7 +174,10 @@ export default function SignIn() {
 
             <form onSubmit={handleEmailSignIn} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700 text-sm font-medium">
+                <Label
+                  htmlFor="email"
+                  className="text-gray-700 text-sm font-medium"
+                >
                   Email
                 </Label>
                 <Input
@@ -179,7 +188,9 @@ export default function SignIn() {
                   value={formData.email}
                   onChange={handleInputChange}
                   className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                    errors.email
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                      : ""
                   }`}
                   disabled={isLoading}
                   required
@@ -190,19 +201,24 @@ export default function SignIn() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 text-sm font-medium">
+                <Label
+                  htmlFor="password"
+                  className="text-gray-700 text-sm font-medium"
+                >
                   Password
                 </Label>
                 <div className="relative">
                   <Input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Your password"
                     value={formData.password}
                     onChange={handleInputChange}
                     className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 pr-10 focus:border-blue-500 focus:ring-blue-500 ${
-                      errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
+                      errors.password
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                        : ""
                     }`}
                     disabled={isLoading}
                     required
@@ -236,14 +252,14 @@ export default function SignIn() {
                     Signing in...
                   </>
                 ) : (
-                  'Sign in'
+                  "Sign in"
                 )}
               </Button>
             </form>
 
             <div className="text-center space-y-3">
               <p className="text-gray-600 text-sm">
-                Don't have an account?{' '}
+                Don't have an account?{" "}
                 <Link
                   href="/signup"
                   className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
