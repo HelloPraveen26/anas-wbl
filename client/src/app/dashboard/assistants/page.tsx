@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,42 @@ import {
 interface Assistant {
   id: string;
   name: string;
-  provider: string;
-  status: "active" | "inactive";
+  firstMessage: string;
+  systemPrompt: string;
+  llmModelId: string;
+  transcriberModelId: string;
+  synthesizerVoiceId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  llmModel: {
+    id: string;
+    name: string;
+    llmProvider: {
+      id: string;
+      name: string;
+    };
+  };
+  transcriberModel: {
+    id: string;
+    name: string;
+    transcriberProvider: {
+      id: string;
+      name: string;
+    };
+  };
+  synthesizerVoice: {
+    id: string;
+    name: string;
+    synthesizerModel: {
+      id: string;
+      name: string;
+      synthesizerProvider: {
+        id: string;
+        name: string;
+      };
+    };
+  };
 }
 
 interface Provider {
@@ -89,8 +123,7 @@ interface Model {
 
 export default function AssistantsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedAssistant, setSelectedAssistant] =
-    useState<string>("first-assistant");
+  const [selectedAssistant, setSelectedAssistant] = useState<string>("");
   const [activeTab, setActiveTab] = useState("assistant");
   const [modelExpanded, setModelExpanded] = useState(true);
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -98,6 +131,8 @@ export default function AssistantsPage() {
   const [selectedProvider, setSelectedProvider] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [loading, setLoading] = useState(false);
+  const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [assistantsLoading, setAssistantsLoading] = useState(true);
 
   // Assistant form states
   const [assistantName, setAssistantName] = useState("");
@@ -138,20 +173,34 @@ You are an AI Hotel Booking Assistant.
   const [selectedTranscriberProvider, setSelectedTranscriberProvider] =
     useState("");
   const [selectedTranscriberModel, setSelectedTranscriberModel] = useState("");
-  const assistants: Assistant[] = [
-    {
-      id: "first-assistant",
-      name: "First Assistant",
-      provider: "Elliot",
-      status: "active",
-    },
-    { id: "cameron", name: "Cameron", provider: "Elliot", status: "active" },
-    { id: "riley", name: "Riley", provider: "Elliot", status: "active" },
-  ];
 
   const filteredAssistants = assistants.filter((assistant) =>
     assistant.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // Fetch assistants
+  const fetchAssistants = useCallback(async () => {
+    setAssistantsLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/assistants", {
+        headers: {
+          accept: "application/json",
+          Authorization:
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
+        },
+      });
+      const data = await response.json();
+      setAssistants(data);
+      // Set the first assistant as selected if none is selected
+      if (data.length > 0 && !selectedAssistant) {
+        setSelectedAssistant(data[0].id);
+      }
+    } catch (error) {
+      console.error("Error fetching assistants:", error);
+    } finally {
+      setAssistantsLoading(false);
+    }
+  }, [selectedAssistant]);
 
   // Fetch providers
   const fetchProviders = async () => {
@@ -301,6 +350,7 @@ You are an AI Hotel Booking Assistant.
   };
 
   useEffect(() => {
+    fetchAssistants();
     fetchProviders();
     fetchModels();
     fetchSynthesizerProviders();
@@ -308,7 +358,32 @@ You are an AI Hotel Booking Assistant.
     fetchSynthesizerVoices();
     fetchTranscriberProviders();
     fetchTranscriberModels();
-  }, []);
+  }, [fetchAssistants]);
+
+  // Update form when selected assistant changes
+  useEffect(() => {
+    if (selectedAssistant && assistants.length > 0) {
+      const assistant = assistants.find((a) => a.id === selectedAssistant);
+      if (assistant) {
+        setAssistantName(assistant.name);
+        setFirstMessage(assistant.firstMessage);
+        setSystemPrompt(assistant.systemPrompt);
+        setSelectedModel(assistant.llmModelId);
+        setSelectedProvider(assistant.llmModel.llmProvider.id);
+        setSelectedTranscriberModel(assistant.transcriberModelId);
+        setSelectedTranscriberProvider(
+          assistant.transcriberModel.transcriberProvider.id,
+        );
+        setSelectedSynthesizerVoice(assistant.synthesizerVoiceId);
+        setSelectedSynthesizerModel(
+          assistant.synthesizerVoice.synthesizerModel.id,
+        );
+        setSelectedSynthesizerProvider(
+          assistant.synthesizerVoice.synthesizerModel.synthesizerProvider.id,
+        );
+      }
+    }
+  }, [selectedAssistant, assistants]);
 
   // Filter models based on selected provider
   const filteredModels = selectedProvider
@@ -336,6 +411,35 @@ You are an AI Hotel Booking Assistant.
       )
     : transcriberModels;
 
+  // Create new assistant function
+  const handleCreateNewAssistant = () => {
+    // Clear the selected assistant to indicate we're creating a new one
+    setSelectedAssistant("");
+    // Reset form to default values
+    setAssistantName("");
+    setFirstMessage("Hello.");
+    setSystemPrompt(`[Identity]
+You are an AI Hotel Booking Assistant.
+
+[Style]
+- Speak with a warm and welcoming tone.
+- Be concise and clear, offering helpful guidance throughout the booking process.
+
+[Response Guidelines]
+- Use a conversational style and spell out numbers to improve voice realism.
+- Provide dates in a Month Day format (e.g., January 15).`);
+    // Clear selections
+    setSelectedProvider("");
+    setSelectedModel("");
+    setSelectedTranscriberProvider("");
+    setSelectedTranscriberModel("");
+    setSelectedSynthesizerProvider("");
+    setSelectedSynthesizerModel("");
+    setSelectedSynthesizerVoice("");
+    // Switch to assistant tab
+    setActiveTab("assistant");
+  };
+
   // Save assistant function
   const handleSaveAssistant = async () => {
     if (!assistantName.trim()) {
@@ -357,8 +461,16 @@ You are an AI Hotel Booking Assistant.
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/api/v1/assistants", {
-        method: "POST",
+      // Determine if we're updating an existing assistant or creating a new one
+      const isUpdating =
+        selectedAssistant && assistants.some((a) => a.id === selectedAssistant);
+      const url = isUpdating
+        ? `http://localhost:8000/api/v1/assistants/${selectedAssistant}`
+        : "http://localhost:8000/api/v1/assistants";
+      const method = isUpdating ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           accept: "application/json",
           Authorization:
@@ -378,8 +490,19 @@ You are an AI Hotel Booking Assistant.
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Assistant created successfully:", data);
+        console.log(
+          isUpdating
+            ? "Assistant updated successfully:"
+            : "Assistant created successfully:",
+          data,
+        );
         alert("Assistant saved successfully!");
+        // Refresh the assistants list
+        await fetchAssistants();
+        // If we created a new assistant, select it
+        if (!isUpdating) {
+          setSelectedAssistant(data.id);
+        }
       } else {
         console.error("Error saving assistant:", response.statusText);
         alert("Error saving assistant. Please try again.");
@@ -407,7 +530,10 @@ You are an AI Hotel Booking Assistant.
           </div>
 
           <div className="flex items-center space-x-4">
-            <Button className="bg-teal-600 hover:bg-teal-700 text-white">
+            <Button
+              onClick={handleCreateNewAssistant}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create Assistant
             </Button>
@@ -435,28 +561,42 @@ You are an AI Hotel Booking Assistant.
           {/* Assistants List */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-2">
-              {filteredAssistants.map((assistant) => (
-                <button
-                  key={assistant.id}
-                  onClick={() => setSelectedAssistant(assistant.id)}
-                  className={`w-full text-left p-3 rounded-lg mb-2 transition-colors ${
-                    selectedAssistant === assistant.id
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <div className="font-medium">{assistant.name}</div>
-                  <div
-                    className={`text-sm ${
+              {assistantsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-gray-500">Loading assistants...</div>
+                </div>
+              ) : filteredAssistants.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-gray-500 text-center">
+                    {searchTerm
+                      ? "No assistants found"
+                      : "No assistants available"}
+                  </div>
+                </div>
+              ) : (
+                filteredAssistants.map((assistant) => (
+                  <button
+                    key={assistant.id}
+                    onClick={() => setSelectedAssistant(assistant.id)}
+                    className={`w-full text-left p-3 rounded-lg mb-2 transition-colors ${
                       selectedAssistant === assistant.id
-                        ? "text-blue-100"
-                        : "text-gray-500"
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "text-gray-700 hover:bg-gray-100"
                     }`}
                   >
-                    {assistant.provider}
-                  </div>
-                </button>
-              ))}
+                    <div className="font-medium">{assistant.name}</div>
+                    <div
+                      className={`text-sm ${
+                        selectedAssistant === assistant.id
+                          ? "text-blue-100"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {assistant.llmModel.llmProvider.name}
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -468,7 +608,12 @@ You are an AI Hotel Booking Assistant.
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  First Assistant
+                  {selectedAssistant && assistants.length > 0
+                    ? assistants.find((a) => a.id === selectedAssistant)
+                        ?.name || "Assistant"
+                    : assistantName
+                      ? "New Assistant"
+                      : "Select an Assistant"}
                 </h2>
               </div>
 
@@ -484,7 +629,12 @@ You are an AI Hotel Booking Assistant.
                   disabled={loading}
                   className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
                 >
-                  {loading ? "Saving..." : "Save"}
+                  {loading
+                    ? "Saving..."
+                    : selectedAssistant &&
+                        assistants.some((a) => a.id === selectedAssistant)
+                      ? "Update"
+                      : "Create"}
                 </Button>
               </div>
             </div>

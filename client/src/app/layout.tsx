@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Voice Assistant Dashboard',
+  title: 'Zenvoice',
   description: 'Manage your autonomous voice assistants',
 };
 
