@@ -1,23 +1,15 @@
-"use client"
+"use client";
 
-import React, { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface CreateAssistantModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onCreateAssistant: (name: string) => Promise<void>
-  isLoading?: boolean
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreateAssistant: (name: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
 export function CreateAssistantModal({
@@ -26,54 +18,89 @@ export function CreateAssistantModal({
   onCreateAssistant,
   isLoading = false,
 }: CreateAssistantModalProps) {
-  const [assistantName, setAssistantName] = useState("")
+  const [assistantName, setAssistantName] = useState("");
+
+  // Handle escape key press
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        handleCancel();
+      }
+    };
+
+    if (open) {
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!assistantName.trim()) return
+    e.preventDefault();
+    if (!assistantName.trim()) return;
 
     try {
-      await onCreateAssistant(assistantName.trim())
-      setAssistantName("")
-      onOpenChange(false)
+      await onCreateAssistant(assistantName.trim());
+      setAssistantName("");
+      onOpenChange(false);
     } catch (error) {
-      console.error("Error creating assistant:", error)
+      console.error("Error creating assistant:", error);
     }
-  }
+  };
 
   const handleCancel = () => {
-    setAssistantName("")
-    onOpenChange(false)
-  }
+    setAssistantName("");
+    onOpenChange(false);
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleCancel();
+    }
+  };
+
+  if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Create New Assistant</DialogTitle>
-          <DialogDescription>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Create New Assistant
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
             Enter a name for your new assistant. It will be created with default
             settings that you can customize later.
-          </DialogDescription>
-        </DialogHeader>
+          </p>
+        </div>
+
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <Input
-                id="name"
-                value={assistantName}
-                onChange={(e) => setAssistantName(e.target.value)}
-                placeholder="Enter assistant name"
-                className="col-span-3"
-                disabled={isLoading}
-                autoFocus
-              />
-            </div>
+          <div className="mb-4">
+            <Label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Name
+            </Label>
+            <Input
+              id="name"
+              value={assistantName}
+              onChange={(e) => setAssistantName(e.target.value)}
+              placeholder="Enter assistant name"
+              disabled={isLoading}
+              autoFocus
+              className="w-full"
+            />
           </div>
-          <DialogFooter>
+
+          <div className="flex justify-end space-x-3">
             <Button
               type="button"
               variant="outline"
@@ -89,9 +116,9 @@ export function CreateAssistantModal({
             >
               {isLoading ? "Creating..." : "Create Assistant"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
-  )
+      </div>
+    </div>
+  );
 }

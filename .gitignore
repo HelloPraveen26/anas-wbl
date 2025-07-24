@@ -4,6 +4,7 @@
 #     https://www.atlassian.com/git/tutorials/saving-changes/gitignore
 client/node_modules/
 client/.next
+client/out/
 
 ui/node_modules
 
