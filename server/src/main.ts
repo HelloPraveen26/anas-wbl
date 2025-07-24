@@ -78,7 +78,7 @@ async function bootstrap() {
   console.log("📚 Setting up Swagger documentation...");
   // Swagger documentation - Enhanced configuration
   const config = new DocumentBuilder()
-    .setTitle("Voice Assistant API")
+    .setTitle("Zenvoice API")
     .setDescription(
       `
       ## Production-ready API for Voice Assistant Dashboard
@@ -174,7 +174,7 @@ async function bootstrap() {
       showRequestHeaders: true,
       tryItOutEnabled: true,
     },
-    customSiteTitle: "Voice Assistant API Documentation",
+    customSiteTitle: "Zenvoice API Documentation",
     customfavIcon: "/favicon.ico",
     customJs: [
       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js",

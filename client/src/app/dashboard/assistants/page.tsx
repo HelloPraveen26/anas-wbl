@@ -17,6 +17,7 @@ import {
   ChevronUp,
   Maximize2,
 } from "lucide-react";
+import { CreateAssistantModal } from "@/components/CreateAssistantModal";
 
 interface Assistant {
   id: string;
@@ -133,6 +134,10 @@ export default function AssistantsPage() {
   const [loading, setLoading] = useState(false);
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [assistantsLoading, setAssistantsLoading] = useState(true);
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createAssistantLoading, setCreateAssistantLoading] = useState(false);
 
   // Assistant form states
   const [assistantName, setAssistantName] = useState("");
@@ -413,31 +418,62 @@ You are an AI Hotel Booking Assistant.
 
   // Create new assistant function
   const handleCreateNewAssistant = () => {
-    // Clear the selected assistant to indicate we're creating a new one
-    setSelectedAssistant("");
-    // Reset form to default values
-    setAssistantName("");
-    setFirstMessage("Hello.");
-    setSystemPrompt(`[Identity]
-You are an AI Hotel Booking Assistant.
+    setShowCreateModal(true);
+  };
 
-[Style]
-- Speak with a warm and welcoming tone.
-- Be concise and clear, offering helpful guidance throughout the booking process.
+  // Create assistant with custom name and default settings
+  const createAssistantWithName = async (name: string) => {
+    setCreateAssistantLoading(true);
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/v1/assistants/create-with-name",
+        {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            Authorization:
+              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: name,
+          }),
+        },
+      );
 
-[Response Guidelines]
-- Use a conversational style and spell out numbers to improve voice realism.
-- Provide dates in a Month Day format (e.g., January 15).`);
-    // Clear selections
-    setSelectedProvider("");
-    setSelectedModel("");
-    setSelectedTranscriberProvider("");
-    setSelectedTranscriberModel("");
-    setSelectedSynthesizerProvider("");
-    setSelectedSynthesizerModel("");
-    setSelectedSynthesizerVoice("");
-    // Switch to assistant tab
-    setActiveTab("assistant");
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Assistant created successfully:", data);
+
+        // Refresh the assistants list
+        await fetchAssistants();
+
+        // Select the newly created assistant
+        setSelectedAssistant(data.id);
+
+        // Load the assistant data into the form for editing
+        setAssistantName(data.name);
+        setFirstMessage(data.firstMessage);
+        setSystemPrompt(data.systemPrompt);
+        setSelectedModel(data.llmModelId);
+        setSelectedTranscriberModel(data.transcriberModelId);
+        setSelectedSynthesizerVoice(data.synthesizerVoiceId);
+
+        // Switch to assistant tab
+        setActiveTab("assistant");
+      } else {
+        const errorData = await response.json();
+        console.error("Error creating assistant:", errorData);
+        alert(
+          `Error creating assistant: ${errorData.message || "Please try again."}`,
+        );
+      }
+    } catch (error) {
+      console.error("Error creating assistant:", error);
+      alert("Error creating assistant. Please try again.");
+    } finally {
+      setCreateAssistantLoading(false);
+    }
   };
 
   // Save assistant function
@@ -1006,6 +1042,14 @@ You are an AI Hotel Booking Assistant.
           </div>
         </div>
       </div>
+
+      {/* Create Assistant Modal */}
+      <CreateAssistantModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onCreateAssistant={createAssistantWithName}
+        isLoading={createAssistantLoading}
+      />
     </div>
   );
 }
