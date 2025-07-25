@@ -1,6 +1,7 @@
 // API configuration and utilities
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8000/api/v1";
 
 // Helper function to get API base URL for use in components
 export const getApiBaseUrl = (): string => {
@@ -71,6 +72,8 @@ class ApiClient {
       url,
       method: config.method || "GET",
       headers: config.headers,
+      baseURL: this.baseURL,
+      endpoint,
     });
 
     try {
@@ -104,6 +107,9 @@ class ApiClient {
         error,
         url,
         baseURL: this.baseURL,
+        endpoint,
+        errorMessage: error.message,
+        errorStack: error.stack,
       });
 
       if (error instanceof ApiError) {
@@ -111,9 +117,15 @@ class ApiClient {
       }
 
       // Handle network errors
-      throw new ApiError("Network error. Please check your connection.", 0, {
-        originalError: error,
-      });
+      throw new ApiError(
+        `Network error connecting to ${url}. Please check your connection and server availability.`,
+        0,
+        {
+          originalError: error,
+          url,
+          baseURL: this.baseURL,
+        },
+      );
     }
   }
 

@@ -49,6 +49,7 @@ async function bootstrap() {
       "http://127.0.0.1:3000",
       "http://localhost:8001",
       "http://127.0.0.1:8001",
+      "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8001",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
