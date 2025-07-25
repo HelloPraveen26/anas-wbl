@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
 import { authManager } from "@/lib/auth";
+import { getApiBaseUrl } from "@/lib/api";
 
 interface Assistant {
   id: string;
@@ -206,7 +207,7 @@ You are an AI Hotel Booking Assistant.
         return;
       }
 
-      const response = await fetch("http://localhost:8000/api/v1/assistants", {
+      const response = await fetch(`${getApiBaseUrl()}/assistants`, {
         headers: getAuthHeaders(),
       });
 
@@ -238,12 +239,9 @@ You are an AI Hotel Booking Assistant.
   // Fetch providers
   const fetchProviders = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/llm/providers",
-        {
-          headers: getAuthHeaders(),
-        },
-      );
+      const response = await fetch(`${getApiBaseUrl()}/llm/providers`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       setProviders(data.filter((provider: Provider) => provider.isActive));
     } catch (error) {
@@ -254,7 +252,7 @@ You are an AI Hotel Booking Assistant.
   // Fetch models
   const fetchModels = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/v1/llm/models", {
+      const response = await fetch(`${getApiBaseUrl()}/llm/models`, {
         headers: getAuthHeaders(),
       });
       const data = await response.json();
@@ -267,12 +265,9 @@ You are an AI Hotel Booking Assistant.
   // Fetch synthesizer providers
   const fetchSynthesizerProviders = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/synthesizer/providers",
-        {
-          headers: getAuthHeaders(),
-        },
-      );
+      const response = await fetch(`${getApiBaseUrl()}/synthesizer/providers`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       setSynthesizerProviders(
         data.filter((provider: SynthesizerProvider) => provider.isActive),
@@ -285,12 +280,9 @@ You are an AI Hotel Booking Assistant.
   // Fetch synthesizer models
   const fetchSynthesizerModels = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/synthesizer/models",
-        {
-          headers: getAuthHeaders(),
-        },
-      );
+      const response = await fetch(`${getApiBaseUrl()}/synthesizer/models`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       setSynthesizerModels(
         data.filter((model: SynthesizerModel) => model.isActive),
@@ -303,12 +295,9 @@ You are an AI Hotel Booking Assistant.
   // Fetch transcriber providers
   const fetchTranscriberProviders = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/transcriber/providers",
-        {
-          headers: getAuthHeaders(),
-        },
-      );
+      const response = await fetch(`${getApiBaseUrl()}/transcriber/providers`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       setTranscriberProviders(
         data.filter((provider: TranscriberProvider) => provider.isActive),
@@ -321,12 +310,9 @@ You are an AI Hotel Booking Assistant.
   // Fetch transcriber models
   const fetchTranscriberModels = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/transcriber/models",
-        {
-          headers: getAuthHeaders(),
-        },
-      );
+      const response = await fetch(`${getApiBaseUrl()}/transcriber/models`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       setTranscriberModels(
         data.filter((model: TranscriberModel) => model.isActive),
@@ -339,12 +325,9 @@ You are an AI Hotel Booking Assistant.
   // Fetch synthesizer voices
   const fetchSynthesizerVoices = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/v1/synthesizer/voices",
-        {
-          headers: getAuthHeaders(),
-        },
-      );
+      const response = await fetch(`${getApiBaseUrl()}/synthesizer/voices`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       setSynthesizerVoices(
         data.filter((voice: SynthesizerVoice) => voice.isActive),
@@ -426,7 +409,7 @@ You are an AI Hotel Booking Assistant.
     setCreateAssistantLoading(true);
     try {
       const response = await fetch(
-        "http://localhost:8000/api/v1/assistants/create-with-name",
+        `${getApiBaseUrl()}/assistants/create-with-name`,
         {
           method: "POST",
           headers: {
@@ -499,8 +482,8 @@ You are an AI Hotel Booking Assistant.
       const isUpdating =
         selectedAssistant && assistants.some((a) => a.id === selectedAssistant);
       const url = isUpdating
-        ? `http://localhost:8000/api/v1/assistants/${selectedAssistant}`
-        : "http://localhost:8000/api/v1/assistants";
+        ? `${getApiBaseUrl()}/assistants/${selectedAssistant}`
+        : `${getApiBaseUrl()}/assistants`;
       const method = isUpdating ? "PATCH" : "POST";
 
       const response = await fetch(url, {
