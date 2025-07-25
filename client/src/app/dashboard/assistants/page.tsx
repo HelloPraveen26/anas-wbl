@@ -18,6 +18,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
+import { authManager } from "@/lib/auth";
 
 interface Assistant {
   id: string;
@@ -179,29 +180,56 @@ You are an AI Hotel Booking Assistant.
     useState("");
   const [selectedTranscriberModel, setSelectedTranscriberModel] = useState("");
 
-  const filteredAssistants = assistants.filter((assistant) =>
+  const filteredAssistants = (
+    Array.isArray(assistants) ? assistants : []
+  ).filter((assistant) =>
     assistant.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // Helper function to get authenticated headers
+  const getAuthHeaders = () => {
+    const token = authManager.getToken();
+    return {
+      accept: "application/json",
+      Authorization: token ? `Bearer ${token}` : "",
+    };
+  };
 
   // Fetch assistants
   const fetchAssistants = useCallback(async () => {
     setAssistantsLoading(true);
     try {
+      const token = authManager.getToken();
+      if (!token) {
+        console.error("No authentication token found");
+        setAssistants([]);
+        return;
+      }
+
       const response = await fetch("http://localhost:8000/api/v1/assistants", {
-        headers: {
-          accept: "application/json",
-          Authorization:
-            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-        },
+        headers: getAuthHeaders(),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      setAssistants(data);
-      // Set the first assistant as selected if none is selected
-      if (data.length > 0 && !selectedAssistant) {
-        setSelectedAssistant(data[0].id);
+
+      // Ensure data is an array before setting assistants
+      if (Array.isArray(data)) {
+        setAssistants(data);
+        // Set the first assistant as selected if none is selected
+        if (data.length > 0 && !selectedAssistant) {
+          setSelectedAssistant(data[0].id);
+        }
+      } else {
+        console.error("API returned non-array data:", data);
+        setAssistants([]);
       }
     } catch (error) {
       console.error("Error fetching assistants:", error);
+      setAssistants([]);
     } finally {
       setAssistantsLoading(false);
     }
@@ -213,11 +241,7 @@ You are an AI Hotel Booking Assistant.
       const response = await fetch(
         "http://localhost:8000/api/v1/llm/providers",
         {
-          headers: {
-            accept: "application/json",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-          },
+          headers: getAuthHeaders(),
         },
       );
       const data = await response.json();
@@ -231,11 +255,7 @@ You are an AI Hotel Booking Assistant.
   const fetchModels = async () => {
     try {
       const response = await fetch("http://localhost:8000/api/v1/llm/models", {
-        headers: {
-          accept: "application/json",
-          Authorization:
-            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-        },
+        headers: getAuthHeaders(),
       });
       const data = await response.json();
       setModels(data.filter((model: Model) => model.isActive));
@@ -250,11 +270,7 @@ You are an AI Hotel Booking Assistant.
       const response = await fetch(
         "http://localhost:8000/api/v1/synthesizer/providers",
         {
-          headers: {
-            accept: "application/json",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-          },
+          headers: getAuthHeaders(),
         },
       );
       const data = await response.json();
@@ -272,11 +288,7 @@ You are an AI Hotel Booking Assistant.
       const response = await fetch(
         "http://localhost:8000/api/v1/synthesizer/models",
         {
-          headers: {
-            accept: "application/json",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-          },
+          headers: getAuthHeaders(),
         },
       );
       const data = await response.json();
@@ -294,11 +306,7 @@ You are an AI Hotel Booking Assistant.
       const response = await fetch(
         "http://localhost:8000/api/v1/transcriber/providers",
         {
-          headers: {
-            accept: "application/json",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-          },
+          headers: getAuthHeaders(),
         },
       );
       const data = await response.json();
@@ -316,11 +324,7 @@ You are an AI Hotel Booking Assistant.
       const response = await fetch(
         "http://localhost:8000/api/v1/transcriber/models",
         {
-          headers: {
-            accept: "application/json",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-          },
+          headers: getAuthHeaders(),
         },
       );
       const data = await response.json();
@@ -338,11 +342,7 @@ You are an AI Hotel Booking Assistant.
       const response = await fetch(
         "http://localhost:8000/api/v1/synthesizer/voices",
         {
-          headers: {
-            accept: "application/json",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
-          },
+          headers: getAuthHeaders(),
         },
       );
       const data = await response.json();
@@ -430,9 +430,7 @@ You are an AI Hotel Booking Assistant.
         {
           method: "POST",
           headers: {
-            accept: "application/json",
-            Authorization:
-              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzE2MTIxMiwiZXhwIjoxNzUzNzY2MDEyfQ.03EurfUzCp_DUBGs1IyyNBvPLW-n-fsQVMnKSaElXew",
+            ...getAuthHeaders(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -508,9 +506,7 @@ You are an AI Hotel Booking Assistant.
       const response = await fetch(url, {
         method: method,
         headers: {
-          accept: "application/json",
-          Authorization:
-            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MzRhY2E2Yi00MjFlLTQzZmUtYTRiYy1lNDNmN2Q0ZjYxNWYiLCJlbWFpbCI6InNlbHZhbUBnbWFpbC5jb20iLCJmaXJzdE5hbWUiOiJTZWx2YW0iLCJsYXN0TmFtZSI6IlJBTSIsImlhdCI6MTc1MzI0NTgyMiwiZXhwIjoxNzUzODUwNjIyfQ.lLYLSP1mKUceOTOd05S6eHLLpVG2yGG9yv-qq12Sh58",
+          ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
