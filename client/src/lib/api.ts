@@ -1,7 +1,9 @@
 // API configuration and utilities
-// Force AWS URL for production deployment
+// Use localhost for development, AWS for production
 const API_BASE_URL =
-  "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8000/api/v1";
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:8000/api/v1"
+    : "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8000/api/v1";
 
 // Debug logging for API URL
 console.log("🔧 API Configuration:", {

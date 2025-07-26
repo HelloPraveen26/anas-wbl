@@ -141,6 +141,10 @@ export default function AssistantsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createAssistantLoading, setCreateAssistantLoading] = useState(false);
 
+  // Prompt generation states
+  const [generateLoading, setGenerateLoading] = useState(false);
+  const [taskDescription, setTaskDescription] = useState("");
+
   // Assistant form states
   const [assistantName, setAssistantName] = useState("");
   const [firstMessage, setFirstMessage] = useState("Hello.");
@@ -194,6 +198,98 @@ You are an AI Hotel Booking Assistant.
       accept: "application/json",
       Authorization: token ? `Bearer ${token}` : "",
     };
+  };
+
+  // Generate prompt function
+  const generatePrompt = async () => {
+    if (!taskDescription.trim()) {
+      alert("Please enter a task description");
+      return;
+    }
+
+    setGenerateLoading(true);
+
+    const url = `${getApiBaseUrl()}/prompt/generate`;
+    const requestData = {
+      taskDescription: taskDescription.trim(),
+    };
+    const headers = {
+      ...getAuthHeaders(),
+      "Content-Type": "application/json",
+    };
+
+    console.log("🚀 Generate Prompt Debug Info:", {
+      url,
+      method: "POST",
+      headers,
+      body: requestData,
+      taskDescription: taskDescription.trim(),
+      apiBaseUrl: getApiBaseUrl(),
+    });
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(requestData),
+      });
+
+      console.log("📡 Response Debug Info:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        url: response.url,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("✅ Success - Response data:", data);
+        setSystemPrompt(data.generatedPrompt);
+      } else {
+        const errorData = await response.json();
+        console.error("❌ API Error Response:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          url,
+        });
+
+        // Handle authentication errors specifically
+        if (response.status === 401 || response.status === 404) {
+          if (
+            errorData.message?.includes("User not found") ||
+            errorData.message?.includes("Unauthorized")
+          ) {
+            alert(
+              "Your session has expired or your account is no longer valid. Please log out and log back in to continue.",
+            );
+            // Clear invalid authentication data
+            authManager.clearAuth();
+            // Redirect to login
+            window.location.href = "/auth/signin";
+            return;
+          }
+        }
+
+        alert(
+          `Failed to generate prompt. Status: ${response.status} - ${response.statusText}. Check console for details.`,
+        );
+      }
+    } catch (error) {
+      console.error("🚨 Network/Parse Error:", {
+        error,
+        message: error.message,
+        stack: error.stack,
+        url,
+        requestData,
+      });
+      alert(
+        "Failed to generate prompt. Network error or parsing issue. Check console for details.",
+      );
+    } finally {
+      setGenerateLoading(false);
+    }
   };
 
   // Fetch assistants
@@ -751,6 +847,21 @@ You are an AI Hotel Booking Assistant.
                               </div>
 
                               <div className="space-y-2">
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium text-gray-700">
+                                    Task Description
+                                  </Label>
+                                  <Input
+                                    type="text"
+                                    value={taskDescription}
+                                    onChange={(e) =>
+                                      setTaskDescription(e.target.value)
+                                    }
+                                    placeholder="e.g., to book a hotel appointment"
+                                    className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                  />
+                                </div>
+
                                 <div className="flex items-center justify-between">
                                   <Label className="text-sm font-medium text-gray-700">
                                     System Prompt
@@ -758,9 +869,13 @@ You are an AI Hotel Booking Assistant.
                                   <div className="flex items-center space-x-2">
                                     <Button
                                       size="sm"
-                                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs"
+                                      onClick={generatePrompt}
+                                      disabled={generateLoading}
+                                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs disabled:bg-teal-400"
                                     >
-                                      Generate
+                                      {generateLoading
+                                        ? "Generating..."
+                                        : "Generate"}
                                     </Button>
                                     <button className="text-gray-400 hover:text-gray-600">
                                       <Maximize2 className="w-4 h-4" />
