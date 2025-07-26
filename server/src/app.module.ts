@@ -12,6 +12,7 @@ import { LlmModule } from "./llm/llm.module";
 import { TranscriberModule } from "./transcriber/transcriber.module";
 import { SynthesizerModule } from "./synthesizer/synthesizer.module";
 import { AssistantModule } from "./assistant/assistant.module";
+import { PromptModule } from "./prompt/prompt.module";
 import { winstonConfig } from "./config/winston.config";
 import { databaseConfig } from "./config/database.config";
 import { throttlerConfig } from "./config/throttler.config";
@@ -55,6 +56,7 @@ import { throttlerConfig } from "./config/throttler.config";
     TranscriberModule,
     SynthesizerModule,
     AssistantModule,
+    PromptModule,
   ],
 })
 export class AppModule {}

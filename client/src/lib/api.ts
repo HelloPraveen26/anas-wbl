@@ -1,7 +1,14 @@
 // API configuration and utilities
+// Force AWS URL for production deployment
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
   "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8000/api/v1";
+
+// Debug logging for API URL
+console.log("🔧 API Configuration:", {
+  envApiUrl: process.env.NEXT_PUBLIC_API_URL,
+  finalApiUrl: API_BASE_URL,
+  nodeEnv: process.env.NODE_ENV,
+});
 
 // Helper function to get API base URL for use in components
 export const getApiBaseUrl = (): string => {
@@ -67,13 +74,15 @@ class ApiClient {
       ...options,
     };
 
-    // Debug logging
+    // Enhanced debug logging
     console.log("🔗 Making API request:", {
       url,
       method: config.method || "GET",
       headers: config.headers,
       baseURL: this.baseURL,
       endpoint,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator?.userAgent,
     });
 
     try {
@@ -116,16 +125,28 @@ class ApiClient {
         throw error;
       }
 
-      // Handle network errors
-      throw new ApiError(
-        `Network error connecting to ${url}. Please check your connection and server availability.`,
+      // Handle network errors with enhanced debugging
+      const networkError = new ApiError(
+        `Network error connecting to ${url}. Please check your connection and server availability. If this persists, verify the server is running at ${this.baseURL}`,
         0,
         {
           originalError: error,
           url,
           baseURL: this.baseURL,
+          timestamp: new Date().toISOString(),
+          errorType: error.name,
+          errorMessage: error.message,
         },
       );
+
+      console.error("🚨 Complete network error details:", {
+        error: networkError,
+        originalError: error,
+        stack: error.stack,
+        requestDetails: { url, method: config.method, headers: config.headers },
+      });
+
+      throw networkError;
     }
   }
 

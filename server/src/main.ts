@@ -153,13 +153,16 @@ async function bootstrap() {
       "transcriber",
       "Transcriber providers and models - Speech-to-text configuration",
     )
-    .addServer("http://localhost:8000", "Development server")
-    .addServer("https://your-production-domain.com", "Production server")
-    .setContact(
-      "API Support",
-      "https://your-website.com/support",
-      "support@your-domain.com",
+    .addTag(
+      "prompt",
+      "AI prompt generation - Generate structured prompts using OpenAI GPT-4",
     )
+    .addServer("http://localhost:8000", "Development server")
+    .addServer(
+      "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8000",
+      "Production server",
+    )
+    .setContact("API Support", "https://zenxai.io/", "support@zenxai.io")
     .setLicense("MIT", "https://opensource.org/licenses/MIT")
     .build();
 
