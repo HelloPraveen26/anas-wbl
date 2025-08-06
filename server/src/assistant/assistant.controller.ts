@@ -26,6 +26,7 @@ import {
   UpdateAssistantDto,
   AssistantResponseDto,
   CreateDefaultAssistantDto,
+  ConnectionDetailsResponseDto,
 } from "./dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
@@ -76,6 +77,45 @@ export class AssistantController {
     }
 
     return assistants;
+  }
+
+  @Get("connection-details")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Get LiveKit connection details",
+    description:
+      "Get connection details for establishing a LiveKit WebRTC connection including server URL, room name, and participant token",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Connection details retrieved successfully",
+    type: ConnectionDetailsResponseDto,
+    example: {
+      serverUrl: "wss://livekit.zenxai.io/",
+      roomName: "voice_assistant_room_8658",
+      participantToken:
+        "eyJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoidXNlciIsInZpZGVvIjp7InJvb20iOiJ2b2ljZV9hc3Npc3RhbnRfcm9vbV84NjU4Iiwicm9vbUpvaW4iOnRydWUsImNhblB1Ymxpc2giOnRydWUsImNhblB1Ymxpc2hEYXRhIjp0cnVlLCJjYW5TdWJzY3JpYmUiOnRydWV9LCJpc3MiOiJkZXZrZXkiLCJleHAiOjE3NTQ0NTAyMjUsIm5iZiI6MCwic3ViIjoidm9pY2VfYXNzaXN0YW50X3VzZXJfNDc5MSJ9.jHsZetGaLzKaIlbhtq7x8Y3MC8Ab7x-HqKy5TMZBlLQ",
+      participantName: "user",
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "LiveKit configuration is missing",
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "Unauthorized - invalid token",
+  })
+  async getConnectionDetails(
+    @Request() req,
+  ): Promise<ConnectionDetailsResponseDto> {
+    const response = await this.assistantService.getConnectionDetails();
+
+    // Set no-cache headers
+    req.res.set("Cache-Control", "no-store");
+
+    return response;
   }
 
   @Get(":id")

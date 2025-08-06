@@ -5,11 +5,14 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { ConfigService } from "@nestjs/config";
+import { AccessToken } from "livekit-server-sdk";
 import { Assistant } from "./entities/assistant.entity";
 import {
   CreateAssistantDto,
   UpdateAssistantDto,
   AssistantResponseDto,
+  ConnectionDetailsResponseDto,
 } from "./dto";
 import { LlmModel } from "../llm/entities/llm-model.entity";
 import { TranscriberModel } from "../transcriber/entities/transcriber-model.entity";
@@ -26,6 +29,7 @@ export class AssistantService {
     private transcriberModelRepository: Repository<TranscriberModel>,
     @InjectRepository(SynthesizerVoice)
     private synthesizerVoiceRepository: Repository<SynthesizerVoice>,
+    private configService: ConfigService,
   ) {}
 
   async findAll(userId: string): Promise<AssistantResponseDto[]> {
@@ -203,5 +207,60 @@ export class AssistantService {
     if (!synthesizerVoice) {
       throw new BadRequestException("Invalid synthesizer voice ID");
     }
+  }
+
+  async getConnectionDetails(): Promise<ConnectionDetailsResponseDto> {
+    const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+    const LIVEKIT_API_SECRET =
+      this.configService.get<string>("LIVEKIT_API_SECRET");
+    const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+    if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+      throw new BadRequestException("LiveKit configuration is missing");
+    }
+
+    // Generate participant details
+    const participantName = "user";
+    const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10000)}`;
+    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10000)}`;
+
+    // Create participant token
+    const participantToken = await this.createParticipantToken(
+      { identity: participantIdentity, name: participantName },
+      roomName,
+      LIVEKIT_API_KEY,
+      LIVEKIT_API_SECRET,
+    );
+
+    // Return connection details
+    return {
+      serverUrl: LIVEKIT_URL,
+      roomName,
+      participantToken,
+      participantName,
+    };
+  }
+
+  private async createParticipantToken(
+    userInfo: { identity: string; name: string },
+    roomName: string,
+    apiKey: string,
+    apiSecret: string,
+  ): Promise<string> {
+    const at = new AccessToken(apiKey, apiSecret, {
+      ...userInfo,
+      ttl: "15m",
+    });
+
+    const grant = {
+      room: roomName,
+      roomJoin: true,
+      canPublish: true,
+      canPublishData: true,
+      canSubscribe: true,
+    };
+
+    at.addGrant(grant);
+    return await at.toJwt();
   }
 }
