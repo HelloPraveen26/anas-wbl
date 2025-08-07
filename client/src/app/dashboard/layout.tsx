@@ -272,7 +272,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               )}
 
             {/* TEST Section */}
-            {!sidebarCollapsed && (
+            {/* {!sidebarCollapsed && (
               <div className="pt-4">
                 <button
                   onClick={() => setTestExpanded(!testExpanded)}
@@ -286,15 +286,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   )}
                 </button>
               </div>
-            )}
+            )} */}
 
-            {(testExpanded || sidebarCollapsed) &&
+            {/* {(testExpanded || sidebarCollapsed) &&
               testItems.map((item) =>
                 renderNavItem(item, activeSection === item.id),
-              )}
+              )} */}
 
             {/* OBSERVE Section */}
-            {!sidebarCollapsed && (
+            {/* {!sidebarCollapsed && (
               <div className="pt-4">
                 <button
                   onClick={() => setObserveExpanded(!observeExpanded)}
@@ -313,7 +313,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {(observeExpanded || sidebarCollapsed) &&
               observeItems.map((item) =>
                 renderNavItem(item, activeSection === item.id),
-              )}
+              )} */}
           </nav>
         </div>
 
