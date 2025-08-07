@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Modal } from 'antd';
 import {
   Plus,
   Search,
@@ -20,6 +21,7 @@ import {
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
 import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
+import LiveKitApplication from "@/app/livekit-talk-agent";
 
 interface Assistant {
   id: string;
@@ -140,6 +142,7 @@ export default function AssistantsPage() {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createAssistantLoading, setCreateAssistantLoading] = useState(false);
+  const [showTalkToAssitantModal, setShowTalkToAssitantModal] = useState(false);
 
   // Prompt generation states
   const [generateLoading, setGenerateLoading] = useState(false);
@@ -730,6 +733,7 @@ You are an AI Hotel Booking Assistant.
 
               <div className="flex items-center space-x-4">
                 <Button
+                  onClick={() => setShowTalkToAssitantModal(true)}
                   variant="outline"
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
@@ -1144,6 +1148,10 @@ You are an AI Hotel Booking Assistant.
         onCreateAssistant={createAssistantWithName}
         isLoading={createAssistantLoading}
       />
+
+      <Modal open={showTalkToAssitantModal} onCancel={() => setShowTalkToAssitantModal(false)} footer={null}>
+        <LiveKitApplication />
+      </Modal>
     </div>
   );
 }
