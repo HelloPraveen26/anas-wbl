@@ -1,7 +1,7 @@
 // API configuration and utilities
 // Use localhost for development, AWS for production
 const API_BASE_URL =
-  process.env.NODE_ENV === "development"
+   process.env.NODE_ENV === "development"
     // ? "http://localhost:8000/api/v1"
     ? "https://voice.zenxai.io/api/v1"
     : "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8000/api/v1";
@@ -120,8 +120,8 @@ class ApiClient {
         url,
         baseURL: this.baseURL,
         endpoint,
-        errorMessage: error.message,
-        errorStack: error.stack,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
       });
 
       if (error instanceof ApiError) {
@@ -137,15 +137,15 @@ class ApiClient {
           url,
           baseURL: this.baseURL,
           timestamp: new Date().toISOString(),
-          errorType: error.name,
-          errorMessage: error.message,
+          errorType: error instanceof Error ? error.name : typeof error,
+          errorMessage: error instanceof Error ? error.message : String(error),
         },
       );
 
       console.error("🚨 Complete network error details:", {
         error: networkError,
         originalError: error,
-        stack: error.stack,
+        stack: error instanceof Error ? error.stack : undefined,
         requestDetails: { url, method: config.method, headers: config.headers },
       });
 
