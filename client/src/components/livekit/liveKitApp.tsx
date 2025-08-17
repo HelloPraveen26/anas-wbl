@@ -23,6 +23,18 @@ export function LiveKitApp({ appConfig }: AppProps) {
   const [sessionStarted, setSessionStarted] = useState(false);
   const { connectionDetails, refreshConnectionDetails } = useConnectionDetails();
 
+  // useEffect(() => {
+  //   // when modal mounts, ask for details
+  //   refreshConnectionDetails();
+  // }, []);
+
+  // // auto-join once when details are available
+  // useEffect(() => {
+  //   if (connectionDetails && !sessionStarted) {
+  //     setSessionStarted(true);
+  //   }
+  // }, [connectionDetails]); 
+
   useEffect(() => {
     const onDisconnected = () => {
       setSessionStarted(false);
@@ -45,7 +57,7 @@ export function LiveKitApp({ appConfig }: AppProps) {
   useEffect(() => {
     let aborted = false;
     if (sessionStarted && room.state === 'disconnected' && connectionDetails) {
-      Promise.all([
+    Promise.all([
         room.localParticipant.setMicrophoneEnabled(true, undefined, {
           preConnectBuffer: appConfig.isPreConnectBufferEnabled,
         }),
@@ -65,7 +77,7 @@ export function LiveKitApp({ appConfig }: AppProps) {
           description: `${error.name}: ${error.message}`,
         });
       });
-    }
+  }
     return () => {
       aborted = true;
       room.disconnect();
@@ -96,6 +108,7 @@ export function LiveKitApp({ appConfig }: AppProps) {
           disabled={!sessionStarted}
           sessionStarted={sessionStarted}
           initial={{ opacity: 0 }}
+          // disconnect={disconnect}
           animate={{ opacity: sessionStarted ? 1 : 0 }}
           transition={{
             duration: 0.5,

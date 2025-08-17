@@ -15,7 +15,7 @@ export default function useConnectionDetails() {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNDEzM2UxZS00MzI2LTRlMjQtOTM3MS1iOTZhMWMyM2I5ZDEiLCJlbWFpbCI6InN1Z3VuYUBoZXhpdGV0ZWNobm9sb2dpZXMuY29tIiwiZmlyc3ROYW1lIjoiU2VsdmFtIiwibGFzdE5hbWUiOiJSYW0iLCJpYXQiOjE3NTQ1MDM2MjUsImV4cCI6MTc1NTEwODQyNX0.vTm_c3MtGz2xT_qWnpf9WkbUHDpG2fMznfpiuYuSzQY`
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNDEzM2UxZS00MzI2LTRlMjQtOTM3MS1iOTZhMWMyM2I5ZDEiLCJlbWFpbCI6InN1Z3VuYUBoZXhpdGV0ZWNobm9sb2dpZXMuY29tIiwiZmlyc3ROYW1lIjoiU2VsdmFtIiwibGFzdE5hbWUiOiJSYW0iLCJpYXQiOjE3NTUzNjc4NDUsImV4cCI6MTc1NTk3MjY0NX0.MJdm67tzaPIha1I_3v7pE3dyjvTONRVdC20Q-saUkFk`
       }
     })
       .then((res) => {

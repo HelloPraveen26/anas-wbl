@@ -1,9 +1,27 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AgentControlBar } from './agent-control-bar/agent-control-bar';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  type AgentState,
+  type ReceivedChatMessage,
+  useRoomContext,
+  useVoiceAssistant,
+} from '@livekit/components-react';
+import { toastAlert } from '@/components/alert-toast';
+import { AgentControlBar } from '@/components/livekit/agent-control-bar/agent-control-bar';
+import { ChatEntry } from '@/components/livekit/chat/chat-entry';
+import { ChatMessageView } from '@/components/livekit/chat/chat-message-view';
+import { MediaTiles } from '@/components/livekit/media-tiles';
+import useChatAndTranscription from '@/hooks/useChatAndTranscription';
+import { useDebugMode } from '@/hooks/useDebug';
+import type { AppConfig } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
-// Global style override for popup/modal
+function isAgentAvailable(agentState: AgentState) {
+  return agentState == 'listening' || agentState == 'thinking' || agentState == 'speaking';
+}
+
 const GlobalModalStyle = () => (
   <style>{`
     .lk-agent-session-view,
@@ -27,174 +45,160 @@ const GlobalModalStyle = () => (
   `}</style>
 );
 
-// Simulated chat message type
-interface ChatMessage {
-  id: string;
-  sender: 'user' | 'agent';
-  text: string;
-  timestamp: Date;
-}
-
 interface SessionViewProps {
-  appConfig: {
-    supportsChatInput?: boolean;
-    supportsVideoInput?: boolean;
-    supportsScreenShare?: boolean;
-    isPreConnectBufferEnabled?: boolean;
-  };
-  disabled?: boolean;
-  sessionStarted?: boolean;
+  appConfig: AppConfig;
+  disabled: boolean;
+  sessionStarted: boolean;
+  onDisconnect: any
 }
 
-// Loading dots animation
-const LoadingDots = () => (
-  <div className="flex justify-center items-center space-x-1">
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-    <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-    <div className="w-2 h-2 bg-black rounded-full animate-bounce"></div>
-    <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-  </div>
-);
+export const SessionView = ({
+  appConfig,
+  disabled,
+  sessionStarted,
+  onDisconnect,
+  ref,
+}: React.ComponentProps<'div'> & SessionViewProps) => {
+  const { state: agentState } = useVoiceAssistant();
+  const [chatOpen, setChatOpen] = useState(true);
+  const { messages, send } = useChatAndTranscription();
+  const room = useRoomContext();
 
-// Chat messages component
-const ChatMessages = ({ messages, className }: { messages: ChatMessage[]; className?: string }) => (
-  <div className={className}>
-    <div className="space-y-4 max-w-2xl mx-auto px-6">
-      {messages.map((message) => (
-        <div
-          key={message.id}
-          className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-        >
-          <div
-            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-              message.sender === 'user'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-800'
-            }`}
-          >
-            <p className="text-sm">{message.text}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+  useDebugMode({
+    enabled: process.env.NODE_END !== 'production',
+  });
 
-export const SessionView = React.forwardRef<HTMLElement, SessionViewProps>(
-  ({ appConfig = {}, disabled = false, sessionStarted = true, ...props }, ref) => {
-    const [agentState, setAgentState] = useState<'connecting' | 'listening' | 'thinking' | 'speaking'>('listening');
-    const [chatOpen, setChatOpen] = useState(false);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [isAgentAvailable, setIsAgentAvailable] = useState(true);
+  async function handleSendMessage(message: string) {
+    await send(message);
+  }
 
-    useEffect(() => {
-      if (sessionStarted) {
-        setAgentState('listening');
-        setIsAgentAvailable(true);
+  useEffect(() => {
+    if (sessionStarted) {
+      const timeout = setTimeout(() => {
+        if (!isAgentAvailable(agentState)) {
+          const reason =
+            agentState === 'connecting'
+              ? 'Agent did not join the room. '
+              : 'Agent connected but did not complete initializing. ';
+
+          toastAlert({
+            title: 'Session ended',
+            description: (
+              <p className="w-full">
+                {reason}
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://docs.livekit.io/agents/start/voice-ai/"
+                  className="whitespace-nowrap underline"
+                >
+                  See quickstart guide
+                </a>
+                .
+              </p>
+            ),
+          });
+          room.disconnect();
+        }
+      }, 10_000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [agentState, sessionStarted, room]);
+
+  const { supportsChatInput, supportsVideoInput, supportsScreenShare } = appConfig;
+  const capabilities = {
+    supportsChatInput,
+    supportsVideoInput,
+    supportsScreenShare,
+  };
+
+  return (
+    <main
+      ref={ref}
+      inert={disabled}
+      className={
+        // prevent page scrollbar
+        // when !chatOpen due to 'translate-y-20'
+        cn(!chatOpen && 'max-h-svh overflow-hidden')
       }
-    }, [sessionStarted]);
-
-    async function handleSendMessage(message: string) {
-      if (!message.trim()) return;
-
-      const userMessage: ChatMessage = {
-        id: `user-${Date.now()}`,
-        sender: 'user',
-        text: message,
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
-      setAgentState('thinking');
-
-      setTimeout(() => {
-        const agentMessage: ChatMessage = {
-          id: `agent-${Date.now()}`,
-          sender: 'agent',
-          text: "Thanks for your message! I'm here to help you with any questions you might have.",
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, agentMessage]);
-        setAgentState('listening');
-      }, 1500);
-    }
-
-    function handleDisconnect() {
-      setIsAgentAvailable(false);
-      setAgentState('connecting');
-    }
-
-    const { supportsChatInput, supportsVideoInput, supportsScreenShare } = appConfig;
-    const capabilities = {
-      supportsChatInput: supportsChatInput ?? false,
-      supportsVideoInput: supportsVideoInput ?? false,
-      supportsScreenShare: supportsScreenShare ?? false,
-    };
-
-    const showInitialState = messages.length === 0;
-
-    return (
-      <main
-        ref={ref}
-        className={`
-          min-h-screen bg-white text-black relative overflow-hidden
-          ${disabled ? 'pointer-events-none opacity-50' : ''}
-        `}
-        style={{ backgroundColor: 'white' }}
-        {...props}
+    >
+      <GlobalModalStyle />
+      <ChatMessageView
+        className={cn(
+          'mx-auto min-h-svh w-full max-w-2xl px-3 pt-32 pb-40 transition-[opacity,translate] duration-300 ease-out md:px-0 md:pt-36 md:pb-48',
+          chatOpen ? 'translate-y-0 opacity-100 delay-200' : 'translate-y-20 opacity-0'
+        )}
       >
-        {/* Inject global CSS override */}
-        <GlobalModalStyle />
-
-        {/* Fixed top bar */}
-        <div className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center p-6 bg-white">
-         
-          <div className="text-xs font-mono text-gray-500 tracking-wider">
-            BUILT WITH LIVEKIT AGENTS
-          </div>
+        <div className="space-y-3 whitespace-pre-wrap">
+          <AnimatePresence>
+            {messages.map((message: ReceivedChatMessage) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 1, height: 'auto', translateY: 0.001 }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              >
+                <ChatEntry hideName key={message.id} entry={message} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
+      </ChatMessageView>
 
-        {/* Main content area */}
-        <div className="flex flex-col items-center justify-center min-h-screen px-6">
-          {/* Central loading/status area */}
-          <div
-            className={`
-              flex flex-col items-center justify-center transition-opacity duration-300 mb-24
-              ${!showInitialState ? 'opacity-0 pointer-events-none' : ''}
-            `}
-          >
-            <div className="mb-8">
-              <LoadingDots />
-            </div>
-            <p className="text-gray-600 text-sm font-medium">
-              Agent is listening, ask it a question
-            </p>
-          </div>
+      <div className="bg-background mp-12 fixed top-0 right-0 left-0 h-32 md:h-36">
+        {/* skrim */}
+        <div className="from-background absolute bottom-0 left-0 h-12 w-full translate-y-full bg-gradient-to-b to-transparent" />
+      </div>
 
-          {/* Chat Messages */}
-          {!showInitialState && (
-            <ChatMessages
-              messages={messages}
-              className="fixed inset-0 top-20 bottom-32 overflow-y-auto flex items-start pt-12"
-            />
-          )}
-        </div>
+      <MediaTiles chatOpen={chatOpen} />
 
-        {/* Control Bar - Fixed at bottom with no shadow & solid background */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white px-6 py-8 shadow-none">
-          <div className="max-w-4xl mx-auto bg-white">
+      <div className="bg-background fixed right-0 bottom-0 left-0 z-50 px-3 pt-2 pb-3 md:px-12 md:pb-12">
+        <motion.div
+          key="control-bar"
+          initial={{ opacity: 0, translateY: '100%' }}
+          animate={{
+            opacity: sessionStarted ? 1 : 0,
+            translateY: sessionStarted ? '0%' : '100%',
+          }}
+          transition={{ duration: 0.3, delay: sessionStarted ? 0.5 : 0, ease: 'easeOut' }}
+        >
+          <div className="relative z-10 mx-auto w-full max-w-2xl">
+            {appConfig.isPreConnectBufferEnabled && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{
+                  opacity: sessionStarted && messages.length === 0 ? 1 : 0,
+                  transition: {
+                    ease: 'easeIn',
+                    delay: messages.length > 0 ? 0 : 0.8,
+                    duration: messages.length > 0 ? 0.2 : 0.5,
+                  },
+                }}
+                aria-hidden={messages.length > 0}
+                className={cn(
+                  'absolute inset-x-0 -top-12 text-center',
+                  sessionStarted && messages.length === 0 && 'pointer-events-none'
+                )}
+              >
+                <p className="animate-text-shimmer inline-block !bg-clip-text text-sm font-semibold text-transparent">
+                  Agent is listening, ask it a question
+                </p>
+              </motion.div>
+            )}
+
             <AgentControlBar
               capabilities={capabilities}
               onChatOpenChange={setChatOpen}
               onSendMessage={handleSendMessage}
-              onDisconnect={handleDisconnect}
-              className="justify-center bg-white"
+              onDisconnect={onDisconnect}
             />
           </div>
-        </div>
-      </main>
-    );
-  }
-);
+          {/* skrim */}
+          <div className="from-background border-background absolute top-0 left-0 h-12 w-full -translate-y-full bg-gradient-to-t to-transparent" />
+        </motion.div>
+      </div>
+    </main>
+  );
+};
