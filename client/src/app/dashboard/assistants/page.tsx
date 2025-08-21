@@ -1449,7 +1449,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "antd";
@@ -2017,6 +2017,9 @@ You are an AI Hotel Booking Assistant.
                           </CardTitle>
                         </div>
                       </CardHeader>
+                      <p>
+                        Assistant ID: {selectedAssistant}
+                      </p>
                       <CardContent className="space-y-6">
                         {/* Name */}
                         <div className="space-y-2">
@@ -2309,7 +2312,7 @@ You are an AI Hotel Booking Assistant.
 
       {/* ---- AIVOCO Modal ---- */}
       <Modal open={showAivocoModal} onCancel={() => setShowAivocoModal(false)} footer={null} width={900}>
-        <AIVOCOApplication />
+        <AIVOCOApplication systemPrompt={systemPrompt} firstMessage={firstMessage}  />
       </Modal>
     </div>
   );

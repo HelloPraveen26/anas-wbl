@@ -20,6 +20,14 @@
             overflow-x: hidden;
         }
 
+        .visibility-hidden {
+            visibility: hidden;
+        }
+
+        .display-none {
+            display: none !important;
+        }
+
         .app-container {
             display: flex;
             min-height: 100vh;
@@ -733,12 +741,12 @@
         <div class="main-content">
             <div class="header">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <h1 class="app-title">Voice Play Studio</h1>
-                    <div class="status-badge connected">
+                    <!-- <h1 class="app-title">Voice Play Studio</h1> -->
+                    
+                    <!-- <div class="status-badge connected">
                         <span>✓</span> Connected
-                    </div>
+                    </div> -->
                 </div>
-                <p class="app-subtitle">Test STS model Rose</p>
             </div>
             
             <!-- Voice Call Controls -->
@@ -753,9 +761,13 @@
                     </button>
                 </div>
             </div>
+
+            <div class="card">
+                <h4 id="greet-agent"></h4>
+            </div>
             
             <!-- Connect to ROSE Section -->
-            <div class="card">
+            <!-- <div class="card">
                 <h3 class="card-title">Connect to ROSE</h3>
                 <div class="form-group">
                     <label class="form-label" for="authKey">Enter API Key</label>
@@ -764,19 +776,18 @@
             </div>
             <div style="margin-top: 0.5rem;">
                 <button class="btn btn-secondary" onclick="redirectToApiKeyForm()">Don't have API key? Apply</button>
-            </div>
+            </div> -->
             
-            <div></div>
             <!-- System Prompt Section -->
-            <div class="card">
+            <!-- <div class="card">
                 <h3 class="card-title">System Prompt</h3>
                 <div class="form-group">
                     <textarea id="systemMessage" class="form-input form-textarea" placeholder="You are XYZ from XYZ. Your role is to walk like this..."></textarea>
                 </div>
-            </div>
+            </div> -->
             
             <!-- Select Voice Section -->
-            <div class="card">
+            <div class="visibility-hidden card">
                 <h3 class="card-title">🎵 Select Voice</h3>
                 <div class="radio-group">
                     <label class="radio-option">
@@ -791,7 +802,7 @@
             </div>
             
             <!-- Custom Functions Section -->
-            <div class="card">
+            <div class="visibility-hidden card">
                 <h3 class="card-title">
                     Custom Functions
                     <span class="function-count" id="functionCount">(0 functions)</span>
@@ -803,7 +814,7 @@
                 </div>
                 
                 <!-- Add Function Form -->
-                <div class="add-function-form" id="addFunctionForm">
+                <div class="visibility-hidden add-function-form" id="addFunctionForm">
                     <h4 style="margin-bottom: 1rem; font-size: 1rem; font-weight: 600;">➕ Add New Function</h4>
                     <div class="form-group">
                         <label class="form-label" for="funcName">Function Name:</label>
@@ -829,11 +840,11 @@
                 </div>
                 
                 <!-- Functions List -->
-                <div id="functionsList"></div>
+                <div class="visibility-hidden " id="functionsList"></div>
             </div>
             
             <!-- Transcription Section -->
-            <div class="card">
+            <div class="visibility-hidden card">
                 <h3 class="card-title">Audio Transcription</h3>
                 <div class="small-text" style="margin-bottom: 1rem;">
                     Upload an audio file to get a formatted conversation transcript. <strong>Free for users</strong> - uses admin units.
@@ -873,18 +884,18 @@
             <div class="status" id="status"></div>
             
             <!-- File Upload Info -->
-            <div class="file-info" id="fileInfo">
+            <div class="visibility-hidden file-info" id="fileInfo">
                 <div id="fileDetails"></div>
             </div>
             
             <!-- Processing Indicator -->
-            <div class="processing-indicator" id="processingIndicator">
+            <div class="visibility-hidden processing-indicator" id="processingIndicator">
                 <div class="spinner"></div>
                 Processing transcription...
             </div>
             
             <!-- Transcription Results -->
-            <div class="transcription-results" id="transcriptionResults">
+            <div class="visibility-hidden transcription-results" id="transcriptionResults">
                 <h3>
                     Transcription Results 
                     <button onclick="copyTranscription()" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
@@ -912,7 +923,8 @@
         </div>
         
         <!-- Sidebar -->
-        <div class="sidebar">
+
+        <div class="sidebar display-none">
             <div class="sidebar-header">
                 <div class="sidebar-title">Call with Rose</div>
                 <div class="sidebar-subtitle">Voice Play Studio</div>
@@ -946,12 +958,18 @@
         let selectedAudioFile = null;
         let customFunctions = [];
         let functionCallCount = 0;
+        let authKey = '';
+        let systemMessage = '';
+        let firstMessage = '';
+        const greetAgentNote = document.getElementById('greet-agent');
 
-        
-        function redirectToApiKeyForm() {
-            window.open("https://tally.so/r/mVOKY6", "_blank");
-        }
-
+        window.addEventListener("message", (event) => {
+            console.log("Received params:", event.data);
+            const { systemPrompt, firstMessage: message, apiKey } = event.data;
+            authKey = apiKey;
+            systemMessage = systemPrompt;
+            firstMessage = message;
+        });
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -1447,7 +1465,7 @@
         }
         
         async function transcribeAudio() {
-            const authKey = document.getElementById('authKey').value;
+            // const authKey = document.getElementById('authKey').value;
             const mimeType = document.getElementById('mimeType').value;
             
             if (!authKey.trim()) {
@@ -1731,9 +1749,11 @@
         
         // Call management (enhanced with function support)
         async function startCall() {
-            const authKey = document.getElementById('authKey').value;
-            const systemMessage = document.getElementById('systemMessage').value;
+            // const authKey = document.getElementById('authKey').value;
+            // const systemMessage = document.getElementById('systemMessage').value;
             const voiceChoice = document.querySelector('input[name="voiceChoice"]:checked').value;
+
+            console.log({authKey})
 
             if (!authKey.trim()) {
                 showStatus('Please enter your authentication key', 'error');
@@ -1810,6 +1830,7 @@
         socket.on('session_ready', function(data) {
             showStatus('Voice session started', 'success');
             addLog(`Session ready - ${data.message}`, 'success');
+            greetAgentNote.textContent = "Call connected successfully. You can start talking to your agent.";
             
             if (data.functions_loaded !== undefined) {
                 addLog(`${data.functions_loaded} custom functions loaded in session`, 'function');
@@ -1855,6 +1876,7 @@
             }
             
             isCallActive = false;
+            greetAgentNote.textContent = "";
             callStartTime = null;
             document.getElementById('startCall').disabled = false;
             document.getElementById('stopCall').disabled = true;
@@ -2037,6 +2059,7 @@
                     addLog(`Audio response time: ${responseTime}ms`, 'info');
                 }
             }
+            console.log("Audio response received:", data.audio_data);
             playAudioResponse(data.audio_data);
         });
 
