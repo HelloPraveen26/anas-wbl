@@ -8,6 +8,7 @@ import {
   useRoomContext,
   useVoiceAssistant,
 } from '@livekit/components-react';
+import { useRouter } from 'next/navigation';
 import { toastAlert } from '@/components/alert-toast';
 import { AgentControlBar } from '@/components/livekit/agent-control-bar/agent-control-bar';
 import { ChatEntry } from '@/components/livekit/chat/chat-entry';
@@ -19,7 +20,7 @@ import type { AppConfig } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 function isAgentAvailable(agentState: AgentState) {
-  return agentState == 'listening' || agentState == 'thinking' || agentState == 'speaking';
+  return agentState === 'listening' || agentState === 'thinking' || agentState === 'speaking';
 }
 
 const GlobalModalStyle = () => (
@@ -49,7 +50,7 @@ interface SessionViewProps {
   appConfig: AppConfig;
   disabled: boolean;
   sessionStarted: boolean;
-  onDisconnect: any
+  onDisconnect?: () => void;
 }
 
 export const SessionView = ({
@@ -63,15 +64,31 @@ export const SessionView = ({
   const [chatOpen, setChatOpen] = useState(true);
   const { messages, send } = useChatAndTranscription();
   const room = useRoomContext();
+  const router = useRouter();
 
   useDebugMode({
-    enabled: process.env.NODE_END !== 'production',
+    enabled: process.env.NODE_ENV !== 'production',
   });
 
   async function handleSendMessage(message: string) {
     await send(message);
   }
 
+  // 🔹 Cleanup on unmount to kill session
+  useEffect(() => {
+    return () => {
+      if (room) {
+        try {
+          room.disconnect();
+          console.log('🔴 Room disconnected on unmount');
+        } catch (err) {
+          console.error('Error disconnecting room on unmount:', err);
+        }
+      }
+    };
+  }, [room]);
+
+  // 🔹 Handle agent timeout / init failure
   useEffect(() => {
     if (sessionStarted) {
       const timeout = setTimeout(() => {
@@ -98,13 +115,34 @@ export const SessionView = ({
               </p>
             ),
           });
-          room.disconnect();
+
+          if (room) {
+            room.disconnect();
+          }
         }
       }, 10_000);
 
       return () => clearTimeout(timeout);
     }
   }, [agentState, sessionStarted, room]);
+
+  // 🔹 Unified disconnect handler
+  const handleDisconnect = async () => {
+    try {
+      if (room) {
+        await room.disconnect();
+        console.log('🔴 Room disconnected by user');
+      }
+    } catch (err) {
+      console.error('Error disconnecting room:', err);
+    }
+
+    if (onDisconnect) {
+      onDisconnect();
+    }
+
+    // Navigate back to your page.tsx route
+    window.location.href = '/dashboard/assistants';  };
 
   const { supportsChatInput, supportsVideoInput, supportsScreenShare } = appConfig;
   const capabilities = {
@@ -116,12 +154,8 @@ export const SessionView = ({
   return (
     <main
       ref={ref}
-      inert={disabled}
-      className={
-        // prevent page scrollbar
-        // when !chatOpen due to 'translate-y-20'
-        cn(!chatOpen && 'max-h-svh overflow-hidden')
-      }
+      inert={disabled ? true : undefined}
+      className={cn(!chatOpen && 'max-h-svh overflow-hidden')}
     >
       <GlobalModalStyle />
       <ChatMessageView
@@ -148,7 +182,6 @@ export const SessionView = ({
       </ChatMessageView>
 
       <div className="bg-background mp-12 fixed top-0 right-0 left-0 h-32 md:h-36">
-        {/* skrim */}
         <div className="from-background absolute bottom-0 left-0 h-12 w-full translate-y-full bg-gradient-to-b to-transparent" />
       </div>
 
@@ -192,10 +225,9 @@ export const SessionView = ({
               capabilities={capabilities}
               onChatOpenChange={setChatOpen}
               onSendMessage={handleSendMessage}
-              onDisconnect={onDisconnect}
+              onDisconnect={handleDisconnect} // ⬅️ fixed
             />
           </div>
-          {/* skrim */}
           <div className="from-background border-background absolute top-0 left-0 h-12 w-full -translate-y-full bg-gradient-to-t to-transparent" />
         </motion.div>
       </div>
