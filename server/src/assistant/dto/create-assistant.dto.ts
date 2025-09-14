@@ -13,7 +13,7 @@ export class CreateAssistantDto {
   name: string;
 
   @ApiProperty({
-    description: 'First message the assistant will send',
+    description: ' the assistant will send',
     example: 'Hello! How can I help you today?'
   })
   @IsString()

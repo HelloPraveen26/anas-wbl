@@ -29,7 +29,7 @@ export default function AIVOCOApplication(props: any) {
     sendMessage();
 
     iframeRef.current?.addEventListener("load", sendMessage);
-
+    
     return () => {
       iframeRef.current?.removeEventListener("load", sendMessage);
     };
@@ -37,13 +37,13 @@ export default function AIVOCOApplication(props: any) {
 
   return (
     <div className="p-4 h-[80vh]">
-      <h2 className="text-lg font-bold mb-4">ZENVOCO</h2>
+      <h2 className="text-lg font-bold mb-4"></h2>
       <iframe
         ref={iframeRef}
         src="/aivoco.html"
         title="AIVOCO"
         className="w-full h-full border rounded"
       />
-    </div>
+    </div>  
   );
 }  

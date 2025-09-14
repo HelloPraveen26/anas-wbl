@@ -1453,6 +1453,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "antd";
+import { Copy } from "lucide-react";
+
+
 import {
   Plus,
   Search,
@@ -1553,8 +1556,7 @@ export default function AssistantsPage() {
   const [assistantsLoading, setAssistantsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Modals
-  const [showCreateChoiceModal, setShowCreateChoiceModal] = useState(false);
+  // Modals - REMOVED showCreateChoiceModal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createAssistantLoading, setCreateAssistantLoading] = useState(false);
   const [showLiveKitModal, setShowLiveKitModal] = useState(false);
@@ -1563,6 +1565,8 @@ export default function AssistantsPage() {
   // Prompt generation
   const [generateLoading, setGenerateLoading] = useState(false);
   const [taskDescription, setTaskDescription] = useState("");
+
+  const [copied, setCopied] = useState(false);
 
   // Assistant form
   const [assistantName, setAssistantName] = useState("");
@@ -1580,6 +1584,7 @@ You are an AI Hotel Booking Assistant.
 - Provide dates in a Month Day format (e.g., January 15).`
   );
 
+
   // -------------------- Helpers --------------------
   const getAuthHeaders = () => {
     const token = authManager.getToken();
@@ -1588,6 +1593,7 @@ You are an AI Hotel Booking Assistant.
       Authorization: token ? `Bearer ${token}` : "",
     };
   };
+
 
   const fetchAssistants = useCallback(async () => {
     setAssistantsLoading(true);
@@ -1672,6 +1678,8 @@ You are an AI Hotel Booking Assistant.
     } catch (e) { console.error(e); }
   };
 
+  
+
   useEffect(() => {
     fetchAssistants();
     fetchProviders();
@@ -1723,22 +1731,10 @@ You are an AI Hotel Booking Assistant.
     : transcriberModels;
 
   // -------------------- Actions --------------------
-  const handleCreateButton = () => setShowCreateChoiceModal(true);
+  // CHANGED: Direct open create modal
+  const handleCreateButton = () => setShowCreateModal(true);
 
-  const openClassicCreate = () => {
-    setShowCreateChoiceModal(false);
-    setShowCreateModal(true);
-  };
-
-  const openLiveKitAgent = () => {
-    setShowCreateChoiceModal(false);
-    setShowLiveKitModal(true);
-  };
-
-  const openAivocoAgent = () => {
-    setShowCreateChoiceModal(false);
-    setShowAivocoModal(true);
-  };
+  // REMOVED: openClassicCreate, openLiveKitAgent, openAivocoAgent functions
 
   const createAssistantWithName = async (name: string) => {
     setCreateAssistantLoading(true);
@@ -1769,6 +1765,8 @@ You are an AI Hotel Booking Assistant.
       setCreateAssistantLoading(false);
     }
   };
+
+  
 
   const handleSaveAssistant = async () => {
     if (!assistantName.trim()) return alert("Please enter an assistant name");
@@ -1864,6 +1862,8 @@ You are an AI Hotel Booking Assistant.
     }
   };
 
+  
+
   // -------------------- UI --------------------
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -1927,7 +1927,7 @@ You are an AI Hotel Booking Assistant.
                         selectedAssistant === a.id ? "text-blue-100" : "text-gray-500"
                       }`}
                     >
-                      {a.llmModel?.llmProvider?.name || "—"}
+                      {/* {a.llmModel?.llmProvider?.name || "—"} */}
                     </div>
                   </button>
                 ))
@@ -1951,11 +1951,11 @@ You are an AI Hotel Booking Assistant.
               <div className="flex items-center space-x-3">
                 <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50"
                         onClick={() => setShowLiveKitModal(true)}>
-                  LiveKit Agent
-                </Button>
+                  LiveKit 
+                </Button> 
                 <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50"
                         onClick={() => setShowAivocoModal(true)}>
-                  ZenVoco
+                  ZenVoice 
                 </Button>
                 <Button onClick={handlePublishAssistant} variant="outline"
                         className="border-blue-600 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
@@ -2012,14 +2012,26 @@ You are an AI Hotel Booking Assistant.
                     <Card className="bg-white/80 border-gray-200/50 shadow-lg">
                       <CardHeader className="pb-4">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg font-semibold text-gray-900">
-                            Assistant
-                          </CardTitle>
+                          
                         </div>
                       </CardHeader>
-                      <p>
-                        Assistant ID: {selectedAssistant}
-                      </p>
+                     <div className="flex items-center gap-2 text-sm text-gray-800 font-mono px-6 -mt-4">
+  <span>Assistant ID: {selectedAssistant}</span>
+  <button
+    onClick={() => {
+      if (!selectedAssistant) return;
+      navigator.clipboard.writeText(selectedAssistant);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 500);
+    }}
+    className="text-gray-500 hover:text-gray-700 flex items-center gap-1"
+    title="Copy ID"
+  >
+    <Copy size={16} />
+    {copied && <span className="text-xs text-black-600">Copied!</span>}
+  </button>
+</div>
+
                       <CardContent className="space-y-6">
                         {/* Name */}
                         <div className="space-y-2">
@@ -2072,19 +2084,13 @@ You are an AI Hotel Booking Assistant.
                                 </div>
 
                                 <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium text-gray-700">System Prompt</Label>
+                                  <Label className="text-sm font-medium text-gray-700 mt--8">System Prompt</Label>
                                   <div className="flex items-center space-x-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={generatePrompt}
-                                      disabled={generateLoading}
-                                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs disabled:bg-teal-400"
-                                    >
-                                      {generateLoading ? "Generating..." : "Generate"}
-                                    </Button>
+                                  
                                     <button className="text-gray-400 hover:text-gray-600" title="Expand">
                                       <Maximize2 className="w-4 h-4" />
                                     </button>
+                                    
                                   </div>
                                 </div>
                                 <textarea
@@ -2093,6 +2099,17 @@ You are an AI Hotel Booking Assistant.
                                   className="w-full bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono min-h-[200px] border-0 focus:ring-2 focus:ring-blue-500 resize-none"
                                   placeholder="Enter system prompt..."
                                 />
+
+                                <div className="flex justify-end">
+  <Button
+    size="sm"
+    onClick={generatePrompt}
+    disabled={generateLoading}
+    className="bg-teal-600 hover:bg-teal-700 text-white text-xs disabled:bg-teal-400"
+  >
+    {generateLoading ? "Generating..." : "Generate"}
+  </Button>
+</div>
                               </div>
                             </div>
                           )}
@@ -2225,6 +2242,9 @@ You are an AI Hotel Booking Assistant.
                     </Card>
                   )}
 
+
+                      
+
                   {/* Transcriber Tab */}
                   {activeTab === "transcriber" && (
                     <Card className="bg-white/80 border-gray-200/50 shadow-lg">
@@ -2277,25 +2297,15 @@ You are an AI Hotel Booking Assistant.
                     </Card>
                   )}
                 </div>
+                
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* ---- Create: Choice Modal ---- */}
-      <Modal
-        open={showCreateChoiceModal}
-        onCancel={() => setShowCreateChoiceModal(false)}
-        footer={null}
-        title="Create"
-      >
-        <div className="space-y-3">
-          <Button className="w-full" onClick={openClassicCreate}>Create Classic Assistant</Button>
-          <Button className="w-full" variant="outline" onClick={openLiveKitAgent}>Open LiveKit Agent</Button>
-          <Button className="w-full" variant="outline" onClick={openAivocoAgent}>VOCO Agent</Button>
-        </div>
-      </Modal>
+      
+                    
+      {/* ---- REMOVED: Create Choice Modal ---- */}
 
       {/* ---- Create Assistant Modal ---- */}
       <CreateAssistantModal
