@@ -1,0 +1,6 @@
+.custom-logo-class {
+  height: 24px;         /* Increase this to desired logo height */
+  width: auto;
+  object-fit: contain;
+  display: block;       /* Prevent inline spacing issues */
+}
