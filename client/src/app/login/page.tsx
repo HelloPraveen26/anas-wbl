@@ -1,17 +1,21 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Chrome, Eye, EyeOff, Mic, AlertCircle, Loader2 } from "lucide-react";
+import { Chrome, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { api, ApiError, SignInRequest } from "@/lib/api";
 import { authManager } from "@/lib/auth";
+
+// Import your logos
+import BlogLogo from "@/assets/logo1.png";
+import BlogLogo2 from "@/assets/logo2.png";
 
 interface FormData {
   email: string;
@@ -121,82 +125,109 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border border-gray-200/50 shadow-xl">
-        <CardContent className="p-8 space-y-6">
-          <div className="space-y-3 text-center">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto">
-              <Mic className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      {/* Back button - compact */}
+      <Link
+        href="/"
+        className="absolute top-4 left-4 z-50 flex items-center group hover:bg-white rounded-lg p-2 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4 text-gray-600 mr-2" />
+        <Image
+          src={BlogLogo}
+          alt=""
+          width={24}
+          height={24}
+          className="rounded mr-2"
+        />
+        <Image
+          src={BlogLogo2}
+          alt=""
+          width={60}
+          height={60}
+          className="rounded"
+        />
+      </Link>
+
+      {/* Main card - compact */}
+      <Card className="w-full max-w-md bg-white shadow-lg border border-gray-200 rounded-2xl">
+        <CardContent className="p-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-xl flex items-center justify-center">
+              <Image
+                src={BlogLogo}
+                alt="Logo"
+                width={32}
+                height={32}
+                className="rounded-lg"
+              />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Sign into your account
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Welcome back
             </h1>
             <p className="text-gray-600 text-sm">
-              Easily manage your autonomous voice assistants all in one
-              dashboard.
+              Sign in to your account to continue
             </p>
           </div>
 
+          {/* Error Alert */}
           {errors.general && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{errors.general}</AlertDescription>
             </Alert>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Google Sign In */}
             <Button
               onClick={handleGoogleSignIn}
               variant="outline"
-              className="w-full bg-white hover:bg-gray-50 border-gray-300 text-gray-700 h-12 font-medium"
+              className="w-full h-11 font-medium border-gray-300 hover:bg-gray-50 transition-colors"
               disabled={isLoading}
             >
-              <Chrome className="w-5 h-5 mr-3 text-blue-600" />
+              <Chrome className="w-4 h-4 mr-2 text-blue-600" />
               Continue with Google
             </Button>
 
+            {/* Divider */}
             <div className="relative">
               <Separator className="bg-gray-300" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-white px-4 text-sm text-gray-500 uppercase tracking-wide font-medium">
-                  Or sign in with
+                <span className="bg-white px-3 text-xs text-gray-500 font-medium">
+                  OR
                 </span>
               </div>
             </div>
 
+            {/* Form */}
             <form onSubmit={handleEmailSignIn} className="space-y-4">
+              {/* Email */}
               <div className="space-y-2">
-                <Label
-                  htmlFor="email"
-                  className="text-gray-700 text-sm font-medium"
-                >
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Email
                 </Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="Your email address"
+                  placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.email
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : ""
+                  className={`h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                    errors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                   }`}
                   disabled={isLoading}
                   required
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                  <p className="text-red-500 text-xs">{errors.email}</p>
                 )}
               </div>
 
+              {/* Password */}
               <div className="space-y-2">
-                <Label
-                  htmlFor="password"
-                  className="text-gray-700 text-sm font-medium"
-                >
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                   Password
                 </Label>
                 <div className="relative">
@@ -204,13 +235,11 @@ export default function SignIn() {
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Your password"
+                    placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className={`bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 h-12 pr-10 focus:border-blue-500 focus:ring-blue-500 ${
-                      errors.password
-                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                        : ""
+                    className={`h-11 pr-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
+                      errors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
                     }`}
                     disabled={isLoading}
                     required
@@ -218,7 +247,7 @@ export default function SignIn() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     disabled={isLoading}
                   >
                     {showPassword ? (
@@ -229,14 +258,15 @@ export default function SignIn() {
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+                  <p className="text-red-500 text-xs">{errors.password}</p>
                 )}
               </div>
 
+              {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 font-medium transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
               >
                 {isLoading ? (
                   <>
@@ -249,8 +279,15 @@ export default function SignIn() {
               </Button>
             </form>
 
+            {/* Links */}
             <div className="text-center space-y-3">
-              <p className="text-gray-600 text-sm">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              >
+                Forgot password?
+              </Link>
+              <p className="text-sm text-gray-600">
                 Don't have an account?{" "}
                 <Link
                   href="/signup"
@@ -259,12 +296,6 @@ export default function SignIn() {
                   Sign up
                 </Link>
               </p>
-              <Link
-                href="/forgot-password"
-                className="text-gray-500 hover:text-gray-700 text-sm transition-colors block"
-              >
-                Forgot your password?
-              </Link>
             </div>
           </div>
         </CardContent>
@@ -272,5 +303,3 @@ export default function SignIn() {
     </div>
   );
 }
-
-

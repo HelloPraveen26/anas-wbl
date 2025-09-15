@@ -1955,7 +1955,7 @@ You are an AI Hotel Booking Assistant.
                 </Button> 
                 <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50"
                         onClick={() => setShowAivocoModal(true)}>
-                  ZenVoice 
+                  ZenVoice
                 </Button>
                 <Button onClick={handlePublishAssistant} variant="outline"
                         className="border-blue-600 text-blue-600 hover:bg-blue-50 disabled:opacity-50"

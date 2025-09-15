@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Container, Row, Col, Card, Form } from 'react-bootstrap';
 
 import voiceIcon from '@/assets/Icons/voice.png';
 import ApiIcon from '@/assets/Icons/Api.png';
@@ -17,6 +16,7 @@ import RemainderIcon from '@/assets/Icons/Remainder.png';
 
 import FlexBg from '@/assets/Icons/FlexBg.png';
 import LaunchFlex from '@/assets/Icons/LaunchFlex.png';
+import dotedBg from '@/assets/dotedBg.png';
 
 const features = [
   { icon: voiceIcon, title: 'Real-Time Voice Conversations', description: 'Deliver seamless, human-like voice interactions powered by cutting-edge AI. Your voice agents are always ready — 24/7 — to engage customers with natural flow and clarity.' },
@@ -40,7 +40,7 @@ const pricingOptions = [
   {
     title: 'Automation trigger.',
     description: 'Select quantity',
-    ratePerUnit: 1.6, // ₹1.6 per unit
+    ratePerUnit: 1.6,
     quantityOptions: [1000, 2000, 3000, 4000],
     currency: '₹',
     isFixed: false
@@ -48,7 +48,7 @@ const pricingOptions = [
   {
     title: 'AI support agent responses',
     description: 'Select quantity',
-    ratePerUnit: 2.5, // ₹2.5 per unit
+    ratePerUnit: 2.5,
     quantityOptions: [1000, 2000, 3000, 4000],
     currency: '₹',
     isFixed: false
@@ -60,6 +60,83 @@ const pricingOptions = [
     isFixed: true
   },
 ];
+
+const FeatureCard = ({ feature }) => (
+  <div
+    style={{
+      backgroundColor: 'transparent',
+      borderRadius: '10px',
+      border: '1px solid rgba(66, 230, 208, 0.56)',
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      height: '100%',
+      minHeight: '350px',
+    }}
+  >
+    <div>
+      <img
+        src={feature.icon?.src ?? feature.icon}
+        alt="Icon"
+        width="50"
+        height="45"
+        style={{ marginBottom: '12px' }}
+      />
+      <h3 style={{
+        fontSize: '20px',
+        fontWeight: '710',
+        color: '#fff',
+        marginBottom: '16px',
+        fontFamily: 'Barlow, sans-serif'
+      }}>
+        {feature.title}
+      </h3>
+      <p style={{
+        fontSize: '14px',
+        lineHeight: '1.9',
+        color: '#ccc',
+        fontFamily: 'Barlow, sans-serif'
+      }}>
+        {feature.description}
+      </p>
+    </div>
+    
+    <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+      <button
+        style={{
+          width: '90%',
+          height: '40px',
+          background: 'transparent',
+          color: '#fff',
+          border: '1px solid rgba(66, 230, 208, 0.54)',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: '500',
+          fontSize: '13px',
+          fontFamily: 'Barlow, sans-serif',
+          transition: 'all 0.3s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.background = '#42E6D1';
+          e.target.style.transform = 'translateY(-2px)';
+          e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+          e.target.style.color = 'black';
+          e.target.style.borderColor = '#42E6D1';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.background = 'transparent';
+          e.target.style.transform = 'translateY(0)';
+          e.target.style.boxShadow = 'none';
+          e.target.style.color = '#fff';
+          e.target.style.borderColor = 'rgba(66, 230, 208, 0.39)';
+        }}
+      >
+        Talk to Sales
+      </button>
+    </div>
+  </div>
+);
 
 const FeatureCards = () => {
   const [selectedQuantities, setSelectedQuantities] = useState({
@@ -85,86 +162,28 @@ const FeatureCards = () => {
   };
 
   return (
-    <div style={{ backgroundColor: 'transparent', color: '#fff', padding: '40px 20px 60px' }}>
-      <Container>
-        {/* Features */}
-        <Row className="g-4 mb-5">
+    <div
+      style={{
+        backgroundColor: 'transparent',
+        color: '#fff',
+        padding: '40px 20px 60px',
+        backgroundImage: `url(${dotedBg.src ?? dotedBg})`,
+        backgroundRepeat: 'repeat',
+        backgroundSize: 'auto',
+      }}
+    >
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Features Section */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: '24px', 
+          marginBottom: '60px'
+        }}>
           {features.map((feature, index) => (
-            <Col xs={12} sm={6} lg={4} key={index}>
-              <Card
-                className="h-100 text-white shadow-sm"
-                style={{
-                  backgroundColor: 'transparent',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(66, 230, 208, 0.39)',
-                }}
-              >
-                <Card.Body
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    padding: '20px',
-                    minHeight: '350px',
-                  }}
-                >
-                  <div>
-                    <img
-                      src={feature.icon?.src ?? feature.icon}
-                      alt="Icon"
-                      width="50"
-                      height="45"
-                      style={{ marginBottom: '12px' }}
-                    />
-                    <Card.Title
-                      className="text-white mb-4"
-                      style={{ fontSize: '20px', fontWeight: '710' }}
-                    >
-                      {feature.title}
-                    </Card.Title>
-                    <Card.Text style={{ fontSize: '14px', lineHeight: '1.9', color: '#ccc' }}>
-                      {feature.description}
-                    </Card.Text>
-                  </div>
-                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-                    <button
-                      style={{
-                        width: '90%',
-                        height: '40px',
-                        background: 'linear-gradient(90deg, #262626 0%, #1a1a1a 100%)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        fontSize: '13px',
-                        fontFamily: 'Barlow, sans-serif',
-                        transition: 'all 0.3s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = '#42E6D1';
-                        e.target.style.transform = 'translateY(-2px)';
-                        e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
-                        e.target.style.color = 'black';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'linear-gradient(90deg, #262626 0%, #1a1a1a 100%)';
-                        e.target.style.transform = 'translateY(0)';
-                        e.target.style.boxShadow = 'none';
-                        e.target.style.color = 'White';
-                      }}
-                    >
-                      Talk to Sales
-                    </button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
+            <FeatureCard key={index} feature={feature} />
           ))}
-        </Row>
-
-      
+        </div>
 
         {/* Pricing Section */}
         {/* <div style={{
@@ -185,115 +204,114 @@ const FeatureCards = () => {
           }}>
             Scale your workflow with custom-made plugins.
           </h2>
-          <Row className="g-4 justify-content-center">
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+            gap: '24px', 
+            justifyContent: 'center'
+          }}>
             {pricingOptions.map((option, index) => (
-              <Col xs={12} md={6} lg={4} key={index}>
-                <div style={{
-                  backgroundColor: 'transparent',
-                  borderRadius: '10px',
-                  padding: '30px 20px',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  border: '1px solid rgba(66, 230, 208, 0.39)'
+              <div key={index} style={{
+                backgroundColor: 'transparent',
+                borderRadius: '10px',
+                padding: '30px 20px',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                border: '1px solid rgba(66, 230, 208, 0.39)'
+              }}>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#fff',
+                  marginBottom: '10px'
                 }}>
-                  <h3 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: '#fff',
+                  {option.title}
+                </h3>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#ccc',
+                  marginBottom: '20px'
+                }}>
+                  {option.description}
+                </p>
+                {!option.isFixed ? (
+                  <div style={{
+                    position: 'relative',
+                    width: '120px',
                     marginBottom: '10px'
                   }}>
-                    {option.title}
-                  </h3>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#ccc',
-                    marginBottom: '20px'
-                  }}>
-                    {option.description}
-                  </p>
-                  {!option.isFixed ? (
-                    <div style={{
-                      position: 'relative',
-                      width: '120px',
-                      marginBottom: '10px'
-                    }}>
-                      <Form.Select
-                        aria-label="Select quantity"
-                        value={selectedQuantities[index] || option.quantityOptions[0]}
-                        onChange={(e) => handleQuantityChange(index, e.target.value)}
-                        style={{
-                          WebkitAppearance: 'none',
-                          MozAppearance: 'none',
-                          appearance: 'none',
-                          backgroundColor: 'transparent',
-                          backgroundImage: 'none',
-                          border: '1px solid rgba(66, 230, 208, 0.39)',
-                          borderRadius: '5px',
-                          color: 'white',
-                          padding: '8px 30px 8px 12px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          width: '100%',
-                          outline: 'none',
-                          boxShadow: 'none',
-                        }}
-                      >
-                        {option.quantityOptions.map((qty) => (
-                          <option key={qty} value={qty} style={{ backgroundColor: '#000', color: '#fff' }}>
-                            {qty}
-                          </option>
-                        ))}
-                      </Form.Select>
-                      <span style={{
-                        content: '""',
-                        position: 'absolute',
-                        top: '50%',
-                        right: '12px',
-                        transform: 'translateY(-50%)',
-                        pointerEvents: 'none',
-                        borderLeft: '5px solid transparent',
-                        borderRight: '5px solid transparent',
-                        borderTop: '5px solid #fff',
-                      }}></span>
-                    </div>
-                  ) : null}
-                  <h4 style={{
-                    fontSize: '24px',
-                    fontWeight: '700',
-                    color: '#fff',
-                    marginTop: '20px'
-                  }}>
-                    {calculatePrice(option, index)}
-                  </h4>
-                </div>
-              </Col>
+                    <select
+                      value={selectedQuantities[index] || option.quantityOptions[0]}
+                      onChange={(e) => handleQuantityChange(index, e.target.value)}
+                      style={{
+                        WebkitAppearance: 'none',
+                        MozAppearance: 'none',
+                        appearance: 'none',
+                        backgroundColor: 'transparent',
+                        backgroundImage: 'none',
+                        border: '1px solid rgba(66, 230, 208, 0.39)',
+                        borderRadius: '5px',
+                        color: 'white',
+                        padding: '8px 30px 8px 12px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        width: '100%',
+                        outline: 'none',
+                        boxShadow: 'none',
+                      }}
+                    >
+                      {option.quantityOptions.map((qty) => (
+                        <option key={qty} value={qty} style={{ backgroundColor: '#000', color: '#fff' }}>
+                          {qty}
+                        </option>
+                      ))}
+                    </select>
+                    <span style={{
+                      content: '""',
+                      position: 'absolute',
+                      top: '50%',
+                      right: '12px',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none',
+                      borderLeft: '5px solid transparent',
+                      borderRight: '5px solid transparent',
+                      borderTop: '5px solid #fff',
+                    }}></span>
+                  </div>
+                ) : null}
+                <h4 style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#fff',
+                  marginTop: '20px'
+                }}>
+                  {calculatePrice(option, index)}
+                </h4>
+              </div>
             ))}
-          </Row>
+          </div>
         </div> */}
 
-      
-
-        {/* Use Cases */}
-        <div
-          style={{
-            position: 'relative',
-            backgroundImage: `url(${FlexBg})`,
-            backgroundSize: 'contain',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-            padding: '41px 20px',
-            color: '#fff',
-            textAlign: 'center',
-            overflow: 'hidden',
-            backgroundColor: 'rgba(5, 11, 5, 0)',
-            borderRadius: '12px',
-            border: '1px solid rgba(66, 230, 208, 0.39)',
-          }}
-        >
+        {/* Use Cases Header */}
+        <div style={{
+          position: 'relative',
+          backgroundImage: `url(${FlexBg.src})`,
+          backgroundSize: 'contain',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          padding: '41px 20px',
+          color: '#fff',
+          textAlign: 'center',
+          overflow: 'hidden',
+          backgroundColor: 'rgba(5, 11, 5, 0)',
+          borderRadius: '12px',
+          border: '1px solid rgba(66, 230, 208, 0.39)',
+          marginBottom: '40px'
+        }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: '#000', opacity: 0.8, zIndex: 1 }} />
           <div style={{ position: 'relative', zIndex: 2 }}>
             <h1 style={{ fontSize: '35px', fontWeight: '700', fontFamily: 'Barlow, sans-serif' }}>
@@ -305,54 +323,71 @@ const FeatureCards = () => {
           </div>
         </div>
 
-        <Row className="g-4 mt-5">
+        {/* Use Cases Grid */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(2, 1fr)', 
+          gap: '24px', 
+          marginBottom: '60px'
+        }}>
           {useCases.map((item, index) => (
-            <Col xs={12} sm={6} key={index}>
-              <Card
-                style={{
-                  backgroundColor: 'transparent',
-                  height: '100%',
-                  border: '1px solid rgba(66, 230, 208, 0.39)',
-                  borderRadius: '10px',
-                }}
-                className="text-white h-100 shadow-sm"
-              >
-                <Card.Body>
-                  <div className="d-flex align-items-start mb-3">
-                    <img
-                      src={item.icon?.src ?? item.icon}
-                      alt={`${item.title} Icon`}
-                      width={50}
-                      height={50}
-                      style={{ marginRight: '12px' }}
-                    />
-                    <Card.Title style={{ fontSize: '18px', fontWeight: '600', lineHeight: '2' }}>{item.title}</Card.Title>
-                  </div>
-                  <Card.Text style={{ fontSize: '14px', lineHeight: '1.6', marginTop: '6px', color: '#ccc' }}>{item.description}</Card.Text>
-                </Card.Body>
-              </Card>
-            </Col>
+            <div
+              key={index}
+              style={{
+                backgroundColor: 'transparent',
+                height: '100%',
+                border: '1px solid rgba(66, 230, 208, 0.39)',
+                borderRadius: '10px',
+                padding: '20px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'start', marginBottom: '12px' }}>
+                <img
+                  src={item.icon?.src ?? item.icon}
+                  alt={`${item.title} Icon`}
+                  width={50}
+                  height={50}
+                  style={{ marginRight: '12px' }}
+                />
+                <h3 style={{ 
+                  fontSize: '18px', 
+                  fontWeight: '600', 
+                  lineHeight: '1.4',
+                  color: '#fff',
+                  fontFamily: 'Barlow, sans-serif',
+                  margin: 0
+                }}>
+                  {item.title}
+                </h3>
+              </div>
+              <p style={{ 
+                fontSize: '14px', 
+                lineHeight: '1.6', 
+                marginTop: '6px', 
+                color: '#ccc',
+                fontFamily: 'Barlow, sans-serif',
+                margin: 0
+              }}>
+                {item.description}
+              </p>
+            </div>
           ))}
-        </Row>
-
-      
+        </div>
 
         {/* Launch CTA */}
-        <div
-          style={{
-            position: 'relative',
-            backgroundImage: `url(${LaunchFlex})`,
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-            padding: '60px 20px',
-            color: '#ccc',
-            textAlign: 'center',
-            borderRadius: '12px',
-            marginTop: '60px',
-            border: '1px solid rgba(66, 230, 209, 0.4)'
-          }}
-        >
+        <div style={{
+          position: 'relative',
+          backgroundImage: `url(${LaunchFlex.src})`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          padding: '60px 20px',
+          color: '#ccc',
+          textAlign: 'center',
+          borderRadius: '12px',
+          border: '1px solid rgba(66, 230, 209, 0.4)',
+          backgroundColor: '#0a0a0a'
+        }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: '0%', height: '0%', backgroundColor: '#000', opacity: 0.8, zIndex: 1 }} />
           <div style={{ position: 'relative', zIndex: 2, maxWidth: '800px', margin: '0 auto' }}>
             <h1 style={{ fontSize: '32px', fontWeight: '700', fontFamily: 'Barlow, sans-serif', marginBottom: '15px' }}>
@@ -391,7 +426,23 @@ const FeatureCards = () => {
             </button>
           </div>
         </div>
-      </Container>
+      </div>
+
+      {/* Responsive Styles */}
+      <style jsx>{`
+        @media (max-width: 1024px) {
+          div[style*="gridTemplateColumns: repeat(3, 1fr)"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        
+        @media (max-width: 768px) {
+          div[style*="gridTemplateColumns: repeat(3, 1fr)"],
+          div[style*="gridTemplateColumns: repeat(2, 1fr)"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

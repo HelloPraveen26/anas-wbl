@@ -7,7 +7,7 @@ import FeatureCards from './Features/FeatureCards';
 
 const HomeIntroduction = () => {
   return (
-    <div className="relative z-10 w-full max-w-[1400px] px-1  flex flex-col items-center">
+    <div className="relative z-10 w-full px-1 flex flex-col items-center">
       {/* Full-screen Black Background with GIF */}
       <div className="absolute inset-0 -z-10 bg-black overflow-hidden">
         <img
@@ -18,43 +18,41 @@ const HomeIntroduction = () => {
       </div>
 
       {/* Centered Content on top of GIF */}
-      <div className="relative z-10 w-full max-w-[1200px] px-1 flex flex-col items-center">
+      <div className="relative z-10 w-full px-1 flex flex-col items-center">
         <div className="flex flex-col items-center justify-center min-h-[320px] w-full">
           {/* Heading */}
-          <h6 className="w-full max-w-[900px] font-['Barlow'] font-extrabold text-[55px] leading-[120%] text-white text-center pt-[20px] mb-10">
-            Build Smart Voice AI Agents in Minutes — No Complex Setup Needed
+          <h6 className="w-full max-w-[900px] font-['Barlow'] font-extrabold text-[50px] leading-[120%] text-white text-center pt-[20px] mb--30 mt-20">
+            Build Smart Voice AI Agents in Minutes - No Complex Setup Needed
           </h6>
 
-          {/* Tag List Section */}
-          <div className="w-full max-w-[680px] mb-8 px-7">
-            <div
-              style={{
-                border: '1.5px solid #242424',
-                background: '#1a1a1a80',
-                backdropFilter: 'blur(4px)',
-                WebkitBackdropFilter: 'blur(4px)',
-                borderRadius: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                padding: '12px',
-                zIndex: 20,
-                boxSizing: 'border-box',
-              }}
-            >
-              <div className="flex flex-wrap justify-center gap-3">
-                <p className="text-white text-center font-['Barlow'] text-[16px] mt-[6px] mb-2">
-                  For
-                </p>
-                {['Startups', 'Enterprise leaders', 'Media & Publishers', 'Social Good'].map((item, i) => (
-                  <span key={i} className="inline-block rounded-[4px] bg-[#262626] px-3 py-1">
-                    <span className="text-[#00FFDD]">{item}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+       <div
+  style={{
+    border: '1.5px solid #242424',
+    background: '#1a1a1a80',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)',
+    borderRadius: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '12px',
+    zIndex: 20,
+    boxSizing: 'border-box',
+    marginTop: '20px',
+  }}
+>
+  <div className="flex justify-center items-center gap-3">
+    <p className="text-white text-center font-['Barlow'] text-[16px] mt-[6px] mb-2">
+      For
+    </p>
+    {['Startups', 'Enterprise leaders', 'Media & Publishers', 'Social Good'].map((item, i) => (
+      <span key={i} className="inline-block rounded-[4px] bg-[#262626] px-3 py-1">
+        <span className="text-[#00FFDD]">{item}</span>
+      </span>
+    ))}
+  </div>
+</div>
 
           {/* CTA Buttons */}
           <div className="flex justify-center gap-4 mt-4 mb-12">
@@ -76,14 +74,13 @@ const HomeIntroduction = () => {
         </div>
 
         {/* Container Image */}
-<div className="w-full max-w-[1250px] py-[40px] mt-[-12px]">
-  <img
-    src={containerImage?.src ?? containerImage}
-    alt="Container"
-    className="w-full max-h-[120px] object-contain mx-auto"
-  />
-</div>
-
+        <div className="w-full py-[40px] mt-[-12px]">
+          <img
+            src={containerImage?.src ?? containerImage}
+            alt="Container"
+            className="w-full max-h-[120px] object-contain mx-auto"
+          />
+        </div>
 
         {/* Features Section */}
         <FeatureHeader />

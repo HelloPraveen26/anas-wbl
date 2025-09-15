@@ -62,7 +62,7 @@ const FAQSection = () => {
   };
 
   return (
-    <div style={{ backgroundColor: 'transparent', color: '#fff', padding: '10px 80px' }}>
+    <div style={{ backgroundColor: 'black', color: '#fff', padding: '10px 80px' }}>
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 style={{ fontSize: '32px', fontWeight: '700', fontFamily: 'Barlow, sans-serif' }}>
           Frequently Asked Questions
