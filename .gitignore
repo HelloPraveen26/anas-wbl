@@ -12,10 +12,7 @@ server/node_modules/
 server/dist/
 server/.env
 
-ai_agent/.env
-ai_agent/logs/
-ai_agent/dump.rdb
-ai_agent/agent_data/
+voice_agent/.env.local
 
 # Node artifact files
 node_modules/
