@@ -157,6 +157,10 @@ async function bootstrap() {
       "prompt",
       "AI prompt generation - Generate structured prompts using OpenAI GPT-4",
     )
+    .addTag(
+      "phone",
+      "Phone service endpoints - Initiate calls, hangup, and retrieve active call",
+    )
     .addServer("http://localhost:8000", "Development server")
     .addServer(
       "http://ec2-16-170-98-58.eu-north-1.compute.amazonaws.com:8000",
