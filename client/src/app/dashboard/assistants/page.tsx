@@ -1604,10 +1604,13 @@ export default function AssistantsPage() {
       return;
     }
     try {
-      const url = `http://localhost:8003/make_call`;
+      const url = `${getApiBaseUrl()}/phone/make_call`;
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ phone_number: phoneNumber }),
       });
       const data = await res.json();
