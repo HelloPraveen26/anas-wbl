@@ -1465,6 +1465,7 @@ import {
   ChevronUp,
   Maximize2,
   Phone,
+  PhoneOff,
 } from "lucide-react";
 
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
@@ -1596,8 +1597,10 @@ export default function AssistantsPage() {
 
   // Phone call state
   const [phoneNumber, setPhoneNumber] = useState("");
+  // Call status state
+  const [inCall, setInCall] = useState(false);
+  const [callId, setCallId] = useState<string | null>(null);
 
-  // Function to initiate a phone call via API
   const handleCall = async () => {
     if (!phoneNumber) {
       console.warn("Phone number is empty");
@@ -1618,9 +1621,41 @@ export default function AssistantsPage() {
         console.error("Call failed:", data);
       } else {
         console.log("Call initiated:", data);
+        // Store session ID and toggle call state
+        const id = data.room_name as string;
+        setCallId(id);
+        setInCall(true);
       }
     } catch (error) {
       console.error("Error initiating call:", error);
+    }
+  };
+
+  /**
+   * Function to hang up an ongoing call
+   */
+  const handleHangup = async () => {
+    if (!callId) return;
+    try {
+      const url = `${getApiBaseUrl()}/phone/hangup`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ room_name: callId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("Hangup failed:", data);
+      } else {
+        console.log("Call ended:", data);
+        setInCall(false);
+        setCallId(null);
+      }
+    } catch (error) {
+      console.error("Error hanging up call:", error);
     }
   };
 
@@ -2089,13 +2124,23 @@ You are an AI Hotel Booking Assistant.
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                 />
-                <Button
-                  variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50 mr-2"
-                  onClick={handleCall}
-                >
-                  <Phone className="w-4 h-4 text-gray-700" />
-                </Button>
+                {inCall ? (
+                  <Button
+                    variant="outline"
+                    className="border-red-500 text-red-600 hover:bg-red-50 mr-2"
+                    onClick={handleHangup}
+                  >
+                    <PhoneOff className="w-4 h-4 text-red-600" />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50 mr-2"
+                    onClick={handleCall}
+                  >
+                    <Phone className="w-4 h-4 text-gray-700" />
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
