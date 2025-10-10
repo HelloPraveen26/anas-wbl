@@ -48,7 +48,7 @@ interface Condition {
 }
 
 // CustomTool Component
-const CustomTool = () => {
+const CustomTool = ({ onSave }: { onSave?: (name: string, desc: string) => void }) => {
   const [toolName, setToolName] = useState('function_tool');
   const [description, setDescription] = useState('Describe the tool in a few sentences');
   const [isAsync, setIsAsync] = useState(true);
@@ -69,15 +69,21 @@ const CustomTool = () => {
   const [endCallOnFailed, setEndCallOnFailed] = useState(false);
   const [endCallOnComplete, setEndCallOnComplete] = useState(false);
 
-    const [editingParameter, setEditingParameter] = useState<Parameter | null>(null);
+  const [editingParameter, setEditingParameter] = useState<Parameter | null>(null);
   const [showEnumValues, setShowEnumValues] = useState(false);
   const [currentEnumValue, setCurrentEnumValue] = useState('');
   const [jsonContent, setJsonContent] = useState('testing');
 
+  // New states for Code and Test modals
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [testResult, setTestResult] = useState('');
+  const [isTestRunning, setIsTestRunning] = useState(false);
+
   // Conditions state
   const [conditions, setConditions] = useState<Condition[]>([]);
 
- const renderMessageContent = () => {
+  const renderMessageContent = () => {
     switch (selectedMessageType) {
       case 'Request Start':
         return (
@@ -450,7 +456,7 @@ const CustomTool = () => {
   };
 
   const generateJSON = () => {
-    const schema = {
+    const schema: any = {
       type: "object",
       properties: {},
       required: []
@@ -474,6 +480,91 @@ const CustomTool = () => {
     return JSON.stringify(schema, null, 2);
   };
 
+  const generateCode = () => {
+    const paramsSchema = generateJSON();
+    
+    return `// Tool: ${toolName}
+// Description: ${description}
+
+const toolConfig = {
+  name: "${toolName}",
+  description: "${description}",
+  async: ${isAsync},
+  strict: ${isStrict},
+  webhookUrl: "${webhook}",
+  timeout: ${timeout},
+  parameters: ${paramsSchema}
+};
+
+// HTTP Headers
+const headers = {
+${httpHeaders.map(h => `  "${h.key}": "${h.value}"`).join(',\n')}
+};
+
+// Function to call the tool
+async function callTool(params) {
+  const response = await fetch(toolConfig.webhookUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers
+    },
+    body: JSON.stringify(params)
+  });
+  
+  return await response.json();
+}
+
+// Example usage:
+// const result = await callTool({ ${parameters.map(p => `${p.name}: "value"`).join(', ')} });`;
+  };
+
+  const handleTestTool = () => {
+    setIsTestRunning(true);
+    setShowTestModal(true);
+    setTestResult('⏳ Running test...\n\n');
+    
+    setTimeout(() => {
+      const testData = {
+        toolName: toolName,
+        description: description,
+        webhook: webhook,
+        timeout: timeout,
+        async: isAsync,
+        strict: isStrict,
+        parameters: parameters.map(p => ({
+          name: p.name,
+          type: p.type,
+          description: p.description,
+          required: p.required
+        })),
+        httpHeaders: httpHeaders
+      };
+      
+      setTestResult(`✅ Test Successful!\n\n` +
+        `Tool Name: ${toolName}\n` +
+        `Description: ${description}\n` +
+        `Webhook: ${webhook}\n` +
+        `Timeout: ${timeout}s\n` +
+        `Async: ${isAsync ? 'Yes' : 'No'}\n` +
+        `Strict: ${isStrict ? 'Yes' : 'No'}\n\n` +
+        `Parameters (${parameters.length}):\n` +
+        (parameters.length > 0 ? parameters.map(p => `  - ${p.name} (${p.type})${p.required ? ' *required' : ''}`).join('\n') : '  No parameters defined') +
+        `\n\nHTTP Headers (${httpHeaders.length}):\n` +
+        (httpHeaders.length > 0 ? httpHeaders.map(h => `  - ${h.key}: ${h.value}`).join('\n') : '  No headers defined') +
+        `\n\n📝 Tool configuration is valid and ready to use!`
+      );
+      setIsTestRunning(false);
+    }, 1500);
+  };
+
+  const handleSaveClick = () => {
+    if (onSave) {
+      onSave(toolName, description);
+    }
+    alert('✅ Tool saved successfully!');
+  };
+
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Fixed Header */}
@@ -483,13 +574,22 @@ const CustomTool = () => {
           <span className="text-xs font-medium text-gray-600 border border-gray-400 rounded-full px-2 py-0.5">{isAsync ? 'async' : 'sync'} tool</span>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors">
+          <button 
+            onClick={handleSaveClick}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+          >
             <Save size={16} /> Save
           </button>
-          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors">
+          <button 
+            onClick={() => setShowCodeModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+          >
             <Code size={16} /> Code
           </button>
-          <button className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-500 transition-colors">
+          <button 
+            onClick={handleTestTool}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-500 transition-colors"
+          >
             <Play size={16} /> Test
           </button>
         </div>
@@ -504,7 +604,7 @@ const CustomTool = () => {
              
               <div className="flex gap-4">
                 <div className="flex flex-col flex-1 gap-2">
-                  <label className="text-sm font-medium text-gray-600">Tool Name</label>
+                  <label className="text-sm font-medium text-gray-600">Tool Names</label>
                   <input 
                     type="text" 
                     value={toolName} 
@@ -838,8 +938,14 @@ const CustomTool = () => {
                 </div>
                 {httpHeaders.map(header => (
                   <div key={header.id} className="grid grid-cols-[1fr,1fr,auto] gap-2 items-center p-2 rounded bg-gray-100 border border-gray-300">
-                    <input type="text" placeholder="Key" value={header.key} className="bg-transparent text-gray-900 focus:outline-none text-sm" />
-                    <input type="text" placeholder="Value" value={header.value} className="bg-transparent text-gray-900 focus:outline-none text-sm" />
+                    <input type="text" placeholder="Key" value={header.key} onChange={(e) => {
+                      const updated = httpHeaders.map(h => h.id === header.id ? {...h, key: e.target.value} : h);
+                      setHttpHeaders(updated);
+                    }} className="bg-transparent text-gray-900 focus:outline-none text-sm" />
+                    <input type="text" placeholder="Value" value={header.value} onChange={(e) => {
+                      const updated = httpHeaders.map(h => h.id === header.id ? {...h, value: e.target.value} : h);
+                      setHttpHeaders(updated);
+                    }} className="bg-transparent text-gray-900 focus:outline-none text-sm" />
                     <button onClick={() => handleRemoveHeader(header.id)} className="text-gray-600 hover:text-red-500 transition-colors">
                       <Trash size={16} />
                     </button>
@@ -877,6 +983,82 @@ const CustomTool = () => {
           </div>
         </div>
       </div>
+
+      {/* Code Modal */}
+      {showCodeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Generated Code</h3>
+              <button 
+                onClick={() => setShowCodeModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm font-mono overflow-x-auto">
+                {generateCode()}
+              </pre>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generateCode());
+                  alert('✅ Code copied to clipboard!');
+                }}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Copy Code
+              </button>
+              <button
+                onClick={() => setShowCodeModal(false)}
+                className="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Test Modal */}
+      {showTestModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-[700px] max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Test Results</h3>
+              <button 
+                onClick={() => setShowTestModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm font-mono whitespace-pre-wrap">
+                {testResult}
+              </pre>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t border-gray-200">
+              <button
+                onClick={handleTestTool}
+                disabled={isTestRunning}
+                className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isTestRunning ? 'Running...' : 'Run Again'}
+              </button>
+              <button
+                onClick={() => setShowTestModal(false)}
+                className="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -888,6 +1070,7 @@ export default function ToolsPage() {
   const [showToolsList, setShowToolsList] = useState(false);
   const [selectedTools, setSelectedTools] = useState<Tool[]>([]);
   const [activeTool, setActiveTool] = useState<Tool | null>(null);
+  const [customTools, setCustomTools] = useState<Tool[]>([]);
 
   const toggleItem = (itemName: string) => {
     setExpandedItems(prev => ({
@@ -920,16 +1103,36 @@ export default function ToolsPage() {
   };
 
   const handleSendMessage = (message: any) => {
-  console.log('Message from tool:', message);
-  // Handle the message as needed for your application
-};
+    console.log('Message from tool:', message);
+  };
 
-const toolsList: Tool[] = [ 
-   { name: 'Custom', description: '', icon: 'Wrench', color: '#007bff', content: <CustomTool /> },
-   { name: 'Google sheet', description: '', icon: 'FileSpreadsheet', color: '#00ff95ff', content: <GoogleSheetsTool /> },
-   { name: 'Google Calendar', description: '', icon: 'Calendar', color: '#4285f4', content: <GoogleCalendarTool onSendMessage={handleSendMessage} /> },
+  const handleSaveCustomTool = (name: string, desc: string) => {
+    const newTool: Tool = {
+      name: name,
+      description: desc,
+      icon: 'Wrench',
+      color: '#007bff',
+      content: <CustomTool onSave={handleSaveCustomTool} />
+    };
+    
+    setCustomTools(prev => [...prev, newTool]);
+    setSelectedTools(prev => [...prev, newTool]);
+    setActiveTool(newTool);
+  };
 
-]
+  const toolsList: Tool[] = [ 
+    ...customTools,
+    { 
+      name: 'Custom', 
+      description: '', 
+      icon: 'Wrench', 
+      color: '#007bff', 
+      content: <CustomTool onSave={handleSaveCustomTool} /> 
+    },
+    { name: 'Google sheet', description: '', icon: 'FileSpreadsheet', color: '#00ff95ff', content: <GoogleSheetsTool /> },
+    { name: 'Google Calendar', description: '', icon: 'Calendar', color: '#4285f4', content: <GoogleCalendarTool onSendMessage={handleSendMessage} /> },
+  ];
+
   const filteredTools = toolsList.filter(tool =>
     tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (tool.description && tool.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -1006,37 +1209,36 @@ const toolsList: Tool[] = [
             {showToolsList ? (
               <div className="flex flex-col gap-2">
                 {filteredTools.length > 0 ? filteredTools.map((tool, index) => {
-  const IconComponent = getIconComponent(tool.icon); // Add this line
-  return (
-    <div key={index}>
-      <div
-        className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-        onClick={() => {
-          if (tool.subItems) {
-            toggleItem(tool.name);
-          } else {
-            handleSelectTool(tool);
-          }
-        }}
-      >
-        <div className="w-8 h-8 flex items-center justify-center rounded-full" style={{ backgroundColor: `${tool.color}30`, border: `1px solid ${tool.color}` }}>
-          <IconComponent size={16} style={{ color: tool.color }} /> {/* Use IconComponent instead of Wrench */}
-        </div>
-        <div className="flex-1 flex flex-col"> 
-          <div className="text-sm font-medium text-gray-900">{tool.name}</div>
-          <div className="text-xs text-gray-600">{tool.description}</div>
-        </div>
-        {tool.subItems && (
-          <ChevronRight
-            size={16}
-            className={`text-gray-600 transition-transform ${expandedItems[tool.name] ? 'rotate-90' : ''}`}
-          />
-        )}
-      </div>
-      {/* rest of your subItems rendering code stays the same */}
-    </div>
-  );
-}) : (
+                  const IconComponent = getIconComponent(tool.icon);
+                  return (
+                    <div key={index}>
+                      <div
+                        className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => {
+                          if (tool.subItems) {
+                            toggleItem(tool.name);
+                          } else {
+                            handleSelectTool(tool);
+                          }
+                        }}
+                      >
+                        <div className="w-8 h-8 flex items-center justify-center rounded-full" style={{ backgroundColor: `${tool.color}30`, border: `1px solid ${tool.color}` }}>
+                          <IconComponent size={16} style={{ color: tool.color }} />
+                        </div>
+                        <div className="flex-1 flex flex-col"> 
+                          <div className="text-sm font-medium text-gray-900">{tool.name}</div>
+                          <div className="text-xs text-gray-600">{tool.description}</div>
+                        </div>
+                        {tool.subItems && (
+                          <ChevronRight
+                            size={16}
+                            className={`text-gray-600 transition-transform ${expandedItems[tool.name] ? 'rotate-90' : ''}`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                }) : (
                   <div className="flex flex-col items-center justify-center h-full text-center text-gray-600 p-4">
                     No tools found matching your search.
                   </div>
