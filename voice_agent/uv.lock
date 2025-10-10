@@ -706,6 +706,9 @@ codecs = [
 deepgram = [
     { name = "livekit-plugins-deepgram" },
 ]
+elevenlabs = [
+    { name = "livekit-plugins-elevenlabs" },
+]
 images = [
     { name = "pillow" },
 ]
@@ -770,6 +773,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ed/14/5b742bd61985f3936b2ae741d4ad6b4590b9669dbbe1a74be03c9f52f742/livekit_plugins_deepgram-1.2.11.tar.gz", hash = "sha256:24df427e11ccc4d3b0b3d5e913152d6e18ad96ea0d3462df873d093906343e12", size = 13364, upload-time = "2025-09-18T19:15:01.39Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/fd/90684de81f7a6414bac9e67b5d4400849b0f9c1b8ac6ac32ae87aaef1783/livekit_plugins_deepgram-1.2.11-py3-none-any.whl", hash = "sha256:0b1cf19a3ab29e62f5c6d8ba57a1a0c06616e2f0cb1ec7ab3dbb27ed46d4c475", size = 15442, upload-time = "2025-09-18T19:15:00.469Z" },
+]
+
+[[package]]
+name = "livekit-plugins-elevenlabs"
+version = "1.2.11"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents", extra = ["codecs"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8e/4e/fc89e3feaf461daba38cd0227c2ce4f029b7e4e3c3b04bf112a7c6c2482a/livekit_plugins_elevenlabs-1.2.11.tar.gz", hash = "sha256:43743b1ead0739463f9c3600dc360db7dbff3528c6de8faa1c29fac3ad00ed4f", size = 12063, upload-time = "2025-09-18T19:15:02.929Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/10/a88f6b0c6a395bfadb5019ea3602baf42d27c8fe70f2263852c3aeabcc83/livekit_plugins_elevenlabs-1.2.11-py3-none-any.whl", hash = "sha256:27f67ad7a96862fc301f3b9e861214685dc9f897fa814512b73156608e7fa29f", size = 13915, upload-time = "2025-09-18T19:15:01.959Z" },
 ]
 
 [[package]]
@@ -1725,7 +1740,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi", extra = ["all"] },
-    { name = "livekit-agents", extra = ["cartesia", "deepgram", "openai", "silero", "turn-detector"] },
+    { name = "livekit-agents", extra = ["cartesia", "deepgram", "elevenlabs", "openai", "silero", "turn-detector"] },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "openai" },
     { name = "python-dotenv" },
@@ -1734,7 +1749,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", extras = ["all"] },
-    { name = "livekit-agents", extras = ["openai", "turn-detector", "silero", "cartesia", "deepgram"], specifier = "~=1.2" },
+    { name = "livekit-agents", extras = ["openai", "turn-detector", "silero", "cartesia", "deepgram", "elevenlabs"], specifier = "~=1.2" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2" },
     { name = "openai", specifier = ">=2.0" },
     { name = "python-dotenv" },

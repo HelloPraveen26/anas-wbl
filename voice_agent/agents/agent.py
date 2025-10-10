@@ -15,7 +15,7 @@ from livekit.agents import (
     cli,
     metrics,
 )
-from livekit.plugins import deepgram, noise_cancellation, openai, silero
+from livekit.plugins import deepgram, elevenlabs, noise_cancellation, openai, silero
 
 logger = logging.getLogger("agent")
 
@@ -80,7 +80,8 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         llm=openai.LLM(model="gpt-4.1-mini"),
         stt=deepgram.STT(model="nova-3", language="multi"),
-        tts=deepgram.TTS(),
+        #tts=deepgram.TTS(),
+        tts=elevenlabs.TTS(voice_id="0icWottL1L2MsAigrUBg"),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
