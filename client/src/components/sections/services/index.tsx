@@ -49,7 +49,7 @@ const pricingOptions: PricingOption[] = [
       { min: 12000, max: 120000, rate: 0 },
       {min:120000 ,max:1000000, rate:0.01},
     ],
-    quantityOptions: [120000, 120000, 1000000],
+    quantityOptions: [12000, 120000, 1000000],
     currency: "₹",
     unit: "triggers",
     isFixed: false,
