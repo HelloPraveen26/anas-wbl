@@ -2151,14 +2151,14 @@ You are an AI Hotel Booking Assistant.
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowLiveKitModal(true)}
                 >
-                  LiveKit
+                  ZX Global
                 </Button>
                 <Button
                   variant="outline"
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                   onClick={() => setShowAivocoModal(true)}
                 >
-                  ZenVoice
+                  ZX India
                 </Button>
                 <Button
                   onClick={handlePublishAssistant}

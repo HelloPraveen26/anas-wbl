@@ -1,0 +1,19 @@
+import { cn } from "@/lib/utils";
+import React from "react";
+import TagLine from "./tag-line";
+
+type Props = {
+  className?: string;
+  title: string;
+  description?: string;
+};
+
+const Heading = ({ className, title, description }: Props) => {
+  return (
+    <div className={cn(className, "max-w-[50rem] mx-auto mb-12 lg:mb-20 md:text-center")}>
+      {title && <h2 className="h2">{title}</h2>}
+      {description && <p className="body-2 mt-4 text-n-4 text-blue-2  00">{description}</p>}
+    </div>
+  );
+};
+export default Heading;

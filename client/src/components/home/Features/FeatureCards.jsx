@@ -103,7 +103,10 @@ const FeatureCard = ({ feature }) => (
     </div>
     
     <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
-      <button
+     <button
+        onClick={() => {
+          window.location.href = 'https://moanalisha.fillout.com/11-with-monalisha';
+        }}
         style={{
           width: '90%',
           height: '40px',
@@ -184,117 +187,6 @@ const FeatureCards = () => {
             <FeatureCard key={index} feature={feature} />
           ))}
         </div>
-
-        {/* Pricing Section */}
-        {/* <div style={{
-          backgroundColor: 'transparent',
-          borderRadius: '16px',
-          padding: '40px',
-          margin: '60px 0',
-          border: '1px solid rgba(66, 230, 208, 0.39)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-        }}>
-          <h2 style={{
-            fontSize: '32px',
-            fontWeight: '700',
-            fontFamily: 'Barlow, sans-serif',
-            color: '#fff',
-            textAlign: 'center',
-            marginBottom: '40px'
-          }}>
-            Scale your workflow with custom-made plugins.
-          </h2>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-            gap: '24px', 
-            justifyContent: 'center'
-          }}>
-            {pricingOptions.map((option, index) => (
-              <div key={index} style={{
-                backgroundColor: 'transparent',
-                borderRadius: '10px',
-                padding: '30px 20px',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-                border: '1px solid rgba(66, 230, 208, 0.39)'
-              }}>
-                <h3 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#fff',
-                  marginBottom: '10px'
-                }}>
-                  {option.title}
-                </h3>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#ccc',
-                  marginBottom: '20px'
-                }}>
-                  {option.description}
-                </p>
-                {!option.isFixed ? (
-                  <div style={{
-                    position: 'relative',
-                    width: '120px',
-                    marginBottom: '10px'
-                  }}>
-                    <select
-                      value={selectedQuantities[index] || option.quantityOptions[0]}
-                      onChange={(e) => handleQuantityChange(index, e.target.value)}
-                      style={{
-                        WebkitAppearance: 'none',
-                        MozAppearance: 'none',
-                        appearance: 'none',
-                        backgroundColor: 'transparent',
-                        backgroundImage: 'none',
-                        border: '1px solid rgba(66, 230, 208, 0.39)',
-                        borderRadius: '5px',
-                        color: 'white',
-                        padding: '8px 30px 8px 12px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        width: '100%',
-                        outline: 'none',
-                        boxShadow: 'none',
-                      }}
-                    >
-                      {option.quantityOptions.map((qty) => (
-                        <option key={qty} value={qty} style={{ backgroundColor: '#000', color: '#fff' }}>
-                          {qty}
-                        </option>
-                      ))}
-                    </select>
-                    <span style={{
-                      content: '""',
-                      position: 'absolute',
-                      top: '50%',
-                      right: '12px',
-                      transform: 'translateY(-50%)',
-                      pointerEvents: 'none',
-                      borderLeft: '5px solid transparent',
-                      borderRight: '5px solid transparent',
-                      borderTop: '5px solid #fff',
-                    }}></span>
-                  </div>
-                ) : null}
-                <h4 style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#fff',
-                  marginTop: '20px'
-                }}>
-                  {calculatePrice(option, index)}
-                </h4>
-              </div>
-            ))}
-          </div>
-        </div> */}
 
         {/* Use Cases Header */}
         <div style={{

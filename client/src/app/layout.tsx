@@ -1,9 +1,5 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-
-// This is the Inter font, which you are already using for the body
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Zenvoice',
@@ -25,13 +21,9 @@ export default function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
-        {/* The Barlow font link with the weights you need (e.g., 500 and 600) */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&display=swap"
-          rel="stylesheet"
-        />
+        {/* Temporarily removed font links to test loading */}
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }
