@@ -13,6 +13,7 @@ server/dist/
 server/.env
 
 voice_agent/.env.local
+voice_agent/agents/.env.local
 
 # Node artifact files
 node_modules/
