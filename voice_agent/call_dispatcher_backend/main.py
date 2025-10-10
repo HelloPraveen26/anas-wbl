@@ -3,7 +3,7 @@ import logging
 import os
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from dotenv import load_dotenv
@@ -35,6 +35,16 @@ class CallRequest(BaseModel):
         pattern=r"^\+[1-9]\d{1,14}$",
     )
 
+    instructions: Optional[str] = Field(
+        None,
+        description="Custom instructions for the AI agent"
+    )
+
+    first_message: Optional[str] = Field(
+        None,
+        description="Custom first message the agent should say"
+    )
+
     @validator("phone_number")
     def validate_e164_format(cls, v):
         """Validate that phone number follows E.164 format"""
@@ -48,8 +58,12 @@ class CallRequest(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {"phone_number": "+1234567890"},
-            "description": "Request body for initiating a phone call with E.164 formatted phone number",
+            "example": {
+                "phone_number": "+1234567890",
+                "instructions": "You are a friendly customer service agent",
+                "first_message": "Hello! How can I help you today?"
+            },
+            "description": "Request body for initiating a phone call with custom agent behavior",
         }
 
 
@@ -151,6 +165,13 @@ current_active_room = None
 logger = logging.getLogger("make-call")
 logger.setLevel(logging.INFO)
 
+# Add console handler to make logs visible
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
 # Configuration
 agent_name = "hexite-outbound-caller"
 outbound_trunk_id = os.getenv("SIP_OUTBOUND_TRUNK_ID", "")
@@ -218,6 +239,7 @@ async def make_call(metadata, room_name, phone_number):
 
     try:
         logger.info(f"Creating dispatch for agent {agent_name} in room {room_name}")
+        logger.info(metadata)
         dispatch = await lkapi.agent_dispatch.create_dispatch(
             api.CreateAgentDispatchRequest(
                 agent_name=agent_name, room=room_name, metadata=metadata
@@ -325,8 +347,10 @@ async def make_call(metadata, room_name, phone_number):
 )
 async def make_call_endpoint(request: CallRequest):
     """Endpoint to initiate a call to the provided phone number"""
-    # Extract phone number from request (already validated by pydantic)
+    # Extract parameters from request (already validated by pydantic)
     phone_number = request.phone_number
+    instructions = request.instructions
+    first_message = request.first_message
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -341,11 +365,13 @@ async def make_call_endpoint(request: CallRequest):
         )
 
     try:
-        # Create metadata for the call
+        # Create metadata for the call including dynamic parameters
         metadata = {
             "phone_number": phone_number,
             "call_type": "outbound",
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "instructions": instructions,
+            "first_message": first_message,
         }
 
         # Generate unique room name
