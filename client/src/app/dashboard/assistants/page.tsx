@@ -1614,7 +1614,12 @@ export default function AssistantsPage() {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phone_number: phoneNumber }),
+        body: JSON.stringify({
+          phone_number: phoneNumber,
+          firstMessage: firstMessage,
+          systemPrompt: systemPrompt,
+          selectedAssistant: selectedAssistant,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {

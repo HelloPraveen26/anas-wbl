@@ -27,8 +27,35 @@ export class PhoneService {
    */
   async makeCall(dto: MakeCallDto): Promise<any> {
     try {
+      // Log the selected assistant for tracking
+      if (dto.selectedAssistant) {
+        this.logger.log(
+          `Making call with selected assistant: ${dto.selectedAssistant}`,
+        );
+      }
+
+      // Prepare the payload for the telephony service
+      const payload = { ...dto };
+
+      // Map systemPrompt to instructions if provided
+      if (dto.systemPrompt) {
+        payload.instructions = dto.systemPrompt;
+        // Remove systemPrompt from the payload to avoid sending duplicate data
+        delete payload.systemPrompt;
+      }
+
+      // Map firstMessage to first_message if provided
+      if (dto.firstMessage) {
+        payload.first_message = dto.firstMessage;
+        // Remove firstMessage from the payload to avoid sending duplicate data
+        delete payload.firstMessage;
+      }
+
+      // Remove selectedAssistant from payload as it's only for logging
+      delete payload.selectedAssistant;
+
       const { data } = await firstValueFrom(
-        this.httpService.post(`${this.baseUrl}/make_call`, dto),
+        this.httpService.post(`${this.baseUrl}/make_call`, payload),
       );
       return data;
     } catch (error) {

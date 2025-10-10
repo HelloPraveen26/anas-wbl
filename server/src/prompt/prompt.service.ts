@@ -1,8 +1,13 @@
-import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { OpenAI } from 'openai';
-import { GeneratePromptDto } from './dto/generate-prompt.dto';
-import { PromptResponseDto } from './dto/prompt-response.dto';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { OpenAI } from "openai";
+import { GeneratePromptDto } from "./dto/generate-prompt.dto";
+import { PromptResponseDto } from "./dto/prompt-response.dto";
 
 @Injectable()
 export class PromptService {
@@ -10,24 +15,30 @@ export class PromptService {
   private readonly openai: OpenAI;
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    const apiKey = this.configService.get<string>("OPENAI_API_KEY");
 
     if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is not configured in environment variables');
+      throw new Error(
+        "OPENAI_API_KEY is not configured in environment variables",
+      );
     }
 
     this.openai = new OpenAI({
       apiKey: apiKey,
     });
 
-    this.logger.log('PromptService initialized with OpenAI client');
+    this.logger.log("PromptService initialized with OpenAI client");
   }
 
-  async generatePromptStructure(generatePromptDto: GeneratePromptDto): Promise<PromptResponseDto> {
+  async generatePromptStructure(
+    generatePromptDto: GeneratePromptDto,
+  ): Promise<PromptResponseDto> {
     const { taskDescription } = generatePromptDto;
 
     try {
-      this.logger.log(`Generating prompt structure for task: ${taskDescription}`);
+      this.logger.log(
+        `Generating prompt structure for task: ${taskDescription}`,
+      );
 
       const prompt = `
 You are an expert AI assistant prompt engineer.
@@ -54,45 +65,62 @@ Return the result in a markdown-style block (with no explanations or headers).
 `;
 
       const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4',
+        model: "gpt-4",
         messages: [
-          { role: 'system', content: 'You are a helpful assistant.' },
-          { role: 'user', content: prompt },
+          { role: "system", content: "You are a helpful assistant." },
+          { role: "user", content: prompt },
         ],
         temperature: 0.7,
         max_tokens: 800,
       });
 
-      const generatedPrompt = completion.choices[0]?.message?.content;
+      let generatedPrompt = completion.choices[0]?.message?.content;
+      generatedPrompt = generatedPrompt
+        .replace(/^```(?:markdown)?\n?/, "")
+        .replace(/```$/, "")
+        .trim();
 
       if (!generatedPrompt) {
-        throw new InternalServerErrorException('Failed to generate prompt from OpenAI');
+        throw new InternalServerErrorException(
+          "Failed to generate prompt from OpenAI",
+        );
       }
 
-      this.logger.log('Prompt structure generated successfully');
+      this.logger.log("Prompt structure generated successfully");
 
       return {
         generatedPrompt: generatedPrompt.trim(),
         originalTask: taskDescription,
         generatedAt: new Date().toISOString(),
       };
-
     } catch (error) {
-      this.logger.error(`Error generating prompt structure: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error generating prompt structure: ${error.message}`,
+        error.stack,
+      );
 
-      if (error.code === 'insufficient_quota') {
-        throw new BadRequestException('OpenAI API quota exceeded. Please try again later.');
+      if (error.code === "insufficient_quota") {
+        throw new BadRequestException(
+          "OpenAI API quota exceeded. Please try again later.",
+        );
       }
 
-      if (error.code === 'invalid_api_key') {
-        throw new InternalServerErrorException('Invalid OpenAI API key configuration');
+      if (error.code === "invalid_api_key") {
+        throw new InternalServerErrorException(
+          "Invalid OpenAI API key configuration",
+        );
       }
 
-      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof InternalServerErrorException
+      ) {
         throw error;
       }
 
-      throw new InternalServerErrorException('Failed to generate prompt structure');
+      throw new InternalServerErrorException(
+        "Failed to generate prompt structure",
+      );
     }
   }
 }

@@ -74,7 +74,7 @@ OPENAI_API_KEY=
 ### FastAPI Server
 ```bash
 cd call_dispatcher_backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8003
 ```
 
 ### LiveKit Server
@@ -227,4 +227,4 @@ The application provides comprehensive logging:
 
 - **Documentation**: Check `/docs` endpoint for interactive API documentation
 - **Issues**: Report issues on the project repository
-- **Email**: [suman@hexitetechnologies.com]
+- **Email**: [suguna@hexitetechnologies.com]
