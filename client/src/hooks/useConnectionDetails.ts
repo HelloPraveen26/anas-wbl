@@ -1,26 +1,34 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ConnectionDetails } from '@/app/api/connection-details/route';
+import { useCallback, useEffect, useState } from "react";
+import { ConnectionDetails } from "@/app/api/connection-details/route";
+import { authManager } from "@/lib/auth";
+import { getApiBaseUrl } from "@/lib/api";
 
 export default function useConnectionDetails() {
-  const [connectionDetails, setConnectionDetails] = useState<ConnectionDetails | null>(null);
+  const [connectionDetails, setConnectionDetails] =
+    useState<ConnectionDetails | null>(null);
 
   const fetchConnectionDetails = useCallback(() => {
     setConnectionDetails(null);
-    const url = new URL(
-      process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? '/api/connection-details',
-      window.location.origin
-    );
+    const token = authManager.getToken();
 
-    fetch("https://voice.zenxai.io/api/v1/assistants/connection-details", {
-      method: 'GET',
+    if (!token) {
+      console.error("No authentication token available");
+      return;
+    }
+
+    const endpoint = `${getApiBaseUrl()}/assistants/connection-details`;
+    fetch(endpoint, {
+      method: "GET",
       headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiNDEzM2UxZS00MzI2LTRlMjQtOTM3MS1iOTZhMWMyM2I5ZDEiLCJlbWFpbCI6InN1Z3VuYUBoZXhpdGV0ZWNobm9sb2dpZXMuY29tIiwiZmlyc3ROYW1lIjoiU2VsdmFtIiwibGFzdE5hbWUiOiJSYW0iLCJpYXQiOjE3NTc1NzUwNTYsImV4cCI6MTc1ODE3OTg1Nn0.7xtld6eoHDFVW_L-K8mZEKRkNiYpI2RwGmEwPzNKEFo`
-      }
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     })
       .then((res) => {
         if (!res.ok) {
-          throw new Error('Network response was not ok');
+          // Handle authentication errors
+          authManager.handleAuthError(res);
+          throw new Error("Network response was not ok");
         }
         return res.json();
       })
@@ -28,7 +36,7 @@ export default function useConnectionDetails() {
         setConnectionDetails(data);
       })
       .catch((error) => {
-        console.error('Error fetching connection details:', error);
+        console.error("Error fetching connection details:", error);
       });
   }, []);
 
@@ -36,6 +44,8 @@ export default function useConnectionDetails() {
     fetchConnectionDetails();
   }, [fetchConnectionDetails]);
 
-  return { connectionDetails, refreshConnectionDetails: fetchConnectionDetails };
+  return {
+    connectionDetails,
+    refreshConnectionDetails: fetchConnectionDetails,
+  };
 }
-
