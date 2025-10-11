@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 export default function AIVOCOApplication(props: any) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { systemPrompt, firstMessage } = props;
-  const apiKey = process.env.NEXT_PUBLIC_ZENVOCO_API_KEY;
+  const apiKey = "LYawLuXBGlDAVMTyQrOWkNTggVWKOzww";
 
   // useEffect(() => {
   //   console.log("✅ AIVOCOApplication mounted");
@@ -13,7 +13,7 @@ export default function AIVOCOApplication(props: any) {
   //     iframeRef.current.onload = () => {
   //       iframeRef.current?.contentWindow?.postMessage(
   //         { systemPrompt, firstMessage }
-  //       );
+  //       );`
   //     };
   //   }
   // }, [props]);
