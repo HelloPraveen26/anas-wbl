@@ -226,7 +226,7 @@ const Hero = () => {
                   playsInline
                   preload="auto"
                 >
-                  <source src="/Video/1. Team Video V2.mp4" type="video/mp4" />
+<source src="/videos/team-video-v2.mp4" type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
 
