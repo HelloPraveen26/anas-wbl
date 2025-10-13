@@ -40,12 +40,12 @@ export default function PhoneNumbersPage() {
             Documentation
           </button> */}
         </div>
-          {/* SIP Search */}
+          {/* SIP Search - FIX APPLIED HERE: Added 'text-gray-900' */}
               <div className="relative mb-4">
                 <input
                   type="text"
                   placeholder="Search name, number, SIP..."
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                 />
                 <Search className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
               </div>
@@ -81,7 +81,7 @@ export default function PhoneNumbersPage() {
                   {/* Common fields */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-left">Region</label>
-                    <select className="w-full mt-1 border rounded-md px-3 py-2">
+                    <select className="w-full mt-1 text-gray-700 border rounded-md px-3 py-2">
                       <option>us-west</option>
                       <option>us-east</option>
                     </select>
@@ -92,7 +92,7 @@ export default function PhoneNumbersPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 text-left">Country</label>
-                    <select className="w-full mt-1 border rounded-md px-3 py-2">
+                    <select className="w-full mt-1 border rounded-md text-gray-700 px-3 py-2">
                       <option>United States (+1)</option>
                       <option>India (+91)</option>
                     </select>
@@ -103,7 +103,8 @@ export default function PhoneNumbersPage() {
                     <input
                       type="text"
                       placeholder="+12345678990"
-                      className="w-full mt-1 border rounded-md px-3 py-2"
+                      // FIX APPLIED HERE: Added 'text-gray-900'
+                      className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
                     />
                   </div>
 
@@ -112,38 +113,70 @@ export default function PhoneNumbersPage() {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">API Key</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="Provider API Key" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="Provider API Key" 
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">API Secret</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="API Secret" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="API Secret" 
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">Account SID</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="Account SID" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="Account SID" 
+                        />
                       </div>
                     </>
                   ) : (
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">API Key</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="Provider API Key" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="Provider API Key" 
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">API Token</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="API Token" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="API Token" 
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">Account SID</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="Account SID" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="Account SID" 
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">Subdomain</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="Subdomain" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="Subdomain" 
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">App ID</label>
-                        <input className="w-full mt-1 border rounded-md px-3 py-2" placeholder="App ID" />
+                        <input 
+                            // FIX APPLIED HERE: Added 'text-gray-900'
+                            className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900" 
+                            placeholder="App ID" 
+                        />
                       </div>
                     </>
                   )}
