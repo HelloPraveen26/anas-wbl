@@ -240,6 +240,9 @@
     // Prompt generation
     const [generateLoading, setGenerateLoading] = useState(false);
     const [taskDescription, setTaskDescription] = useState("");
+    const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+    const [editableTaskDescription, setEditableTaskDescription] = useState("");
+    const [hasGeneratedBefore, setHasGeneratedBefore] = useState(false);
 
     const [copied, setCopied] = useState(false);
 
@@ -555,13 +558,61 @@
     const generatePrompt = async () => {
       if (!taskDescription.trim())
         return alert("Please enter a task description");
+
+      if (!hasGeneratedBefore) {
+        // First time: directly generate
+        setGenerateLoading(true);
+        const url = `${getApiBaseUrl()}/prompt/generate`;
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ taskDescription: taskDescription.trim() }),
+          });
+          if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            // Auth handling
+            if (res.status === 401 || res.status === 404) {
+              if (
+                e?.message?.includes("User not found") ||
+                e?.message?.includes("Unauthorized")
+              ) {
+                alert("Your session has expired. Please sign in again.");
+                authManager.clearAuth();
+                window.location.href = "/auth/signin";
+                return;
+              }
+            }
+            throw new Error(e?.message || `HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          setSystemPrompt(data.generatedPrompt);
+          setHasGeneratedBefore(true);
+        } catch (err: any) {
+          console.error("Prompt error:", err);
+          alert("Failed to generate prompt. Check console for details.");
+        } finally {
+          setGenerateLoading(false);
+        }
+      } else {
+        // Second time and after: show modal for editing
+        setEditableTaskDescription(taskDescription);
+        setShowEditTaskModal(true);
+      }
+    };
+
+    const handleAcceptTaskDescription = async () => {
+      setTaskDescription(editableTaskDescription);
+      setShowEditTaskModal(false);
+
+      // Now generate the system prompt using the accepted task description
       setGenerateLoading(true);
       const url = `${getApiBaseUrl()}/prompt/generate`;
       try {
         const res = await fetch(url, {
           method: "POST",
           headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ taskDescription: taskDescription.trim() }),
+          body: JSON.stringify({ taskDescription: editableTaskDescription.trim() }),
         });
         if (!res.ok) {
           const e = await res.json().catch(() => ({}));
@@ -587,6 +638,10 @@
       } finally {
         setGenerateLoading(false);
       }
+    };
+
+    const handleRejectTaskDescription = () => {
+      setShowEditTaskModal(false);
     };
 
     // -------------------- UI --------------------
@@ -875,6 +930,17 @@
                                       placeholder="e.g., to book a hotel appointment"
                                       className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                                     />
+                                    <div className="flex justify-end">
+                                    <Button
+                                      size="sm"
+                                      onClick={generatePrompt}
+                                      disabled={generateLoading}
+                                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs disabled:bg-teal-400"
+                                    >
+                                      {generateLoading
+                                        ? "Generating..."
+                                        : "Generate"}
+                                    </Button>
                                   </div>
 
                                   <div className="flex items-center justify-between">
@@ -899,17 +965,7 @@
                                     placeholder="Enter system prompt..."
                                   />
 
-                                  <div className="flex justify-end">
-                                    <Button
-                                      size="sm"
-                                      onClick={generatePrompt}
-                                      disabled={generateLoading}
-                                      className="bg-teal-600 hover:bg-teal-700 text-white text-xs disabled:bg-teal-400"
-                                    >
-                                      {generateLoading
-                                        ? "Generating..."
-                                        : "Generate"}
-                                    </Button>
+                                  
                                   </div>
                                 </div>
                               </div>
@@ -1168,6 +1224,43 @@
             systemPrompt={systemPrompt}
             firstMessage={firstMessage}
           />
+        </Modal>
+
+        {/* ---- Edit Task Description Modal ---- */}
+        <Modal
+          open={showEditTaskModal}
+          onCancel={() => setShowEditTaskModal(false)}
+          footer={null}
+          width={600}
+          title="Edit Task Description"
+          centered
+        >
+          <div className="space-y-4 ">
+            <p className="text-sm text-gray-600">
+              Review and edit the task description before accepting it.
+            </p>
+            <textarea
+              value={editableTaskDescription}
+              onChange={(e) => setEditableTaskDescription(e.target.value)}
+              className="w-full bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono min-h-[150px] border-0 focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Enter task description..."
+            />
+            <div className="flex justify-end space-x-2">
+              <Button
+                onClick={handleRejectTaskDescription}
+                variant="outline"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Reject
+              </Button>
+              <Button 
+                onClick={handleAcceptTaskDescription}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Accept
+              </Button>
+            </div>
+          </div>
         </Modal>
       </div>
     );
