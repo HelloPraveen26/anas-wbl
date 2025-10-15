@@ -33,27 +33,12 @@ export class PhoneService {
           `Making call with selected assistant: ${dto.selectedAssistant}`,
         );
       }
-
-      // Prepare the payload for the telephony service
-      const payload = { ...dto };
-
-      // Map systemPrompt to instructions if provided
-      if (dto.systemPrompt) {
-        payload.instructions = dto.systemPrompt;
-        // Remove systemPrompt from the payload to avoid sending duplicate data
-        delete payload.systemPrompt;
-      }
-
-      // Map firstMessage to first_message if provided
-      if (dto.firstMessage) {
-        payload.first_message = dto.firstMessage;
-        // Remove firstMessage from the payload to avoid sending duplicate data
-        delete payload.firstMessage;
-      }
-
-      // Remove selectedAssistant from payload as it's only for logging
-      delete payload.selectedAssistant;
-
+      const payload = {
+        phone_number: dto.phoneNumber,
+        ...(dto.systemPrompt && { instructions: dto.systemPrompt }),
+        ...(dto.firstMessage && { first_message: dto.firstMessage }),
+      };
+      this.logger.log(payload);
       const { data } = await firstValueFrom(
         this.httpService.post(`${this.baseUrl}/make_call`, payload),
       );

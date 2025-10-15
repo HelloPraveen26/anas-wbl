@@ -13,27 +13,7 @@ export class MakeCallDto {
   })
   @IsNotEmpty()
   @IsPhoneNumber(null, { message: "phone_number must be a valid phone number" })
-  phone_number: string;
-
-  @ApiProperty({
-    description: "Custom instructions for the AI agent",
-    example:
-      "You are a sales representative calling to schedule an appointment.",
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  instructions?: string;
-
-  @ApiProperty({
-    description: "Custom first message the agent should say",
-    example:
-      "Hello, this is Sarah calling from ABC Company. How are you today?",
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  first_message?: string;
+  phoneNumber: string;
 
   @ApiProperty({
     description:
@@ -58,7 +38,7 @@ export class MakeCallDto {
 
   @ApiProperty({
     description: "Selected assistant ID for tracking purposes",
-    example: "assistant_123",
+    example: "5c8a4399-4fbb-4c82-a351-537dbe6fc328",
     required: false,
   })
   @IsOptional()
