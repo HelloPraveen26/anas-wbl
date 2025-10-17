@@ -16,6 +16,7 @@ server/.env
 voice_agent/.env.local
 voice_agent/agents/.env.local
 zenvoice-web-call/.env.local
+zenvoice-web-call/src/agent_starter_python.egg-info
 # Node artifact files
 node_modules/
 dist/
