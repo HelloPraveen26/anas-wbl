@@ -1,6 +1,9 @@
 import logging
-
+import base64
+import os
 from dotenv import load_dotenv
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.util.types import AttributeValue
 from livekit.agents import (
     Agent,
     AgentSession,
@@ -14,10 +17,41 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, sarvam, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.agents.telemetry import set_tracer_provider
+from livekit.agents.voice import MetricsCollectedEvent
 
 logger = logging.getLogger("agent")
 
 _ = load_dotenv(".env.local")
+
+
+def setup_langfuse(
+    metadata: dict[str, AttributeValue] | None = None,
+    *,
+    host: str | None = None,
+    public_key: str | None = None,
+    secret_key: str | None = None,
+) -> TracerProvider:
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    public_key = public_key or os.getenv("LANGFUSE_PUBLIC_KEY")
+    secret_key = secret_key or os.getenv("LANGFUSE_SECRET_KEY")
+    host = host or os.getenv("LANGFUSE_HOST")
+
+    if not public_key or not secret_key or not host:
+        raise ValueError(
+            "LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, and LANGFUSE_HOST must be set"
+        )
+
+    langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
+    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{host.rstrip('/')}/api/public/otel"
+    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
+
+    trace_provider = TracerProvider()
+    trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    set_tracer_provider(trace_provider, metadata=metadata)
+    return trace_provider
 
 
 class Assistant(Agent):
@@ -35,6 +69,10 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
+    trace_provider = setup_langfuse(
+        # metadata will be set as attributes on all spans created by the tracer
+        metadata={"langfuse.session.id": ctx.room.name, "langfuse.user.id": "selvam"}
+    )
     # Logging setup
     # Add any other context you want in all log entries here
     ctx.log_context_fields = {

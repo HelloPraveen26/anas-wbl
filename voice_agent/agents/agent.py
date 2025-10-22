@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import base64
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -15,7 +17,15 @@ from livekit.agents import (
     cli,
     metrics,
 )
-from livekit.plugins import deepgram, elevenlabs, noise_cancellation, openai, silero
+from livekit.plugins import (
+    deepgram,
+    sarvam,
+    elevenlabs,
+    noise_cancellation,
+    openai,
+    silero,
+)
+from livekit.agents.telemetry import set_tracer_provider
 
 logger = logging.getLogger("agent")
 
@@ -30,7 +40,9 @@ class Assistant(Agent):
             You are curious, friendly, and have a sense of humor."""
 
         super().__init__(
-            instructions=instructions if instructions is not None else default_instructions,
+            instructions=instructions
+            if instructions is not None
+            else default_instructions,
         )
 
 
@@ -38,9 +50,37 @@ def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
 
+def setup_langfuse(
+    host: str | None = None,
+    public_key: str | None = None,
+    secret_key: str | None = None,
+):
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    public_key = public_key or os.getenv("LANGFUSE_PUBLIC_KEY")
+    secret_key = secret_key or os.getenv("LANGFUSE_SECRET_KEY")
+    host = host or os.getenv("LANGFUSE_HOST")
+
+    if not public_key or not secret_key or not host:
+        raise ValueError(
+            "LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, and LANGFUSE_HOST must be set"
+        )
+
+    langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
+    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{host.rstrip('/')}/api/public/otel"
+    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
+
+    trace_provider = TracerProvider()
+    trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    set_tracer_provider(trace_provider)
+
+
 async def entrypoint(ctx: JobContext):
     # Logging setup
     # Add any other context you want in all log entries here
+    setup_langfuse()
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
@@ -48,7 +88,7 @@ async def entrypoint(ctx: JobContext):
     # Extract metadata from the job context
     metadata = {}
     # Check if we have job metadata available
-    if hasattr(ctx.job, 'metadata') and ctx.job.metadata:
+    if hasattr(ctx.job, "metadata") and ctx.job.metadata:
         try:
             if isinstance(ctx.job.metadata, str):
                 metadata = json.loads(ctx.job.metadata)
@@ -59,7 +99,7 @@ async def entrypoint(ctx: JobContext):
             metadata = {}
 
     # Also check room metadata as fallback
-    if not metadata and hasattr(ctx.room, 'metadata') and ctx.room.metadata:
+    if not metadata and hasattr(ctx.room, "metadata") and ctx.room.metadata:
         try:
             if isinstance(ctx.room.metadata, str):
                 metadata = json.loads(ctx.room.metadata)
@@ -70,8 +110,10 @@ async def entrypoint(ctx: JobContext):
             metadata = {}
 
     # Get dynamic parameters from metadata
-    custom_instructions = metadata.get('instructions')
-    custom_first_message = metadata.get('first_message', "Hello! How can I help you today?")
+    custom_instructions = metadata.get("instructions")
+    custom_first_message = metadata.get(
+        "first_message", "Hello! How can I help you today?"
+    )
     logger.info("---------------------------------------------")
     logger.info("Custom instructions: %s", custom_instructions)
     logger.info("Custom first message: %s", custom_first_message)
@@ -79,9 +121,12 @@ async def entrypoint(ctx: JobContext):
     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
     session = AgentSession(
         llm=openai.LLM(model="gpt-4.1-mini"),
-        stt=deepgram.STT(model="nova-3", language="multi"),
-        #tts=deepgram.TTS(),
-        tts=elevenlabs.TTS(voice_id="0icWottL1L2MsAigrUBg"),
+        # stt=deepgram.STT(model="nova-3", language="multi"),
+        stt=sarvam.STT(language="unknown", model="saarika:v2.5"),
+        # tts=deepgram.TTS(),
+        tts=sarvam.TTS(
+            target_language_code="en-IN", model="bulbul:v2", speaker="anushka"
+        ),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
@@ -117,7 +162,9 @@ async def entrypoint(ctx: JobContext):
     # Join the room and connect to the user
     await ctx.connect()
 
-    await session.generate_reply(instructions=f"Start the conversation by saying: '{custom_first_message}'")
+    await session.generate_reply(
+        instructions=f"Start the conversation by saying: '{custom_first_message}'"
+    )
 
 
 if __name__ == "__main__":
