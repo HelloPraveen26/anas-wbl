@@ -1,0 +1,180 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+  ParseUUIDPipe,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { RegisteredNumbersService } from './registered-numbers.service';
+import { CreateRegisteredNumberDto } from './dto/create-registered-number.dto';
+import { UpdateRegisteredNumberDto } from './dto/update-registered-number.dto';
+import { RegisteredNumberResponseDto } from './dto/registered-number-response.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+@ApiTags('registered-numbers')
+@Controller('registered-numbers')
+@UseGuards(ThrottlerGuard)
+export class RegisteredNumbersController {
+  constructor(private readonly registeredNumbersService: RegisteredNumbersService) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Create a new registered phone number',
+    description: 'Create a new registered phone number for the authenticated user'
+  })
+  @ApiBody({ type: CreateRegisteredNumberDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Registered number created successfully',
+    type: RegisteredNumberResponseDto,
+    example: {
+      id: 'uuid-here',
+      providerName: 'twilio',
+      friendlyName: 'Balaji k',
+      phoneNo: '+19282185402',
+      livekitOutboundTrunkId: 'ST_xn9xEW6gFR3R',
+      active: true,
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z'
+    }
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  async create(
+    @Request() req,
+    @Body() createRegisteredNumberDto: CreateRegisteredNumberDto,
+  ): Promise<RegisteredNumberResponseDto> {
+    const registeredNumber = await this.registeredNumbersService.create(
+      req.user.id,
+      createRegisteredNumberDto,
+    );
+    return new RegisteredNumberResponseDto(registeredNumber);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get all registered phone numbers',
+    description: 'Retrieve all registered phone numbers for the authenticated user'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Registered numbers retrieved successfully',
+    type: [RegisteredNumberResponseDto],
+    example: [
+      {
+        id: 'uuid-here',
+        providerName: 'twilio',
+        friendlyName: 'Balaji k',
+        phoneNo: '+19282185402',
+        livekitOutboundTrunkId: 'ST_xn9xEW6gFR3R',
+        active: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z'
+      }
+    ]
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  async findAll(@Request() req): Promise<RegisteredNumberResponseDto[]> {
+    const registeredNumbers = await this.registeredNumbersService.findAllByUser(req.user.id);
+    return registeredNumbers.map(number => new RegisteredNumberResponseDto(number));
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get a registered phone number by ID',
+    description: 'Retrieve a specific registered phone number by ID for the authenticated user'
+  })
+  @ApiParam({ name: 'id', description: 'Registered number ID', type: 'string' })
+  @ApiResponse({
+    status: 200,
+    description: 'Registered number retrieved successfully',
+    type: RegisteredNumberResponseDto
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  @ApiResponse({ status: 404, description: 'Registered number not found' })
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+  ): Promise<RegisteredNumberResponseDto> {
+    const registeredNumber = await this.registeredNumbersService.findOne(id, req.user.id);
+    return new RegisteredNumberResponseDto(registeredNumber);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Update a registered phone number',
+    description: 'Update a specific registered phone number for the authenticated user'
+  })
+  @ApiParam({ name: 'id', description: 'Registered number ID', type: 'string' })
+  @ApiBody({ type: UpdateRegisteredNumberDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Registered number updated successfully',
+    type: RegisteredNumberResponseDto
+  })
+  @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  @ApiResponse({ status: 404, description: 'Registered number not found' })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+    @Body() updateRegisteredNumberDto: UpdateRegisteredNumberDto,
+  ): Promise<RegisteredNumberResponseDto> {
+    const registeredNumber = await this.registeredNumbersService.update(
+      id,
+      req.user.id,
+      updateRegisteredNumberDto,
+    );
+    return new RegisteredNumberResponseDto(registeredNumber);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Delete a registered phone number',
+    description: 'Delete a specific registered phone number for the authenticated user'
+  })
+  @ApiParam({ name: 'id', description: 'Registered number ID', type: 'string' })
+  @ApiResponse({
+    status: 200,
+    description: 'Registered number deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Registered number deleted successfully' }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  @ApiResponse({ status: 404, description: 'Registered number not found' })
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+  ): Promise<{ message: string }> {
+    await this.registeredNumbersService.remove(id, req.user.id);
+    return { message: 'Registered number deleted successfully' };
+  }
+}

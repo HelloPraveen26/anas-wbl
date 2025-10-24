@@ -161,11 +161,12 @@ async function bootstrap() {
       "phone",
       "Phone service endpoints - Initiate calls, hangup, and retrieve active call",
     )
-    .addServer("http://localhost:8000", "Development server")
-    .addServer(
-      "https://voice.zenxai.io/",
-      "Production server",
+    .addTag(
+      "registered-numbers",
+      "Registered phone numbers - Manage user's registered phone numbers for voice calls",
     )
+    .addServer("http://localhost:8000", "Development server")
+    .addServer("https://voice.zenxai.io/", "Production server")
     .setContact("API Support", "https://zenxai.io/", "support@zenxai.io")
     .setLicense("MIT", "https://opensource.org/licenses/MIT")
     .build();

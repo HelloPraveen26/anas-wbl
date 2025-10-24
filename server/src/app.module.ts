@@ -14,6 +14,8 @@ import { SynthesizerModule } from "./synthesizer/synthesizer.module";
 import { AssistantModule } from "./assistant/assistant.module";
 import { PromptModule } from "./prompt/prompt.module";
 import { PhoneModule } from "./phone/phone.module";
+import { RegisteredNumbersModule } from "./registered-numbers/registered-numbers.module";
+import { ContactNumbersModule } from "./contact-numbers/contact-numbers.module";
 import { winstonConfig } from "./config/winston.config";
 import { databaseConfig } from "./config/database.config";
 import { throttlerConfig } from "./config/throttler.config";
@@ -59,6 +61,8 @@ import { throttlerConfig } from "./config/throttler.config";
     AssistantModule,
     PromptModule,
     PhoneModule,
+    RegisteredNumbersModule,
+    ContactNumbersModule,
   ],
 })
 export class AppModule {}

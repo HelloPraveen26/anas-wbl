@@ -3,12 +3,12 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 export class SignInDto {
-  @ApiProperty({ description: 'User email address', example: 'john@example.com' })
+  @ApiProperty({ description: 'User email address', example: 'suguna@hexitetechnologies.com' })
   @IsEmail()
   @Transform(({ value }) => value?.toLowerCase().trim())
   email: string;
 
-  @ApiProperty({ description: 'User password', example: 'SecurePassword123!' })
+  @ApiProperty({ description: 'User password', example: 'Password@2025' })
   @IsString()
   @MinLength(1)
   password: string;

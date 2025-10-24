@@ -8,6 +8,8 @@ import {
   OneToMany,
 } from "typeorm";
 import { Exclude } from "class-transformer";
+import { RegisteredNumber } from "../../registered-numbers/entities/registered-number.entity";
+import { ContactNumber } from "../../contact-numbers/entities/contact-number.entity";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -80,6 +82,15 @@ export class User {
 
   @OneToMany("Assistant", "user")
   assistants: any[];
+
+  @OneToMany(
+    () => RegisteredNumber,
+    (registeredNumber) => registeredNumber.user,
+  )
+  registeredNumbers: RegisteredNumber[];
+
+  @OneToMany(() => ContactNumber, (contactNumber) => contactNumber.user)
+  contactNumbers: ContactNumber[];
 
   // Virtual field for full name
   get fullName(): string {

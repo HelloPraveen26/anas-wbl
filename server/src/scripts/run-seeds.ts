@@ -2,6 +2,8 @@ import { AppDataSource } from "../database/data-source";
 import { LlmSeed } from "../database/seeds/llm-seed";
 import { TranscriberSeed } from "../database/seeds/transcriber-seed";
 import { SynthesizerSeed } from "../database/seeds/synthesizer-seed";
+import { RegisteredNumbersSeed } from "../database/seeds/registered-numbers-seed";
+import { ContactNumbersSeed } from "../database/seeds/contact-numbers-seed";
 
 async function runSeeds() {
   try {
@@ -20,6 +22,14 @@ async function runSeeds() {
     console.log("Running Synthesizer seed...");
     const synthesizerSeed = new SynthesizerSeed();
     await synthesizerSeed.run(AppDataSource);
+
+    console.log("Running Registered Numbers seed...");
+    const registeredNumbersSeed = new RegisteredNumbersSeed();
+    await registeredNumbersSeed.run(AppDataSource);
+
+    console.log("Running Contact Numbers seed...");
+    const contactNumbersSeed = new ContactNumbersSeed();
+    await contactNumbersSeed.run(AppDataSource);
 
     console.log("All seeds completed successfully!");
   } catch (error) {

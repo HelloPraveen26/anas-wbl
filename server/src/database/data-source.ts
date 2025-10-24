@@ -10,6 +10,8 @@ import {
   SynthesizerVoice,
 } from "../synthesizer/entities";
 import { Assistant } from "../assistant/entities";
+import { RegisteredNumber } from "../registered-numbers/entities/registered-number.entity";
+import { ContactNumber } from "../contact-numbers/entities/contact-number.entity";
 
 config();
 
@@ -32,6 +34,8 @@ export const AppDataSource = new DataSource({
     SynthesizerModel,
     SynthesizerVoice,
     Assistant,
+    RegisteredNumber,
+    ContactNumber,
   ],
   migrations: [__dirname + "/migrations/*.{ts,js}"],
   migrationsTableName: "migrations",
