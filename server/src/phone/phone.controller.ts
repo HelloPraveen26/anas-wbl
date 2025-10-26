@@ -5,6 +5,7 @@ import {
   Get,
   HttpStatus,
   UseGuards,
+  Request,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -41,8 +42,8 @@ export class PhoneController {
     status: HttpStatus.BAD_REQUEST,
     description: "Invalid input data",
   })
-  async makeCall(@Body() makeCallDto: MakeCallDto) {
-    const result = await this.phoneService.makeCall(makeCallDto);
+  async makeCall(@Body() makeCallDto: MakeCallDto, @Request() req) {
+    const result = await this.phoneService.makeCall(makeCallDto, req.user.id);
     return result;
   }
 

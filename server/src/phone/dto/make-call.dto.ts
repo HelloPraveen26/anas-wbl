@@ -1,10 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import {
-  IsPhoneNumber,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, Matches } from "class-validator";
 
 export class MakeCallDto {
   @ApiProperty({
@@ -12,29 +7,22 @@ export class MakeCallDto {
     example: "+1234567890",
   })
   @IsNotEmpty()
-  @IsPhoneNumber(null, { message: "phone_number must be a valid phone number" })
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: "phone_number must be a valid phone number",
+  })
   phoneNumber: string;
 
   @ApiProperty({
-    description:
-      "System prompt for the AI agent (will be mapped to instructions)",
-    example:
-      "You are an AI Hotel Booking Assistant. Speak with a warm tone and be helpful.",
+    description: "The phone number from, in E.164 format",
+    example: "+19282185402",
     required: false,
+    default: "+19282185402",
   })
   @IsOptional()
-  @IsString()
-  systemPrompt?: string;
-
-  @ApiProperty({
-    description:
-      "First message from the client (will override first_message if provided)",
-    example: "Hello, how can I help you today?",
-    required: false,
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: "fromPhoneNumber must be a valid phone number",
   })
-  @IsOptional()
-  @IsString()
-  firstMessage?: string;
+  fromPhoneNumber?: string;
 
   @ApiProperty({
     description: "Selected assistant ID for tracking purposes",

@@ -51,6 +51,10 @@ export default function PhoneNumbersPage() {
     useState<string>("");
   const [selectedAssistant, setSelectedAssistant] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [activeCalls, setActiveCalls] = useState<Map<string, string>>(
+    new Map(),
+  ); // contactId -> room_name
+  const [callLoading, setCallLoading] = useState<Set<string>>(new Set());
 
   // Helper function to get auth headers
   const getAuthHeaders = () => {
@@ -140,6 +144,114 @@ export default function PhoneNumbersPage() {
       console.error("Error fetching assistants:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const makeCall = async (contactNumber: ContactNumber) => {
+    try {
+      // Add contact to loading state
+      setCallLoading((prev) => new Set([...prev, contactNumber.id]));
+
+      // Get the selected registered number object
+      const selectedRegNumber = registeredNumbers.find(
+        (num) => num.id === selectedRegisteredNumber,
+      );
+
+      if (!selectedRegNumber) {
+        throw new Error("No registered number selected");
+      }
+
+      const response = await fetch(`${getApiBaseUrl()}/phone/make_call`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phoneNumber: contactNumber.phoneNo,
+          fromPhoneNumber: selectedRegNumber.phoneNo,
+          selectedAssistant: selectedAssistant,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Call initiated successfully:", result);
+
+      // Add contact to active calls with room_name
+      if (result.success && result.room_name) {
+        setActiveCalls(
+          (prev) => new Map([...prev, [contactNumber.id, result.room_name]]),
+        );
+      }
+    } catch (error) {
+      console.error("Error making call:", error);
+      // You can add toast notification here if needed
+      alert(
+        `Failed to make call: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    } finally {
+      // Remove from loading state
+      setCallLoading((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(contactNumber.id);
+        return newSet;
+      });
+    }
+  };
+
+  const disconnectCall = async (contactNumber: ContactNumber) => {
+    try {
+      // Add contact to loading state
+      setCallLoading((prev) => new Set([...prev, contactNumber.id]));
+
+      // Get the room_name for this contact
+      const roomName = activeCalls.get(contactNumber.id);
+      if (!roomName) {
+        throw new Error("No active call found for this contact");
+      }
+
+      const response = await fetch(`${getApiBaseUrl()}/phone/hangup`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          room_name: roomName,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Call disconnected successfully:", result);
+
+      // Remove contact from active calls
+      setActiveCalls((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(contactNumber.id);
+        return newMap;
+      });
+    } catch (error) {
+      console.error("Error disconnecting call:", error);
+      alert(
+        `Failed to disconnect call: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    } finally {
+      // Remove from loading state
+      setCallLoading((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(contactNumber.id);
+        return newSet;
+      });
     }
   };
 
@@ -321,20 +433,29 @@ export default function PhoneNumbersPage() {
                       {contact.phoneNo}
                     </div>
                   </div>
-                  <button
-                    className="px-3 py-1 text-sm bg-teal-100 text-teal-700 rounded-md hover:bg-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={!selectedRegisteredNumber || !selectedAssistant}
-                    onClick={() => {
-                      // Future API call will go here
-                      console.log("Call button clicked:", {
-                        assistantId: selectedAssistant,
-                        registeredNumberId: selectedRegisteredNumber,
-                        contactId: contact.id,
-                      });
-                    }}
-                  >
-                    Call
-                  </button>
+                  {activeCalls.has(contact.id) ? (
+                    <button
+                      className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={callLoading.has(contact.id)}
+                      onClick={() => disconnectCall(contact)}
+                    >
+                      {callLoading.has(contact.id)
+                        ? "Disconnecting..."
+                        : "Disconnect"}
+                    </button>
+                  ) : (
+                    <button
+                      className="px-3 py-1 text-sm bg-teal-100 text-teal-700 rounded-md hover:bg-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={
+                        !selectedRegisteredNumber ||
+                        !selectedAssistant ||
+                        callLoading.has(contact.id)
+                      }
+                      onClick={() => makeCall(contact)}
+                    >
+                      {callLoading.has(contact.id) ? "Calling..." : "Call"}
+                    </button>
+                  )}
                 </div>
               ))}
               {contactNumbers.length === 0 && !loading && (

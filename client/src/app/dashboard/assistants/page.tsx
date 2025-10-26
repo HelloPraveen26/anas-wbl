@@ -177,8 +177,6 @@ export default function AssistantsPage() {
         },
         body: JSON.stringify({
           phoneNumber: phoneNumber,
-          firstMessage: firstMessage,
-          systemPrompt: systemPrompt,
           selectedAssistant: selectedAssistant,
         }),
       });

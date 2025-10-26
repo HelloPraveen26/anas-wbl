@@ -5,6 +5,7 @@ import { firstValueFrom } from "rxjs";
 import { AxiosResponse } from "axios";
 import { MakeCallDto } from "../dto/make-call.dto";
 import { HangupDto } from "../dto/hangup.dto";
+import { AssistantService } from "../../assistant/assistant.service";
 
 @Injectable()
 export class PhoneService {
@@ -14,6 +15,7 @@ export class PhoneService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly assistantService: AssistantService,
   ) {
     this.baseUrl =
       this.configService.get<string>("PHONE_SERVICE_URL") ||
@@ -25,18 +27,39 @@ export class PhoneService {
    * @param dto MakeCallDto containing the phone_number to call
    * @returns AxiosResponse<any> with { success: boolean, call_id?: string }
    */
-  async makeCall(dto: MakeCallDto): Promise<any> {
+  async makeCall(dto: MakeCallDto, userId: string): Promise<any> {
     try {
-      // Log the selected assistant for tracking
+      let systemPrompt = "";
+      let firstMessage = "";
+
+      // Get systemPrompt and firstMessage from assistant if selectedAssistant is provided
       if (dto.selectedAssistant) {
         this.logger.log(
           `Making call with selected assistant: ${dto.selectedAssistant}`,
         );
+
+        // Note: We need userId to fetch assistant, but it's not available in this context
+        // This might need to be passed from the controller or extracted from request context
+        try {
+          const assistant = await this.assistantService.findOne(
+            dto.selectedAssistant,
+            userId,
+          );
+          systemPrompt = assistant.systemPrompt;
+          firstMessage = assistant.firstMessage;
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch assistant ${dto.selectedAssistant}:`,
+            error.message,
+          );
+        }
       }
+
       const payload = {
         phone_number: dto.phoneNumber,
-        ...(dto.systemPrompt && { instructions: dto.systemPrompt }),
-        ...(dto.firstMessage && { first_message: dto.firstMessage }),
+        from_phone_number: dto.fromPhoneNumber || "+19282185402",
+        ...(systemPrompt && { instructions: systemPrompt }),
+        ...(firstMessage && { first_message: firstMessage }),
       };
       this.logger.log(payload);
       const { data } = await firstValueFrom(
