@@ -56,6 +56,13 @@ export default function PhoneNumbersPage() {
   ); // contactId -> room_name
   const [callLoading, setCallLoading] = useState<Set<string>>(new Set());
 
+  // Twilio form state
+  const [twilioForm, setTwilioForm] = useState({
+    accountSid: "",
+    authToken: "",
+    address: "",
+  });
+
   // Helper function to get auth headers
   const getAuthHeaders = () => {
     const token = authManager.getToken();
@@ -142,6 +149,65 @@ export default function PhoneNumbersPage() {
       }
     } catch (error) {
       console.error("Error fetching assistants:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Twilio import function
+  const importTwilioNumbers = async () => {
+    try {
+      setLoading(true);
+      const token = authManager.getToken();
+      if (!token) {
+        alert("Authentication token not found");
+        return;
+      }
+
+      if (
+        !twilioForm.accountSid ||
+        !twilioForm.authToken ||
+        !twilioForm.address
+      ) {
+        alert("Please fill in all required fields");
+        return;
+      }
+
+      const response = await fetch(
+        `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-twilio`,
+        {
+          method: "POST",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            accountSid: twilioForm.accountSid,
+            authToken: twilioForm.authToken,
+            address: twilioForm.address,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      alert(
+        `Successfully imported ${data.importedCount} phone numbers from Twilio`,
+      );
+
+      // Close modal and refresh registered numbers
+      setOpenModal(false);
+      setTwilioForm({ accountSid: "", authToken: "", address: "" });
+      await fetchRegisteredNumbers();
+    } catch (error) {
+      console.error("Error importing Twilio numbers:", error);
+      alert(
+        `Error importing Twilio numbers: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -297,16 +363,6 @@ export default function PhoneNumbersPage() {
             Documentation
           </button> */}
         </div>
-        {/* SIP Search - FIX APPLIED HERE: Added 'text-gray-900' */}
-        <div className="relative mb-4">
-          <input
-            type="text"
-            placeholder="Search name, number, SIP..."
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-teal-500 focus:outline-none"
-          />
-          <Search className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
-        </div>
-
         {/* Registered Numbers Section */}
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-3">
@@ -531,12 +587,19 @@ export default function PhoneNumbersPage() {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">
-                          API Key
+                          Account SID
                         </label>
                         <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
+                          type="text"
+                          value={twilioForm.accountSid}
+                          onChange={(e) =>
+                            setTwilioForm((prev) => ({
+                              ...prev,
+                              accountSid: e.target.value,
+                            }))
+                          }
                           className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="Provider API Key"
+                          placeholder="Account SID"
                         />
                       </div>
                       <div>
@@ -544,19 +607,33 @@ export default function PhoneNumbersPage() {
                           API Secret
                         </label>
                         <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
+                          type="text"
+                          value={twilioForm.authToken}
+                          onChange={(e) =>
+                            setTwilioForm((prev) => ({
+                              ...prev,
+                              authToken: e.target.value,
+                            }))
+                          }
                           className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
                           placeholder="API Secret"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 text-left">
-                          Account SID
+                          Address
                         </label>
                         <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
+                          type="text"
+                          value={twilioForm.address}
+                          onChange={(e) =>
+                            setTwilioForm((prev) => ({
+                              ...prev,
+                              address: e.target.value,
+                            }))
+                          }
                           className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="Account SID"
+                          placeholder="zenvoice-test-trunk.pstn.twilio.com"
                         />
                       </div>
                     </>
@@ -627,8 +704,20 @@ export default function PhoneNumbersPage() {
                   >
                     Close
                   </button>
-                  <button className="px-4 py-2 rounded-md bg-teal-600 text-white hover:bg-teal-700">
-                    Import
+                  <button
+                    onClick={
+                      activeTab === "twilio" ? importTwilioNumbers : undefined
+                    }
+                    disabled={
+                      loading ||
+                      (activeTab === "twilio" &&
+                        (!twilioForm.accountSid ||
+                          !twilioForm.authToken ||
+                          !twilioForm.address))
+                    }
+                    className="px-4 py-2 rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {loading ? "Importing..." : "Import"}
                   </button>
                 </div>
               </div>
