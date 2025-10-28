@@ -1,21 +1,20 @@
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Chrome, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { api, ApiError, SignInRequest } from "@/lib/api";
-import { authManager } from "@/lib/auth";
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Chrome, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft, Users, TrendingUp, Award, Zap, Mic2, Brain } from 'lucide-react';
+// Assuming '@/lib/api' and '@/lib/auth' are correctly set up
+import { api, ApiError, SignInRequest } from '@/lib/api'; 
+import { authManager } from '@/lib/auth';
 
 // Import your logos
-import BlogLogo from "@/assets/logo1.png";
-import BlogLogo2 from "@/assets/logo2.png";
+// IMPORTANT: Replace these with your actual logo paths/components
+import BlogLogo from "@/assets/logo1.png"; // ZenVoice text logo placeholder
+import favicon from "@/assets/favicon.png"; // ZenXai logo placeholder
+import newlogo from "@/assets/newlogo.png";
+import greeny from "@/assets/greeny.jpg";
 
 interface FormData {
   email: string;
@@ -28,10 +27,30 @@ interface FormErrors {
   general?: string;
 }
 
+// Define the feature data for the left panel showcase
+const features = [
+  {
+    icon: Mic2,
+    title: "Multilingual Agents",
+    color: "text-blue-600",
+  },
+  {
+    icon: Brain,
+    title: "AI-Powered Intelligence",
+    color: "text-purple-600",
+  },
+  {
+    icon: TrendingUp,
+    title: "Scalable Management",
+    color: "text-green-600",
+  },
+];
+
+
 export default function SignIn() {
   const [formData, setFormData] = useState<FormData>({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -39,18 +58,20 @@ export default function SignIn() {
   const [errors, setErrors] = useState<FormErrors>({});
   const router = useRouter();
 
+  // --- Form Logic (Keeping original logic for functionality) ---
+
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = 'Email is required';
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = 'Please enter a valid email address';
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = 'Password is required';
     }
 
     setErrors(newErrors);
@@ -59,10 +80,10 @@ export default function SignIn() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
 
     if (errors[name as keyof FormErrors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }));
+      setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -86,14 +107,14 @@ export default function SignIn() {
 
       if (response.success && response.data) {
         authManager.setAuth(response.data.user, response.data.token);
-        router.push("/dashboard/assistants");
+        router.push('/dashboard/assistants');
       }
     } catch (error) {
-      console.error("Sign in error:", error);
+      console.error('Sign in error:', error);
 
       if (error instanceof ApiError) {
         if (error.statusCode === 401) {
-          setErrors({ general: "Invalid email or password" });
+          setErrors({ general: 'Invalid email or password' });
         } else if (error.statusCode === 400 && error.data?.errors) {
           const serverErrors: FormErrors = {};
           error.data.errors.forEach((err: any) => {
@@ -109,7 +130,7 @@ export default function SignIn() {
         }
       } else {
         setErrors({
-          general: "An unexpected error occurred. Please try again.",
+          general: 'An unexpected error occurred. Please try again.',
         });
       }
     } finally {
@@ -119,187 +140,270 @@ export default function SignIn() {
 
   const handleGoogleSignIn = () => {
     setErrors({
-      general:
-        "Google sign-in is not implemented yet. Please use email/password.",
+      general: 'Google sign-in is not implemented yet. Please use email/password.',
     });
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      {/* Back button - compact */}
-      <Link
-        href="/"
-        className="absolute top-4 left-4 z-50 flex items-center group hover:bg-white rounded-lg p-2 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4 text-gray-600 mr-2" />
-        <Image
-          src={BlogLogo}
-          alt=""
-          width={24}
-          height={24}
-          className="rounded mr-2"
-        />
-        <Image
-          src={BlogLogo2}
-          alt=""
-          width={60}
-          height={60}
-          className="rounded"
-        />
-      </Link>
+  // --- Render Component ---
 
-      {/* Main card - compact */}
-      <Card className="w-full max-w-md bg-white shadow-lg border border-gray-200 rounded-2xl">
-        <CardContent className="p-8">
+  return (
+    // Use min-h-screen and flex to fill the viewport and align children side-by-side
+    <div className="min-h-screen bg-white flex">
+
+      {/* ========================================================= */}
+      {/* LEFT SIDE - WELCOME SECTION (PREMIUM WHITE BACKGROUND)    */}
+      {/* ========================================================= */}
+      <div className="hidden lg:flex lg:w-1/2 relative p-12 flex-col justify-between bg-gray-50/50">
+        {/* Subtle Background Graphic: Adds a professional texture */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#4b5563_1px,transparent_3px)] [background-size:16px_16px]"></div>
+        
+        <div className="relative z-10 flex flex-col h-full">
+
+          {/* Main Content: Value Proposition Showcase */}
+          <div className="flex-grow flex items-center justify-center">
+            <div className="space-y-12 w-full max-w-lg">
+                <div className="space-y-4">
+                  {/* Company Logo */}
+                  <div className="mr-12">
+                    <img
+                      src={newlogo.src}
+                      alt="Company Logo"
+                      className="max-w-[150px] w-full h-auto"
+                    />
+                  </div>
+                  <span className="text-sm font-semibold text-green-600 uppercase tracking-wider bg-green-100 px-3 py-1 rounded-full inline-block">
+                    Get Started
+                  </span>
+                  <h1 className="text-4xl font-extrabold text-gray-900 leading-snug">
+    <span className="text-green-600">Unlock </span>
+    <span className="text-black-600">Powerful,</span>
+    <span className="text-green-600"> ZenVoice Agents.</span>
+</h1>
+                  <p className="text-gray-600 text-lg">
+                    Create your account to start managing your multilingual voice assistants instantly.
+                  </p>
+                </div>
+                
+                {/* Feature Grid (REPLICATED) */}
+                {/* <div className="space-y-6 pt-4">
+                  {features.map((feature, index) => (
+                    <div key={index} className="flex items-start space-x-4 p-4 rounded-xl bg-white shadow-lg transition duration-300 hover:shadow-xl hover:scale-[1.01]">
+                      <div className={`p-3 rounded-full ${feature.color} bg-gray-100/70 shadow-inner`}>
+                        <feature.icon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{feature.title}</h3>
+                        <p className="text-sm text-gray-500 mt-1">{feature.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div> */}
+              </div>
+          </div>
+          
+          {/* Footer Quote/Testimonial */}
+          <footer className="text-center text-gray-500 text-sm italic">
+            "The most seamless way to deploy AI-driven voice experiences."
+          </footer>
+        </div>
+      </div>
+
+    
+      {/* ========================================================= */}
+      {/* RIGHT SIDE - SIGN IN FORM (WITH GRADIENT & DOTTED DESIGN) */}
+      {/* ========================================================= */}
+      {/* Applied the custom class to include both the gradient and the dotted pattern */}
+<div className="w-full lg:w-1/2 text-white relative flex flex-col items-center justify-center p-8 lg:p-12 -pt-12 rounded-2xl m-4 lg:m-8" style={{
+  backgroundImage: `repeating-radial-gradient(circle at center, rgba(255, 255, 255, 0.04) 1px, transparent 4px), linear-gradient(to bottom right, #41adad3b, #000000), url(${greeny.src})`,
+  backgroundSize: '100% 100%, 100% 100%, cover',
+  backgroundPosition: 'center, center, center',
+  backgroundRepeat: 'no-repeat, no-repeat, no-repeat',
+  backgroundColor: '#0F172A'
+}}>
+        {/* Abstract Gradient/Blob: Subtle tech aesthetic to break the flat background */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+        <div className="absolute bottom-10 left-10 w-48 h-48 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+
+        <div className="w-full max-w-md relative z-10">
+            
+        
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-xl flex items-center justify-center">
-              <Image
-                src={BlogLogo}
-                alt="Logo"
-                width={32}
-                height={32}
-                className="rounded-lg"
-              />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Welcome back
-            </h1>
-            <p className="text-gray-600 text-sm">
-              Sign in to your account to continue
-            </p>
+          <div className="mb-10 mt-12 lg:mt-0">
+            <h2 className="text-4xl font-extrabold text-white relative flex justify-center">Welcome Back !</h2>
+            <p className="text-gray-400 text-lg relative flex justify-center mt-2">Log in to your dashboard</p>
           </div>
 
-          {/* Error Alert */}
+          {/* Error Alert - Enhanced for better contrast/depth */}
           {errors.general && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{errors.general}</AlertDescription>
-            </Alert>
+            <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-xl flex items-start shadow-md">
+              <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+              <span className="text-sm text-red-200">{errors.general}</span>
+            </div>
           )}
 
-          <div className="space-y-6">
-            {/* Google Sign In */}
-            <Button
-              onClick={handleGoogleSignIn}
-              variant="outline"
-              className="w-full h-11 font-medium border-gray-300 hover:bg-gray-50 transition-colors"
-              disabled={isLoading}
-            >
-              <Chrome className="w-4 h-4 mr-2 text-blue-600" />
-              Continue with Google
-            </Button>
+          {/* Google Button - Enhanced with subtle shadow and border */}
+          <button
+            onClick={handleGoogleSignIn}
+            className="w-full h-12 border-2 border-gray-700 rounded-xl flex items-center justify-center bg-gray-800 hover:bg-gray-700 transition-all duration-200 mb-6 text-white font-semibold shadow-lg hover:shadow-xl"
+            disabled={isLoading}
+          >
+            <Chrome className="w-5 h-5 mr-3" />
+            <span>Continue with Google</span>
+          </button>
 
-            {/* Divider */}
-            <div className="relative">
-              <Separator className="bg-gray-300" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-white px-3 text-xs text-gray-500 font-medium">
-                  OR
-                </span>
-              </div>
+          {/* Divider - Cleaned up */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-700/60"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="px-4 text-sm text-gray-400 bg-gray-150 font-medium">OR SIGN IN WITH EMAIL</span>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleEmailSignIn} className="space-y-6">
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-400 mb-2">
+                Email Address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={handleInputChange}
+                // Input styling: Deeper background, pronounced blue focus, rounded-xl
+                className={`w-full h-12 px-4 border-2 rounded-xl focus:outline-none  bg-gray-800 text-white placeholder-gray-500 shadow-inner ${
+                  errors.email
+                    ? 'border-red-500 focus:border-green-500'
+                    : 'border-gray-700 focus:border-green-700  '
+                }`}
+                disabled={isLoading}
+                required
+              />
+              {errors.email && (
+
+                <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.email}</p>
+              )}
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleEmailSignIn} className="space-y-4">
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={formData.password}
                   onChange={handleInputChange}
-                  className={`h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                    errors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
+                  // Input styling: Deeper background, pronounced blue focus, rounded-xl
+                className={`w-full h-12 px-4 border-2 rounded-xl focus:outline-none  bg-gray-800 text-white placeholder-gray-500 shadow-inner ${
+                    errors.password
+                      ? 'border-red-500 focus:border-green-500'
+                    : 'border-gray-700 focus:border-green-700  '
                   }`}
                   disabled={isLoading}
                   required
                 />
-                {errors.email && (
-                  <p className="text-red-500 text-xs">{errors.email}</p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400 transition-colors"
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
+              {errors.password && (
+                <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.password}</p>
+              )}
+            </div>
 
-              {/* Password */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className={`h-11 pr-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500 ${
-                      errors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""
-                    }`}
-                    disabled={isLoading}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    disabled={isLoading}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-red-500 text-xs">{errors.password}</p>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  "Sign in"
-                )}
-              </Button>
-            </form>
-
-            {/* Links */}
-            <div className="text-center space-y-3">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            {/* Remember Me & Forgot Password - Increased separation and visibility */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  // Checkbox styling adjusted
+                  className="w-4 h-4 border-2 border-gray-600 rounded focus:ring-2 focus:ring-blue-500 bg-gray-800 checked:bg-blue-500 checked:border-blue-500 cursor-pointer transition-colors"
+                />
+                <span className="ml-3 text-sm text-gray-400 font-medium">Remember me</span>
+              </label>
+              <Link 
+                href="/forgot-password" 
+                className="text-sm text-blue-400 font-semibold hover:text-blue-300 transition-colors"
               >
                 Forgot password?
               </Link>
-              <p className="text-sm text-gray-600">
-                Don't have an account?{" "}
-                <Link
-                  href="/signup"
-                  className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
-                >
-                  Sign up
-                </Link>
-              </p>
             </div>
+
+            {/* Submit Button - Elevated with strong blue color and shadow */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-12 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg  transform hover:scale-[1.005]"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                'Sign In'
+              )}
+            </button>
+          </form>
+
+          {/* Footer - Cleaned up */}
+          <div className="mt-8 text-center pb-12 lg:pb-0">
+            <p className="text-sm text-gray-400">
+              Don't have an account?{' '}
+              <Link href="/signup" className="text-blue-500 font-bold hover:text-blue-400 transition-colors">
+                Create Account
+              </Link>
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+      {/* Add a simple CSS animation for the blob effect and the dotted background pattern */}
+      <style jsx global>{`
+        @keyframes blob {
+          0%, 100% {
+            transform: translate(0, 0) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 20px) scale(0.9);
+          }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+
+        /* Custom Class for Layered Background: Dots OVER Gradient */
+        .dotted-gradient-background {
+          background-image:
+            /* 1. Dotted pattern */
+            repeating-radial-gradient(circle at center, rgba(255, 255, 255, 0.04) 1px, transparent 4px),
+            /* 2. Gradient (Deep Dark) */
+            linear-gradient(to bottom right, #41adad3b, #000000);
+          background-size: 100% 100%;
+          background-color: #0F172A; /* Fallback color */
+        }
+        }
+      `}</style>
     </div>
   );
 }
