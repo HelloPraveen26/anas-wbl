@@ -14,7 +14,7 @@ export class UpdateRegisteredNumberDto {
 
   @ApiPropertyOptional({
     description: 'Friendly name for the number',
-    example: 'Balaji k',
+    example: 'Suguna',
     maxLength: 255,
   })
   @IsOptional()
