@@ -8,6 +8,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { ConfigService } from "@nestjs/config";
 import { Repository } from "typeorm";
 import { SipClient } from "livekit-server-sdk";
+import { SIPTransport } from "@livekit/protocol";
 import * as twilio from "twilio";
 import { RegisteredNumber } from "./entities/registered-number.entity";
 import { CreateRegisteredNumberDto } from "./dto/create-registered-number.dto";
@@ -118,25 +119,32 @@ export class RegisteredNumbersService {
         LIVEKIT_API_KEY,
         LIVEKIT_API_SECRET,
       );
-      const trunk = await sipClient.createSipOutboundTrunk(
-        `Twilio Trunk ${new Date().toISOString()}`,
-        address,
-        ["*"],
-      );
-      this.logger.log(`Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId}`);
       const client = twilio(accountSid, authToken);
       const numbers = await client.incomingPhoneNumbers.list({ limit: 20 });
       if (numbers.length === 0) {
         this.logger.warn("No phone numbers found in Twilio account");
         return {
           importedCount: 0,
-          livekitOutboundTrunkId: trunk.sipTrunkId,
           importedNumbers: [],
           message: "No phone numbers found in Twilio account to import",
         };
       }
       const importedNumbers = [];
+      const trunkOptions = {
+        transport: SIPTransport.SIP_TRANSPORT_AUTO,
+        auth_username: "sample",
+        auth_password: "Sample@123456",
+      };
       for (const number of numbers) {
+        let trunk = await sipClient.createSipOutboundTrunk(
+          `Twilio Trunk ${new Date().toISOString()}`,
+          address,
+          [number.phoneNumber], //TODO: pass all numbers into array
+          trunkOptions,
+        );
+        this.logger.log(
+          `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for ${number.phoneNumber}`,
+        );
         const registeredNumber = this.registeredNumberRepository.create({
           providerName: "twilio",
           friendlyName: number.friendlyName || number.phoneNumber,
@@ -159,7 +167,6 @@ export class RegisteredNumbersService {
 
       const response: ImportTwilioResponseDto = {
         importedCount: importedNumbers.length,
-        livekitOutboundTrunkId: trunk.sipTrunkId,
         importedNumbers,
         message: `Successfully imported ${importedNumbers.length} phone numbers from Twilio`,
       };

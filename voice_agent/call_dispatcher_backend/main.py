@@ -34,15 +34,18 @@ class CallRequest(BaseModel):
         examples=["+1234567890", "+441234567890", "+919876543210", "+8613912345678"],
         pattern=r"^\+[1-9]\d{1,14}$",
     )
+    outbound_trunk_id: str = Field(
+        ...,
+        description="Outbound trunk ID to use for the call",
+        examples=["trunk1", "trunk2", "trunk3"],
+    )
 
     instructions: Optional[str] = Field(
-        None,
-        description="Custom instructions for the AI agent"
+        None, description="Custom instructions for the AI agent"
     )
 
     first_message: Optional[str] = Field(
-        None,
-        description="Custom first message the agent should say"
+        None, description="Custom first message the agent should say"
     )
 
     @validator("phone_number")
@@ -61,7 +64,7 @@ class CallRequest(BaseModel):
             "example": {
                 "phone_number": "+1234567890",
                 "instructions": "You are a friendly customer service agent",
-                "first_message": "Hello! How can I help you today?"
+                "first_message": "Hello! How can I help you today?",
             },
             "description": "Request body for initiating a phone call with custom agent behavior",
         }
@@ -168,7 +171,7 @@ logger.setLevel(logging.INFO)
 # Add console handler to make logs visible
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
@@ -181,11 +184,12 @@ lk_api_key = os.getenv("LIVEKIT_API_KEY", "")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],      # <-- allow all origins
+    allow_origins=["*"],  # <-- allow all origins
     allow_credentials=True,
-    allow_methods=["*"],      # <-- allow GET, POST, OPTIONS, DELETE, etc.
-    allow_headers=["*"],      # <-- allow Content-Type, Authorization, etc.
+    allow_methods=["*"],  # <-- allow GET, POST, OPTIONS, DELETE, etc.
+    allow_headers=["*"],  # <-- allow Content-Type, Authorization, etc.
 )
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -226,7 +230,7 @@ async def health_check():
     }
 
 
-async def make_call(metadata, room_name, phone_number):
+async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
     """Create a dispatch and add a SIP participant to call the phone number"""
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -348,6 +352,7 @@ async def make_call(metadata, room_name, phone_number):
 async def make_call_endpoint(request: CallRequest):
     """Endpoint to initiate a call to the provided phone number"""
     # Extract parameters from request (already validated by pydantic)
+    outbound_trunk_id = request.outbound_trunk_id
     phone_number = request.phone_number
     instructions = request.instructions
     first_message = request.first_message
@@ -383,7 +388,7 @@ async def make_call_endpoint(request: CallRequest):
 
         # Make the call
         sip_details, dispatch = await make_call(
-            json.dumps(metadata), room_name, phone_number
+            json.dumps(metadata), room_name, phone_number, outbound_trunk_id
         )
 
         logger.info(

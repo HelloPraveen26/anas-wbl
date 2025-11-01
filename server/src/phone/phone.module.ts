@@ -4,10 +4,11 @@ import { ApiTags } from "@nestjs/swagger";
 import { PhoneController } from "./phone.controller";
 import { PhoneService } from "./services/phone.service";
 import { AssistantModule } from "../assistant/assistant.module";
+import { RegisteredNumbersModule } from "../registered-numbers/registered-numbers.module";
 
 @ApiTags("phone")
 @Module({
-  imports: [HttpModule, AssistantModule],
+  imports: [HttpModule, AssistantModule, RegisteredNumbersModule],
   controllers: [PhoneController],
   providers: [PhoneService],
 })

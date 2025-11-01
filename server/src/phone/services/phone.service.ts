@@ -6,6 +6,7 @@ import { AxiosResponse } from "axios";
 import { MakeCallDto } from "../dto/make-call.dto";
 import { HangupDto } from "../dto/hangup.dto";
 import { AssistantService } from "../../assistant/assistant.service";
+import { RegisteredNumbersService } from "../../registered-numbers/registered-numbers.service";
 
 @Injectable()
 export class PhoneService {
@@ -16,6 +17,7 @@ export class PhoneService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly assistantService: AssistantService,
+    private readonly registeredNumbersService: RegisteredNumbersService,
   ) {
     this.baseUrl =
       this.configService.get<string>("PHONE_SERVICE_URL") ||
@@ -55,9 +57,28 @@ export class PhoneService {
         }
       }
 
+      // Get livekitOutboundTrunkId from registered number using fromPhoneNumber
+      const fromPhoneNumber = dto.fromPhoneNumber || "+19282185402";
+      const registeredNumbers =
+        await this.registeredNumbersService.findAllByUser(userId);
+      const registeredNumber = registeredNumbers.find(
+        (num) => num.phoneNo === fromPhoneNumber,
+      );
+
+      if (!registeredNumber || !registeredNumber.livekitOutboundTrunkId) {
+        this.logger.error(
+          `Outbound trunk ID missing for phone number: ${fromPhoneNumber}`,
+        );
+        throw new HttpException(
+          "Outbound trunk ID missing for the selected phone number",
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
       const payload = {
         phone_number: dto.phoneNumber,
-        from_phone_number: dto.fromPhoneNumber || "+19282185402",
+        from_phone_number: fromPhoneNumber,
+        outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
         ...(systemPrompt && { instructions: systemPrompt }),
         ...(firstMessage && { first_message: firstMessage }),
       };
