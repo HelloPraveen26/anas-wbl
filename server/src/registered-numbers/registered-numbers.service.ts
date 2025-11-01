@@ -103,7 +103,8 @@ export class RegisteredNumbersService {
   ): Promise<ImportTwilioResponseDto> {
     this.logger.log(`Starting Twilio number import for user: ${userId}`);
 
-    const { accountSid, authToken, address } = importDto;
+    const { accountSid, authToken, address, authUsername, authPassword } =
+      importDto;
     const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
     const LIVEKIT_API_SECRET =
       this.configService.get<string>("LIVEKIT_API_SECRET");
@@ -132,8 +133,8 @@ export class RegisteredNumbersService {
       const importedNumbers = [];
       const trunkOptions = {
         transport: SIPTransport.SIP_TRANSPORT_AUTO,
-        auth_username: "sample",
-        auth_password: "Sample@123456",
+        auth_username: authUsername,
+        auth_password: authPassword,
       };
       for (const number of numbers) {
         let trunk = await sipClient.createSipOutboundTrunk(

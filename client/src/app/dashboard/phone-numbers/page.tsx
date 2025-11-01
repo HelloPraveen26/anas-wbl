@@ -77,7 +77,8 @@ export default function PhoneNumbersPage() {
   // UI state
   const [openModal, setOpenModal] = useState(false);
   const [showAllNumbersModal, setShowAllNumbersModal] = useState(false);
-  const [showAllRegisteredNumbersModal, setShowAllRegisteredNumbersModal] = useState(false);
+  const [showAllRegisteredNumbersModal, setShowAllRegisteredNumbersModal] =
+    useState(false);
   const [activeTab, setActiveTab] = useState<"twilio" | "exotel">("twilio");
   const [loading, setLoading] = useState(false);
 
@@ -110,6 +111,8 @@ export default function PhoneNumbersPage() {
     accountSid: "",
     authToken: "",
     address: "",
+    authUsername: "",
+    authPassword: "",
   });
 
   // Exotel form
@@ -232,7 +235,13 @@ export default function PhoneNumbersPage() {
         alert("Authentication token not found");
         return;
       }
-      if (!twilioForm.accountSid || !twilioForm.authToken || !twilioForm.address) {
+      if (
+        !twilioForm.accountSid ||
+        !twilioForm.authToken ||
+        !twilioForm.address ||
+        !twilioForm.authUsername ||
+        !twilioForm.authPassword
+      ) {
         alert("Please fill in all required fields");
         return;
       }
@@ -248,6 +257,8 @@ export default function PhoneNumbersPage() {
             accountSid: twilioForm.accountSid,
             authToken: twilioForm.authToken,
             address: twilioForm.address,
+            authUsername: twilioForm.authUsername,
+            authPassword: twilioForm.authPassword,
           }),
         },
       );
@@ -256,13 +267,23 @@ export default function PhoneNumbersPage() {
         throw new Error(d.message || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      alert(`Successfully imported ${data.importedCount ?? 0} phone numbers from Twilio`);
+      alert(
+        `Successfully imported ${data.importedCount ?? 0} phone numbers from Twilio`,
+      );
       setOpenModal(false);
-      setTwilioForm({ accountSid: "", authToken: "", address: "" });
+      setTwilioForm({
+        accountSid: "",
+        authToken: "",
+        address: "",
+        authUsername: "",
+        authPassword: "",
+      });
       await fetchRegisteredNumbers();
     } catch (err) {
       console.error("importTwilioNumbers error:", err);
-      alert(`Error importing Twilio numbers: ${err instanceof Error ? err.message : "Unknown error"}`);
+      alert(
+        `Error importing Twilio numbers: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -276,7 +297,13 @@ export default function PhoneNumbersPage() {
         alert("Authentication token not found");
         return;
       }
-      if (!exotelForm.apiKey || !exotelForm.apiToken || !exotelForm.accountSid || !exotelForm.subdomain || !exotelForm.appId) {
+      if (
+        !exotelForm.apiKey ||
+        !exotelForm.apiToken ||
+        !exotelForm.accountSid ||
+        !exotelForm.subdomain ||
+        !exotelForm.appId
+      ) {
         alert("Please fill in all required fields");
         return;
       }
@@ -302,13 +329,23 @@ export default function PhoneNumbersPage() {
         throw new Error(d.message || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      alert(`Successfully imported ${data.importedCount ?? 0} phone numbers from Exotel`);
+      alert(
+        `Successfully imported ${data.importedCount ?? 0} phone numbers from Exotel`,
+      );
       setOpenModal(false);
-      setExotelForm({ apiKey: "", apiToken: "", accountSid: "", subdomain: "", appId: "" });
+      setExotelForm({
+        apiKey: "",
+        apiToken: "",
+        accountSid: "",
+        subdomain: "",
+        appId: "",
+      });
       await fetchRegisteredNumbers();
     } catch (err) {
       console.error("importExotelNumbers error:", err);
-      alert(`Error importing Exotel numbers: ${err instanceof Error ? err.message : "Unknown error"}`);
+      alert(
+        `Error importing Exotel numbers: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -346,11 +383,15 @@ export default function PhoneNumbersPage() {
       // If websocket is present, the server should broadcast call status which will update activeCalls.
       // But we still update optimistically if server returns room_name
       if (result.success && result.room_name) {
-        setActiveCalls((prev) => new Map(prev).set(contact.id, result.room_name));
+        setActiveCalls((prev) =>
+          new Map(prev).set(contact.id, result.room_name),
+        );
       }
     } catch (err) {
       console.error("makeCall error:", err);
-      alert(`Failed to make call: ${err instanceof Error ? err.message : "Unknown error"}`);
+      alert(
+        `Failed to make call: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       // remove loading
       setCallLoading((prev) => {
@@ -390,7 +431,9 @@ export default function PhoneNumbersPage() {
       });
     } catch (err) {
       console.error("disconnectCall error:", err);
-      alert(`Failed to disconnect call: ${err instanceof Error ? err.message : "Unknown error"}`);
+      alert(
+        `Failed to disconnect call: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       setCallLoading((prev) => {
         const s = new Set(prev);
@@ -446,7 +489,17 @@ export default function PhoneNumbersPage() {
         reconnectAttemptsRef.current = 0;
         // optionally request initial state
         try {
-          ws.send(JSON.stringify({ type: "subscribe", channels: ["registered_numbers", "contact_numbers", "assistants", "active_calls"] }));
+          ws.send(
+            JSON.stringify({
+              type: "subscribe",
+              channels: [
+                "registered_numbers",
+                "contact_numbers",
+                "assistants",
+                "active_calls",
+              ],
+            }),
+          );
         } catch (e) {
           // ignore send errors
         }
@@ -459,14 +512,22 @@ export default function PhoneNumbersPage() {
           if (!payload || !payload.type) return;
           switch (payload.type) {
             case "registered_numbers":
-              setRegisteredNumbers(Array.isArray(payload.data) ? payload.data : []);
+              setRegisteredNumbers(
+                Array.isArray(payload.data) ? payload.data : [],
+              );
               break;
             case "contact_numbers":
-              setContactNumbers(Array.isArray(payload.data) ? payload.data : []);
+              setContactNumbers(
+                Array.isArray(payload.data) ? payload.data : [],
+              );
               break;
             case "assistants":
               setAssistants(Array.isArray(payload.data) ? payload.data : []);
-              if ((!selectedAssistant || selectedAssistant === "") && Array.isArray(payload.data) && payload.data.length > 0) {
+              if (
+                (!selectedAssistant || selectedAssistant === "") &&
+                Array.isArray(payload.data) &&
+                payload.data.length > 0
+              ) {
                 setSelectedAssistant(payload.data[0].id);
               }
               break;
@@ -511,7 +572,9 @@ export default function PhoneNumbersPage() {
           reconnectAttemptsRef.current += 1;
           const attempt = reconnectAttemptsRef.current;
           const backoff = Math.min(30000, 1000 * Math.pow(1.5, attempt)); // cap 30s
-          console.info(`Websocket reconnect attempt ${attempt} in ${backoff}ms`);
+          console.info(
+            `Websocket reconnect attempt ${attempt} in ${backoff}ms`,
+          );
           setTimeout(() => {
             setupWebsocket();
           }, backoff);
@@ -555,7 +618,9 @@ export default function PhoneNumbersPage() {
           const d = await res.json();
           if (d && typeof d === "object") {
             const m = new Map<string, string>();
-            Object.entries(d).forEach(([k, v]) => { if (typeof v === "string") m.set(k, v) });
+            Object.entries(d).forEach(([k, v]) => {
+              if (typeof v === "string") m.set(k, v);
+            });
             setActiveCalls(m);
           }
         } catch (e) {
@@ -576,7 +641,11 @@ export default function PhoneNumbersPage() {
   useEffect(() => {
     // initial REST fetch
     (async () => {
-      await Promise.all([fetchRegisteredNumbers(), fetchContactNumbers(), fetchAssistants()]);
+      await Promise.all([
+        fetchRegisteredNumbers(),
+        fetchContactNumbers(),
+        fetchAssistants(),
+      ]);
     })();
 
     // start websocket
@@ -612,7 +681,9 @@ export default function PhoneNumbersPage() {
       <header className="w-full bg-white border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="text-emerald-600 font-semibold text-lg">Phone Numbers</div>
+            <div className="text-emerald-600 font-semibold text-lg">
+              Phone Numbers
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -663,8 +734,12 @@ export default function PhoneNumbersPage() {
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Registered Numbers</h3>
-                <p className="text-sm text-gray-500">Select a number to make calls from.</p>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Registered Numbers
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Select a number to make calls from.
+                </p>
               </div>
             </div>
 
@@ -675,32 +750,44 @@ export default function PhoneNumbersPage() {
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
                     className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
-                      selectedRegisteredNumber === num.id ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
+                      selectedRegisteredNumber === num.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
                     }`}
                   >
                     <div>
-                      <p className="font-medium text-sm text-gray-900">{num.friendlyName}</p>
+                      <p className="font-medium text-sm text-gray-900">
+                        {num.friendlyName}
+                      </p>
                       <p className="text-xs text-gray-600">{num.phoneNo}</p>
-                      <p className="text-xs text-gray-400">Provider: {num.providerName}</p>
+                      <p className="text-xs text-gray-400">
+                        Provider: {num.providerName}
+                      </p>
                     </div>
                     <div className="ml-4 text-right">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          num.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          num.active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
                         }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
                       {selectedRegisteredNumber === num.id && (
                         <div className="mt-1">
-                          <span className="text-xs text-emerald-600 font-medium">✓ Selected</span>
+                          <span className="text-xs text-emerald-600 font-medium">
+                            ✓ Selected
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="col-span-full text-sm text-gray-500">No registered numbers found.</div>
+                <div className="col-span-full text-sm text-gray-500">
+                  No registered numbers found.
+                </div>
               )}
             </div>
 
@@ -721,7 +808,9 @@ export default function PhoneNumbersPage() {
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Select Assistant</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Select Assistant
+                </h3>
                 <p className="text-sm text-gray-500">
                   {selectedRegisteredNumber
                     ? "Pick the assistant that will handle outbound calls."
@@ -729,7 +818,9 @@ export default function PhoneNumbersPage() {
                 </p>
               </div>
               {selectedRegisteredNumber && (
-                <div className="text-sm text-white">{assistants.length} assistants</div>
+                <div className="text-sm text-white">
+                  {assistants.length} assistants
+                </div>
               )}
             </div>
 
@@ -741,7 +832,9 @@ export default function PhoneNumbersPage() {
                       key={a.id}
                       onClick={() => setSelectedAssistant(a.id)}
                       className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${
-                        selectedAssistant === a.id ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
+                        selectedAssistant === a.id
+                          ? "border-emerald-500 bg-emerald-50"
+                          : "border-gray-200 bg-white"
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -749,15 +842,25 @@ export default function PhoneNumbersPage() {
                           {a.name ? a.name.slice(0, 1).toUpperCase() : "A"}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">{a.name}</p>
-                          <p className="text-xs text-gray-500 truncate max-w-md">{a.firstMessage ?? a.systemPrompt ?? "No description"}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {a.name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate max-w-md">
+                            {a.firstMessage ??
+                              a.systemPrompt ??
+                              "No description"}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-400">{a.isActive ? "Active" : ""}</div>
+                      <div className="text-xs text-gray-400">
+                        {a.isActive ? "Active" : ""}
+                      </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-sm text-gray-500">No assistants found.</div>
+                  <div className="text-sm text-gray-500">
+                    No assistants found.
+                  </div>
                 )}
               </div>
             )}
@@ -767,8 +870,13 @@ export default function PhoneNumbersPage() {
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Contact Numbers</h3>
-                <p className="text-sm text-gray-500">Call your contacts directly from the selected phone number & assistant.</p>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Contact Numbers
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Call your contacts directly from the selected phone number &
+                  assistant.
+                </p>
               </div>
 
               <div className="flex items-center gap-3">
@@ -784,7 +892,11 @@ export default function PhoneNumbersPage() {
                     stroke="currentColor"
                     className="w-4 h-4"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 4.5v15m7.5-7.5h-15"
+                    />
                   </svg>
                   Add New Contact
                 </button>
@@ -797,10 +909,17 @@ export default function PhoneNumbersPage() {
                   const isActive = activeCalls.has(contact.id);
                   const isLoading = callLoading.has(contact.id);
                   return (
-                    <div key={contact.id} className="p-4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <div
+                      key={contact.id}
+                      className="p-4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between"
+                    >
                       <div>
-                        <p className="font-semibold text-gray-800">{contact.name}</p>
-                        <p className="text-sm text-gray-600">{contact.phoneNo}</p>
+                        <p className="font-semibold text-gray-800">
+                          {contact.name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {contact.phoneNo}
+                        </p>
                       </div>
 
                       <div className="mt-4 flex items-center gap-2">
@@ -815,7 +934,11 @@ export default function PhoneNumbersPage() {
                         ) : (
                           <button
                             onClick={() => makeCall(contact)}
-                            disabled={!selectedRegisteredNumber || !selectedAssistant || isLoading}
+                            disabled={
+                              !selectedRegisteredNumber ||
+                              !selectedAssistant ||
+                              isLoading
+                            }
                             className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
                           >
                             {isLoading ? "Calling..." : "Call"}
@@ -827,7 +950,9 @@ export default function PhoneNumbersPage() {
                           {isActive ? (
                             <div className="inline-flex items-center gap-2">
                               <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                              <span className="text-xs text-gray-500">Live</span>
+                              <span className="text-xs text-gray-500">
+                                Live
+                              </span>
                             </div>
                           ) : (
                             <div className="text-xs text-gray-400">Idle</div>
@@ -838,7 +963,9 @@ export default function PhoneNumbersPage() {
                   );
                 })
               ) : (
-                <div className="col-span-full text-sm text-gray-500">No contacts found.</div>
+                <div className="col-span-full text-sm text-gray-500">
+                  No contacts found.
+                </div>
               )}
             </div>
 
@@ -862,8 +989,15 @@ export default function PhoneNumbersPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Import Phone Number</h3>
-              <button onClick={() => setOpenModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Import Phone Number
+              </h3>
+              <button
+                onClick={() => setOpenModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="flex space-x-4 border-b pb-3 mb-4">
@@ -879,68 +1013,131 @@ export default function PhoneNumbersPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Region</label>
-                <select className="w-full mt-1 border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-emerald-300">
-                  <option>us-west</option>
-                  <option>us-east</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-700">Country</label>
-                <select className="w-full mt-1 border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-emerald-300">
-                  <option>United States (+1)</option>
-                  <option>India (+91)</option>
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium text-black">Phone Number</label>
-                <input className="w-full border mt-1 rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="+12345678990" />
-              </div>
-
               {activeTab === "twilio" ? (
                 <>
                   <div>
-                    <InputField label="Account SID" value={twilioForm.accountSid} onChange={(v) => setTwilioForm((p) => ({ ...p, accountSid: v }))} />
+                    <InputField
+                      label="Account SID"
+                      value={twilioForm.accountSid}
+                      onChange={(v) =>
+                        setTwilioForm((p) => ({ ...p, accountSid: v }))
+                      }
+                    />
                   </div>
                   <div>
-                    <InputField label="API Secret" value={twilioForm.authToken} onChange={(v) => setTwilioForm((p) => ({ ...p, authToken: v }))} />
+                    <InputField
+                      label="API Secret"
+                      value={twilioForm.authToken}
+                      onChange={(v) =>
+                        setTwilioForm((p) => ({ ...p, authToken: v }))
+                      }
+                    />
                   </div>
                   <div className="md:col-span-2">
-                    <InputField label="Address" value={twilioForm.address} onChange={(v) => setTwilioForm((p) => ({ ...p, address: v }))} placeholder="zenvoice-test-trunk.pstn.twilio.com" />
+                    <InputField
+                      label="Address"
+                      value={twilioForm.address}
+                      onChange={(v) =>
+                        setTwilioForm((p) => ({ ...p, address: v }))
+                      }
+                      placeholder="zenvoice-test-trunk.pstn.twilio.com"
+                    />
+                  </div>
+                  <div>
+                    <InputField
+                      label="Auth Username"
+                      value={twilioForm.authUsername}
+                      onChange={(v) =>
+                        setTwilioForm((p) => ({ ...p, authUsername: v }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <InputField
+                      label="Auth Password"
+                      value={twilioForm.authPassword}
+                      onChange={(v) =>
+                        setTwilioForm((p) => ({ ...p, authPassword: v }))
+                      }
+                    />
                   </div>
                 </>
               ) : (
                 <>
                   <div>
-                    <InputField label="API Key" value={exotelForm.apiKey} onChange={(v) => setExotelForm((p) => ({ ...p, apiKey: v }))} />
+                    <InputField
+                      label="API Key"
+                      value={exotelForm.apiKey}
+                      onChange={(v) =>
+                        setExotelForm((p) => ({ ...p, apiKey: v }))
+                      }
+                    />
                   </div>
                   <div>
-                    <InputField label="API Token" value={exotelForm.apiToken} onChange={(v) => setExotelForm((p) => ({ ...p, apiToken: v }))} />
+                    <InputField
+                      label="API Token"
+                      value={exotelForm.apiToken}
+                      onChange={(v) =>
+                        setExotelForm((p) => ({ ...p, apiToken: v }))
+                      }
+                    />
                   </div>
                   <div>
-                    <InputField label="Account SID" value={exotelForm.accountSid} onChange={(v) => setExotelForm((p) => ({ ...p, accountSid: v }))} />
+                    <InputField
+                      label="Account SID"
+                      value={exotelForm.accountSid}
+                      onChange={(v) =>
+                        setExotelForm((p) => ({ ...p, accountSid: v }))
+                      }
+                    />
                   </div>
                   <div>
-                    <InputField label="Subdomain" value={exotelForm.subdomain} onChange={(v) => setExotelForm((p) => ({ ...p, subdomain: v }))} />
+                    <InputField
+                      label="Subdomain"
+                      value={exotelForm.subdomain}
+                      onChange={(v) =>
+                        setExotelForm((p) => ({ ...p, subdomain: v }))
+                      }
+                    />
                   </div>
                   <div className="md:col-span-2">
-                    <InputField label="App ID" value={exotelForm.appId} onChange={(v) => setExotelForm((p) => ({ ...p, appId: v }))} />
+                    <InputField
+                      label="App ID"
+                      value={exotelForm.appId}
+                      onChange={(v) =>
+                        setExotelForm((p) => ({ ...p, appId: v }))
+                      }
+                    />
                   </div>
                 </>
               )}
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setOpenModal(false)} className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Close</button>
               <button
-                onClick={activeTab === "twilio" ? importTwilioNumbers : importExotelNumbers}
+                onClick={() => setOpenModal(false)}
+                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Close
+              </button>
+              <button
+                onClick={
+                  activeTab === "twilio"
+                    ? importTwilioNumbers
+                    : importExotelNumbers
+                }
                 disabled={
                   loading ||
-                  (activeTab === "twilio" && (!twilioForm.accountSid || !twilioForm.authToken || !twilioForm.address)) ||
-                  (activeTab === "exotel" && (!exotelForm.apiKey || !exotelForm.apiToken || !exotelForm.accountSid || !exotelForm.subdomain || !exotelForm.appId))
+                  (activeTab === "twilio" &&
+                    (!twilioForm.accountSid ||
+                      !twilioForm.authToken ||
+                      !twilioForm.address)) ||
+                  (activeTab === "exotel" &&
+                    (!exotelForm.apiKey ||
+                      !exotelForm.apiToken ||
+                      !exotelForm.accountSid ||
+                      !exotelForm.subdomain ||
+                      !exotelForm.appId))
                 }
                 className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
@@ -956,8 +1153,15 @@ export default function PhoneNumbersPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">All Registered Numbers ({registeredNumbers.length})</h3>
-              <button onClick={() => setShowAllRegisteredNumbersModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <h3 className="text-lg font-semibold text-gray-800">
+                All Registered Numbers ({registeredNumbers.length})
+              </h3>
+              <button
+                onClick={() => setShowAllRegisteredNumbersModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="overflow-y-auto flex-1 pr-2">
@@ -967,25 +1171,35 @@ export default function PhoneNumbersPage() {
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
                     className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
-                      selectedRegisteredNumber === num.id ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
+                      selectedRegisteredNumber === num.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
                     }`}
                   >
                     <div>
-                      <p className="font-medium text-sm text-gray-900">{num.friendlyName}</p>
+                      <p className="font-medium text-sm text-gray-900">
+                        {num.friendlyName}
+                      </p>
                       <p className="text-xs text-gray-600">{num.phoneNo}</p>
-                      <p className="text-xs text-gray-400">Provider: {num.providerName}</p>
+                      <p className="text-xs text-gray-400">
+                        Provider: {num.providerName}
+                      </p>
                     </div>
                     <div className="ml-4 text-right">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          num.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          num.active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
                         }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
                       {selectedRegisteredNumber === num.id && (
                         <div className="mt-1">
-                          <span className="text-xs text-emerald-600 font-medium">✓ Selected</span>
+                          <span className="text-xs text-emerald-600 font-medium">
+                            ✓ Selected
+                          </span>
                         </div>
                       )}
                     </div>
@@ -1011,28 +1225,46 @@ export default function PhoneNumbersPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-md rounded-xl shadow-xl p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Add New Contact</h3>
-              <button onClick={() => setShowAddContactModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Add New Contact
+              </h3>
+              <button
+                onClick={() => setShowAddContactModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
                 <input
                   type="text"
                   value={newContact.name}
-                  onChange={(e) => setNewContact((prev) => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setNewContact((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   placeholder="Enter contact name"
                   className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
                 <input
                   type="tel"
                   value={newContact.phoneNo}
-                  onChange={(e) => setNewContact((prev) => ({ ...prev, phoneNo: e.target.value }))}
+                  onChange={(e) =>
+                    setNewContact((prev) => ({
+                      ...prev,
+                      phoneNo: e.target.value,
+                    }))
+                  }
                   placeholder="+916382831505"
                   className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
                 />
@@ -1062,8 +1294,15 @@ export default function PhoneNumbersPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">All Contact Numbers ({contactNumbers.length})</h3>
-              <button onClick={() => setShowAllNumbersModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <h3 className="text-lg font-semibold text-gray-800">
+                All Contact Numbers ({contactNumbers.length})
+              </h3>
+              <button
+                onClick={() => setShowAllNumbersModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="overflow-y-auto flex-1 pr-2">
@@ -1074,7 +1313,9 @@ export default function PhoneNumbersPage() {
                     className="p-4 border rounded-lg flex items-center justify-between bg-white"
                   >
                     <div>
-                      <p className="font-medium text-sm text-gray-900">{contact.name}</p>
+                      <p className="font-medium text-sm text-gray-900">
+                        {contact.name}
+                      </p>
                       <p className="text-xs text-gray-600">{contact.phoneNo}</p>
                     </div>
 
@@ -1083,11 +1324,15 @@ export default function PhoneNumbersPage() {
                         onClick={() => {
                           // If required preconditions not met, show a message instead of attempting call
                           if (!selectedRegisteredNumber) {
-                            alert("Please select a registered number to make calls from.");
+                            alert(
+                              "Please select a registered number to make calls from.",
+                            );
                             return;
                           }
                           if (!selectedAssistant) {
-                            alert("Please select an assistant to handle the call.");
+                            alert(
+                              "Please select an assistant to handle the call.",
+                            );
                             return;
                           }
                           // call and close modal
@@ -1098,7 +1343,9 @@ export default function PhoneNumbersPage() {
                       >
                         Call
                       </button>
-                      <div className="text-xs text-gray-400">{activeCalls.has(contact.id) ? "Live" : "Idle"}</div>
+                      <div className="text-xs text-gray-400">
+                        {activeCalls.has(contact.id) ? "Live" : "Idle"}
+                      </div>
                     </div>
                   </div>
                 ))}

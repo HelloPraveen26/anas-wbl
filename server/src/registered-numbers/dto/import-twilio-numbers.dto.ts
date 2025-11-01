@@ -1,10 +1,10 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, Length } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsString, IsNotEmpty, IsOptional, Length } from "class-validator";
 
 export class ImportTwilioNumbersDto {
   @ApiProperty({
-    description: 'Twilio Account SID',
-    example: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    description: "Twilio Account SID",
+    example: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     maxLength: 34,
   })
   @IsString()
@@ -13,8 +13,8 @@ export class ImportTwilioNumbersDto {
   accountSid: string;
 
   @ApiProperty({
-    description: 'Twilio Auth Token',
-    example: 'your_auth_token_here',
+    description: "Twilio Auth Token",
+    example: "your_auth_token_here",
     maxLength: 255,
   })
   @IsString()
@@ -23,12 +23,32 @@ export class ImportTwilioNumbersDto {
   authToken: string;
 
   @ApiPropertyOptional({
-    description: 'SIP trunk address (optional)',
-    example: 'zenvoice-test-trunk.pstn.twilio.com',
+    description: "SIP trunk address (optional)",
+    example: "zenvoice-test-trunk.pstn.twilio.com",
     maxLength: 255,
   })
   @IsOptional()
   @IsString()
   @Length(1, 255)
   address?: string;
+
+  @ApiProperty({
+    description: "SIP authentication username",
+    example: "sample",
+    maxLength: 255,
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 255)
+  authUsername: string;
+
+  @ApiProperty({
+    description: "SIP authentication password",
+    example: "Sample@123456",
+    maxLength: 255,
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 255)
+  authPassword: string;
 }
