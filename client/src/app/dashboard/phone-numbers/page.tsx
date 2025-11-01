@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api";
 import { authManager } from "@/lib/auth";
 
@@ -10,60 +9,125 @@ interface RegisteredNumber {
   providerName: string;
   friendlyName: string;
   phoneNo: string;
-  livekitOutboundTrunkId: string;
+  livekitOutboundTrunkId?: string;
   active: boolean;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface ContactNumber {
   id: string;
   name: string;
   phoneNo: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Assistant {
   id: string;
   name: string;
-  firstMessage: string;
-  systemPrompt: string;
-  llmModelId: string;
-  transcriberModelId: string;
-  synthesizerVoiceId: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  firstMessage?: string;
+  systemPrompt?: string;
+  llmModelId?: string;
+  transcriberModelId?: string;
+  synthesizerVoiceId?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
+/* -------------------- Config -------------------- */
+// Change this if your websocket path differs.
+const WS_PATH = "/ws/phone";
+
+/* -------------------- Helper Components -------------------- */
+function InputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value?: string;
+  onChange?: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 text-left">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value ?? ""}
+        onChange={(e) => onChange?.(e.target.value)}
+        placeholder={placeholder}
+        className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+      />
+    </div>
+  );
+}
+
+/* -------------------- Main Component -------------------- */
 export default function PhoneNumbersPage() {
+  // UI state
   const [openModal, setOpenModal] = useState(false);
-  const [activeTab, setActiveTab] = useState("twilio");
+  const [showAllNumbersModal, setShowAllNumbersModal] = useState(false);
+  const [showAllRegisteredNumbersModal, setShowAllRegisteredNumbersModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"twilio" | "exotel">("twilio");
+  const [loading, setLoading] = useState(false);
+
+  // Data state
   const [registeredNumbers, setRegisteredNumbers] = useState<
     RegisteredNumber[]
   >([]);
   const [contactNumbers, setContactNumbers] = useState<ContactNumber[]>([]);
   const [assistants, setAssistants] = useState<Assistant[]>([]);
+
+  // Selected items & calls
   const [selectedRegisteredNumber, setSelectedRegisteredNumber] =
     useState<string>("");
   const [selectedAssistant, setSelectedAssistant] = useState<string>("");
-  const [loading, setLoading] = useState(false);
+  // activeCalls map: contactId -> room_name
   const [activeCalls, setActiveCalls] = useState<Map<string, string>>(
     new Map(),
-  ); // contactId -> room_name
+  );
   const [callLoading, setCallLoading] = useState<Set<string>>(new Set());
 
-  // Twilio form state
+  // Direct phone number input state
+  const [directPhoneNumber, setDirectPhoneNumber] = useState<string>("");
+
+  // Add contact modal state
+  const [showAddContactModal, setShowAddContactModal] = useState(false);
+  const [newContact, setNewContact] = useState({ name: "", phoneNo: "" });
+
+  // Twilio form
   const [twilioForm, setTwilioForm] = useState({
     accountSid: "",
     authToken: "",
     address: "",
   });
 
-  // Helper function to get auth headers
+  // Exotel form
+  const [exotelForm, setExotelForm] = useState({
+    apiKey: "",
+    apiToken: "",
+    accountSid: "",
+    subdomain: "",
+    appId: "",
+  });
+
+  // WS refs
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const manualDisconnectRef = useRef(false);
+  const fallbackPollingRef = useRef<number | null>(null);
+
+  /* -------------------- Utils -------------------- */
   const getAuthHeaders = () => {
     const token = authManager.getToken();
     return {
@@ -72,7 +136,27 @@ export default function PhoneNumbersPage() {
     };
   };
 
-  // API call functions
+  const getWebsocketUrl = (): string => {
+    // Build ws or wss URL from getApiBaseUrl()
+    try {
+      const api = getApiBaseUrl(); // e.g. https://api.example.com or http://localhost:4000
+      const u = new URL(api);
+      const protocol = u.protocol === "https:" ? "wss:" : "ws:";
+      // remove trailing slash from pathname, then append WS_PATH
+      const path = (u.pathname || "").replace(/\/$/, "") + WS_PATH;
+      return `${protocol}//${u.host}${path}`;
+    } catch (err) {
+      // fallback: try simple replacement
+      const base = getApiBaseUrl();
+      if (base.startsWith("https://"))
+        return base.replace("https://", "wss://") + WS_PATH;
+      if (base.startsWith("http://"))
+        return base.replace("http://", "ws://") + WS_PATH;
+      return base + WS_PATH;
+    }
+  };
+
+  /* -------------------- REST fetchers -------------------- */
   const fetchRegisteredNumbers = async () => {
     try {
       setLoading(true);
@@ -81,21 +165,14 @@ export default function PhoneNumbersPage() {
         setRegisteredNumbers([]);
         return;
       }
-      const response = await fetch(`${getApiBaseUrl()}/registered-numbers`, {
+      const res = await fetch(`${getApiBaseUrl()}/registered-numbers`, {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setRegisteredNumbers(data);
-        if (data.length > 0) {
-          setSelectedRegisteredNumber(data[0].id); // Select first number by default
-        }
-      } else {
-        setRegisteredNumbers([]);
-      }
-    } catch (error) {
-      console.error("Error fetching registered numbers:", error);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setRegisteredNumbers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("fetchRegisteredNumbers error:", err);
     } finally {
       setLoading(false);
     }
@@ -109,18 +186,14 @@ export default function PhoneNumbersPage() {
         setContactNumbers([]);
         return;
       }
-      const response = await fetch(`${getApiBaseUrl()}/contact-numbers`, {
+      const res = await fetch(`${getApiBaseUrl()}/contact-numbers`, {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setContactNumbers(data);
-      } else {
-        setContactNumbers([]);
-      }
-    } catch (error) {
-      console.error("Error fetching contact numbers:", error);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setContactNumbers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("fetchContactNumbers error:", err);
     } finally {
       setLoading(false);
     }
@@ -134,27 +207,23 @@ export default function PhoneNumbersPage() {
         setAssistants([]);
         return;
       }
-      const response = await fetch(`${getApiBaseUrl()}/assistants`, {
+      const res = await fetch(`${getApiBaseUrl()}/assistants`, {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setAssistants(data);
-        if (data.length > 0) {
-          setSelectedAssistant(data[0].id); // Select first assistant by default
-        }
-      } else {
-        setAssistants([]);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setAssistants(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0 && !selectedAssistant) {
+        setSelectedAssistant(data[0].id);
       }
-    } catch (error) {
-      console.error("Error fetching assistants:", error);
+    } catch (err) {
+      console.error("fetchAssistants error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Twilio import function
+  /* -------------------- Actions (REST) -------------------- */
   const importTwilioNumbers = async () => {
     try {
       setLoading(true);
@@ -163,17 +232,11 @@ export default function PhoneNumbersPage() {
         alert("Authentication token not found");
         return;
       }
-
-      if (
-        !twilioForm.accountSid ||
-        !twilioForm.authToken ||
-        !twilioForm.address
-      ) {
+      if (!twilioForm.accountSid || !twilioForm.authToken || !twilioForm.address) {
         alert("Please fill in all required fields");
         return;
       }
-
-      const response = await fetch(
+      const res = await fetch(
         `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-twilio`,
         {
           method: "POST",
@@ -188,543 +251,871 @@ export default function PhoneNumbersPage() {
           }),
         },
       );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || `HTTP ${res.status}`);
       }
-
-      const data = await response.json();
-      alert(
-        `Successfully imported ${data.importedCount} phone numbers from Twilio`,
-      );
-
-      // Close modal and refresh registered numbers
+      const data = await res.json();
+      alert(`Successfully imported ${data.importedCount ?? 0} phone numbers from Twilio`);
       setOpenModal(false);
       setTwilioForm({ accountSid: "", authToken: "", address: "" });
       await fetchRegisteredNumbers();
-    } catch (error) {
-      console.error("Error importing Twilio numbers:", error);
-      alert(
-        `Error importing Twilio numbers: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+    } catch (err) {
+      console.error("importTwilioNumbers error:", err);
+      alert(`Error importing Twilio numbers: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const makeCall = async (contactNumber: ContactNumber) => {
+  const importExotelNumbers = async () => {
     try {
-      // Add contact to loading state
-      setCallLoading((prev) => new Set([...prev, contactNumber.id]));
-
-      // Get the selected registered number object
-      const selectedRegNumber = registeredNumbers.find(
-        (num) => num.id === selectedRegisteredNumber,
-      );
-
-      if (!selectedRegNumber) {
-        throw new Error("No registered number selected");
+      setLoading(true);
+      const token = authManager.getToken();
+      if (!token) {
+        alert("Authentication token not found");
+        return;
       }
+      if (!exotelForm.apiKey || !exotelForm.apiToken || !exotelForm.accountSid || !exotelForm.subdomain || !exotelForm.appId) {
+        alert("Please fill in all required fields");
+        return;
+      }
+      const res = await fetch(
+        `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-exotel`,
+        {
+          method: "POST",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            apiKey: exotelForm.apiKey,
+            apiToken: exotelForm.apiToken,
+            accountSid: exotelForm.accountSid,
+            subdomain: exotelForm.subdomain,
+            appId: exotelForm.appId,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      alert(`Successfully imported ${data.importedCount ?? 0} phone numbers from Exotel`);
+      setOpenModal(false);
+      setExotelForm({ apiKey: "", apiToken: "", accountSid: "", subdomain: "", appId: "" });
+      await fetchRegisteredNumbers();
+    } catch (err) {
+      console.error("importExotelNumbers error:", err);
+      alert(`Error importing Exotel numbers: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const response = await fetch(`${getApiBaseUrl()}/phone/make_call`, {
+  const makeCall = async (contact: ContactNumber) => {
+    try {
+      // optimistic UI: set loading
+      setCallLoading((prev) => new Set([...Array.from(prev), contact.id]));
+
+      const selectedRegNumber = registeredNumbers.find(
+        (n) => n.id === selectedRegisteredNumber,
+      );
+      if (!selectedRegNumber) throw new Error("No registered number selected");
+
+      const res = await fetch(`${getApiBaseUrl()}/phone/make_call`, {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phoneNumber: contactNumber.phoneNo,
+          phoneNumber: contact.phoneNo,
           fromPhoneNumber: selectedRegNumber.phoneNo,
           selectedAssistant: selectedAssistant,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || `HTTP ${res.status}`);
       }
 
-      const result = await response.json();
-      console.log("Call initiated successfully:", result);
-
-      // Add contact to active calls with room_name
+      const result = await res.json();
+      // If websocket is present, the server should broadcast call status which will update activeCalls.
+      // But we still update optimistically if server returns room_name
       if (result.success && result.room_name) {
-        setActiveCalls(
-          (prev) => new Map([...prev, [contactNumber.id, result.room_name]]),
-        );
+        setActiveCalls((prev) => new Map(prev).set(contact.id, result.room_name));
       }
-    } catch (error) {
-      console.error("Error making call:", error);
-      // You can add toast notification here if needed
-      alert(
-        `Failed to make call: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+    } catch (err) {
+      console.error("makeCall error:", err);
+      alert(`Failed to make call: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
-      // Remove from loading state
+      // remove loading
       setCallLoading((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(contactNumber.id);
-        return newSet;
+        const s = new Set(prev);
+        s.delete(contact.id);
+        return s;
       });
     }
   };
 
-  const disconnectCall = async (contactNumber: ContactNumber) => {
+  const disconnectCall = async (contact: ContactNumber) => {
     try {
-      // Add contact to loading state
-      setCallLoading((prev) => new Set([...prev, contactNumber.id]));
+      setCallLoading((prev) => new Set([...Array.from(prev), contact.id]));
+      const roomName = activeCalls.get(contact.id);
+      if (!roomName) throw new Error("No active call found for this contact");
 
-      // Get the room_name for this contact
-      const roomName = activeCalls.get(contactNumber.id);
-      if (!roomName) {
-        throw new Error("No active call found for this contact");
-      }
-
-      const response = await fetch(`${getApiBaseUrl()}/phone/hangup`, {
+      const res = await fetch(`${getApiBaseUrl()}/phone/hangup`, {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          room_name: roomName,
-        }),
+        body: JSON.stringify({ room_name: roomName }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || `HTTP ${res.status}`);
       }
 
-      const result = await response.json();
-      console.log("Call disconnected successfully:", result);
-
-      // Remove contact from active calls
+      const result = await res.json();
+      // Optimistically remove
       setActiveCalls((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(contactNumber.id);
-        return newMap;
+        const m = new Map(prev);
+        m.delete(contact.id);
+        return m;
       });
-    } catch (error) {
-      console.error("Error disconnecting call:", error);
-      alert(
-        `Failed to disconnect call: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
+    } catch (err) {
+      console.error("disconnectCall error:", err);
+      alert(`Failed to disconnect call: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
-      // Remove from loading state
       setCallLoading((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(contactNumber.id);
-        return newSet;
+        const s = new Set(prev);
+        s.delete(contact.id);
+        return s;
       });
     }
   };
 
+  const handleSelectNumber = (numberId: string) => {
+    setSelectedRegisteredNumber(numberId);
+    setShowAllNumbersModal(false);
+    setShowAllRegisteredNumbersModal(false);
+  };
+
+  const handleAddContact = () => {
+    if (!newContact.name.trim() || !newContact.phoneNo.trim()) {
+      alert("Please fill in both name and phone number.");
+      return;
+    }
+    // Generate a temporary ID for frontend only
+    const tempId = `temp-${Date.now()}`;
+    const contact: ContactNumber = {
+      id: tempId,
+      name: newContact.name.trim(),
+      phoneNo: newContact.phoneNo.trim(),
+      userId: "", // Will be set by backend later
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setContactNumbers((prev) => [contact, ...prev]);
+    setNewContact({ name: "", phoneNo: "" });
+    setShowAddContactModal(false);
+  };
+
+  /* -------------------- Realtime WS Handling -------------------- */
+  const setupWebsocket = () => {
+    // do not attempt if no token
+    const token = authManager.getToken();
+    if (!token) {
+      console.warn("No auth token available for websocket connection.");
+      return;
+    }
+
+    const wsUrl = getWebsocketUrl();
+    try {
+      console.info("Connecting websocket to", wsUrl);
+      const ws = new WebSocket(wsUrl + `?token=${encodeURIComponent(token)}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.info("Realtime WS connected");
+        reconnectAttemptsRef.current = 0;
+        // optionally request initial state
+        try {
+          ws.send(JSON.stringify({ type: "subscribe", channels: ["registered_numbers", "contact_numbers", "assistants", "active_calls"] }));
+        } catch (e) {
+          // ignore send errors
+        }
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const payload = JSON.parse(ev.data);
+          // Expecting messages like: { type: "registered_numbers", data: [...] } or { type: "call_update", data: { contactId, roomName, status } }
+          if (!payload || !payload.type) return;
+          switch (payload.type) {
+            case "registered_numbers":
+              setRegisteredNumbers(Array.isArray(payload.data) ? payload.data : []);
+              break;
+            case "contact_numbers":
+              setContactNumbers(Array.isArray(payload.data) ? payload.data : []);
+              break;
+            case "assistants":
+              setAssistants(Array.isArray(payload.data) ? payload.data : []);
+              if ((!selectedAssistant || selectedAssistant === "") && Array.isArray(payload.data) && payload.data.length > 0) {
+                setSelectedAssistant(payload.data[0].id);
+              }
+              break;
+            case "active_calls":
+              // payload.data expected as object: { contactId: roomName, ... }
+              if (payload.data && typeof payload.data === "object") {
+                const m = new Map<string, string>();
+                Object.entries(payload.data).forEach(([k, v]) => {
+                  if (typeof v === "string") m.set(k, v);
+                });
+                setActiveCalls(m);
+              }
+              break;
+            case "call_update":
+              // single call update: { contactId, roomName?, status: "started" | "ended" }
+              {
+                const { contactId, roomName, status } = payload.data || {};
+                setActiveCalls((prev) => {
+                  const m = new Map(prev);
+                  if (status === "started" && roomName) {
+                    m.set(contactId, roomName);
+                  } else if (status === "ended") {
+                    m.delete(contactId);
+                  }
+                  return m;
+                });
+              }
+              break;
+            default:
+              console.debug("Unknown realtime message", payload.type, payload);
+          }
+        } catch (err) {
+          console.error("Error parsing WS message", err);
+        }
+      };
+
+      ws.onclose = (ev) => {
+        wsRef.current = null;
+        console.warn("Realtime WS closed", ev.reason);
+        if (!manualDisconnectRef.current) {
+          // attempt reconnect with backoff
+          reconnectAttemptsRef.current += 1;
+          const attempt = reconnectAttemptsRef.current;
+          const backoff = Math.min(30000, 1000 * Math.pow(1.5, attempt)); // cap 30s
+          console.info(`Websocket reconnect attempt ${attempt} in ${backoff}ms`);
+          setTimeout(() => {
+            setupWebsocket();
+          }, backoff);
+        }
+      };
+
+      ws.onerror = (ev) => {
+        console.error("Realtime WS error", ev);
+        // let onclose handle reconnection
+      };
+    } catch (err) {
+      console.error("setupWebsocket error:", err);
+    }
+  };
+
+  const teardownWebsocket = () => {
+    manualDisconnectRef.current = true;
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch (e) {}
+      wsRef.current = null;
+    }
+  };
+
+  /* -------------------- Fallback Polling -------------------- */
+  const startFallbackPolling = () => {
+    // poll every 10s as fallback
+    stopFallbackPolling();
+    fallbackPollingRef.current = window.setInterval(() => {
+      fetchRegisteredNumbers();
+      fetchContactNumbers();
+      fetchAssistants();
+      // optionally fetch active calls if you expose it
+      (async () => {
+        try {
+          const res = await fetch(`${getApiBaseUrl()}/phone/active-calls`, {
+            headers: getAuthHeaders(),
+          });
+          if (!res.ok) return;
+          const d = await res.json();
+          if (d && typeof d === "object") {
+            const m = new Map<string, string>();
+            Object.entries(d).forEach(([k, v]) => { if (typeof v === "string") m.set(k, v) });
+            setActiveCalls(m);
+          }
+        } catch (e) {
+          // ignore
+        }
+      })();
+    }, 10000);
+  };
+
+  const stopFallbackPolling = () => {
+    if (fallbackPollingRef.current !== null) {
+      clearInterval(fallbackPollingRef.current);
+      fallbackPollingRef.current = null;
+    }
+  };
+
+  /* -------------------- Init & Cleanup -------------------- */
   useEffect(() => {
-    fetchRegisteredNumbers();
-    fetchContactNumbers();
-    fetchAssistants();
+    // initial REST fetch
+    (async () => {
+      await Promise.all([fetchRegisteredNumbers(), fetchContactNumbers(), fetchAssistants()]);
+    })();
+
+    // start websocket
+    setupWebsocket();
+
+    // if WS never connects after few attempts, start fallback polling
+    const fallbackTimer = setTimeout(() => {
+      if (!wsRef.current) {
+        console.warn("WS not connected: starting fallback polling");
+        startFallbackPolling();
+      }
+    }, 3500);
+
+    return () => {
+      clearTimeout(fallbackTimer);
+      teardownWebsocket();
+      stopFallbackPolling();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Show first 4 registered numbers, then show "Show All" button
+  const displayedNumbers = registeredNumbers.slice(0, 4);
+  const hasMoreRegisteredNumbers = registeredNumbers.length > 4;
+  // Get first 3 contacts for display
+  const displayedContacts = contactNumbers.slice(0, 3);
+  const hasMoreContacts = contactNumbers.length > 3;
+
+  /* -------------------- Render -------------------- */
   return (
-    <div className="flex items-center justify-center min-h-screen p-6 bg-gray-50">
-      <div className="text-center max-w-md">
-        {/* Phone Icon */}
-        <div className="flex justify-center mb-4">
-          <div className="w-12 h-20 border-2 border-gray-300 rounded-lg flex items-center justify-center">
-            <div className="w-6 h-1 bg-gray-300 rounded"></div>
+    <div className="min-h-screen bg-gray-50">
+      {/* NAVBAR */}
+      <header className="w-full bg-white border-b">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-emerald-600 font-semibold text-lg">Phone Numbers</div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Phone Number Input and Trigger Button */}
+            <div className="flex items-center gap-2">
+              <input
+                type="tel"
+                value={directPhoneNumber}
+                onChange={(e) => setDirectPhoneNumber(e.target.value)}
+                placeholder="+916382831505"
+                className="w-40 px-3 py-2 border border-green-500 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-500"
+              />
+              <button
+                className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-sm"
+                title="Call"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setOpenModal(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
+            >
+              Import Phone Number
+            </button>
           </div>
         </div>
+      </header>
 
-        {/* Heading */}
-        <h2 className="text-xl font-semibold text-gray-800 mb-1">
-          Phone Numbers
-        </h2>
-        <p className="text-gray-500 text-sm mb-4">
-          Assistants are able to be connected to phone numbers for calls.
-        </p>
-
-        {/* Description */}
-        <p className="text-gray-600 text-sm mb-6">
-          You can import from Twilio, Exotel, or create a free number directly
-          from Zenvoice for use with your assistants.
-        </p>
-
-        {/* Buttons */}
-        <div className="flex justify-center space-x-2 mb-6">
-          <button
-            onClick={() => setOpenModal(true)}
-            className="px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600"
-          >
-            Import Phone Number
-          </button>
-          {/* <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
-            Documentation
-          </button> */}
-        </div>
-        {/* Registered Numbers Section */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">
-            Registered Numbers
-          </h3>
-          {loading ? (
-            <p className="text-gray-500">Loading...</p>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {registeredNumbers.map((number) => (
-                <div
-                  key={number.id}
-                  className="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50"
-                >
-                  <input
-                    type="radio"
-                    id={number.id}
-                    name="registeredNumber"
-                    value={number.id}
-                    checked={selectedRegisteredNumber === number.id}
-                    onChange={(e) =>
-                      setSelectedRegisteredNumber(e.target.value)
-                    }
-                    className="mr-3 text-teal-600 focus:ring-teal-500"
-                  />
-                  <label htmlFor={number.id} className="flex-1 cursor-pointer">
-                    <div className="text-sm font-medium text-gray-900">
-                      {number.friendlyName}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {number.phoneNo}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Provider: {number.providerName}
-                    </div>
-                  </label>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${number.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                  >
-                    {number.active ? "Active" : "Inactive"}
-                  </span>
-                </div>
-              ))}
-              {registeredNumbers.length === 0 && !loading && (
-                <p className="text-gray-500 text-sm">
-                  No registered numbers found.
-                </p>
-              )}
+      {/* MAIN */}
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        <div className="space-y-6">
+          {/* Registered Numbers Card */}
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Registered Numbers</h3>
+                <p className="text-sm text-gray-500">Select a number to make calls from.</p>
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Assistants Section */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">
-            Select Assistant
-          </h3>
-          {loading ? (
-            <p className="text-gray-500">Loading...</p>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {assistants.map((assistant) => (
-                <div
-                  key={assistant.id}
-                  className="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50"
-                >
-                  <input
-                    type="radio"
-                    id={assistant.id}
-                    name="assistant"
-                    value={assistant.id}
-                    checked={selectedAssistant === assistant.id}
-                    onChange={(e) => setSelectedAssistant(e.target.value)}
-                    className="mr-3 text-teal-600 focus:ring-teal-500"
-                  />
-                  <label
-                    htmlFor={assistant.id}
-                    className="flex-1 cursor-pointer"
-                  >
-                    <div className="text-sm font-medium text-gray-900">
-                      {assistant.name}
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {assistant.firstMessage}
-                    </div>
-                  </label>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      assistant.isActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {displayedNumbers.length > 0 ? (
+                displayedNumbers.map((num) => (
+                  <div
+                    key={num.id}
+                    onClick={() => handleSelectNumber(num.id)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
+                      selectedRegisteredNumber === num.id ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
                     }`}
                   >
-                    {assistant.isActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-              ))}
-              {assistants.length === 0 && !loading && (
-                <p className="text-gray-500 text-sm">No assistants found.</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Contact Numbers Section */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">
-            Contact Numbers
-          </h3>
-          {loading ? (
-            <p className="text-gray-500">Loading...</p>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {contactNumbers.map((contact) => (
-                <div
-                  key={contact.id}
-                  className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-gray-50"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {contact.name}
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">{num.friendlyName}</p>
+                      <p className="text-xs text-gray-600">{num.phoneNo}</p>
+                      <p className="text-xs text-gray-400">Provider: {num.providerName}</p>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      {contact.phoneNo}
+                    <div className="ml-4 text-right">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          num.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {num.active ? "Active" : "Inactive"}
+                      </span>
+                      {selectedRegisteredNumber === num.id && (
+                        <div className="mt-1">
+                          <span className="text-xs text-emerald-600 font-medium">✓ Selected</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {activeCalls.has(contact.id) ? (
-                    <button
-                      className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={callLoading.has(contact.id)}
-                      onClick={() => disconnectCall(contact)}
-                    >
-                      {callLoading.has(contact.id)
-                        ? "Disconnecting..."
-                        : "Disconnect"}
-                    </button>
-                  ) : (
-                    <button
-                      className="px-3 py-1 text-sm bg-teal-100 text-teal-700 rounded-md hover:bg-teal-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={
-                        !selectedRegisteredNumber ||
-                        !selectedAssistant ||
-                        callLoading.has(contact.id)
-                      }
-                      onClick={() => makeCall(contact)}
-                    >
-                      {callLoading.has(contact.id) ? "Calling..." : "Call"}
-                    </button>
-                  )}
-                </div>
-              ))}
-              {contactNumbers.length === 0 && !loading && (
-                <p className="text-gray-500 text-sm">
-                  No contact numbers found.
-                </p>
+                ))
+              ) : (
+                <div className="col-span-full text-sm text-gray-500">No registered numbers found.</div>
               )}
             </div>
-          )}
+
+            {/* Show All Registered Numbers button */}
+            {hasMoreRegisteredNumbers && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowAllRegisteredNumbersModal(true)}
+                  className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+                >
+                  Show All Registered Numbers ({registeredNumbers.length})
+                </button>
+              </div>
+            )}
+          </section>
+
+          {/* Select Assistant Card - Only shows header if no number selected */}
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Select Assistant</h3>
+                <p className="text-sm text-gray-500">
+                  {selectedRegisteredNumber
+                    ? "Pick the assistant that will handle outbound calls."
+                    : "Select a registered number first to choose an assistant."}
+                </p>
+              </div>
+              {selectedRegisteredNumber && (
+                <div className="text-sm text-white">{assistants.length} assistants</div>
+              )}
+            </div>
+
+            {selectedRegisteredNumber && (
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                {assistants.length > 0 ? (
+                  assistants.map((a) => (
+                    <div
+                      key={a.id}
+                      onClick={() => setSelectedAssistant(a.id)}
+                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${
+                        selectedAssistant === a.id ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
+                          {a.name ? a.name.slice(0, 1).toUpperCase() : "A"}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{a.name}</p>
+                          <p className="text-xs text-gray-500 truncate max-w-md">{a.firstMessage ?? a.systemPrompt ?? "No description"}</p>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400">{a.isActive ? "Active" : ""}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500">No assistants found.</div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Contact Numbers Card */}
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Contact Numbers</h3>
+                <p className="text-sm text-gray-500">Call your contacts directly from the selected phone number & assistant.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowAddContactModal(true)}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm font-medium flex items-center gap-2"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add New Contact
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedContacts.length > 0 ? (
+                displayedContacts.map((contact) => {
+                  const isActive = activeCalls.has(contact.id);
+                  const isLoading = callLoading.has(contact.id);
+                  return (
+                    <div key={contact.id} className="p-4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between">
+                      <div>
+                        <p className="font-semibold text-gray-800">{contact.name}</p>
+                        <p className="text-sm text-gray-600">{contact.phoneNo}</p>
+                      </div>
+
+                      <div className="mt-4 flex items-center gap-2">
+                        {isActive ? (
+                          <button
+                            onClick={() => disconnectCall(contact)}
+                            disabled={isLoading}
+                            className="flex-1 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 text-sm"
+                          >
+                            {isLoading ? "Disconnecting..." : "Disconnect"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => makeCall(contact)}
+                            disabled={!selectedRegisteredNumber || !selectedAssistant || isLoading}
+                            className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
+                          >
+                            {isLoading ? "Calling..." : "Call"}
+                          </button>
+                        )}
+
+                        {/* small indicator for active */}
+                        <div className="w-10 text-right">
+                          {isActive ? (
+                            <div className="inline-flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                              <span className="text-xs text-gray-500">Live</span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-400">Idle</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-sm text-gray-500">No contacts found.</div>
+              )}
+            </div>
+
+            {/* Show All Contacts button (moved here) */}
+            {hasMoreContacts && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowAllNumbersModal(true)}
+                  className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+                >
+                  Show All Contacts ({contactNumbers.length})
+                </button>
+              </div>
+            )}
+          </section>
         </div>
-        {/* Modal */}
-        {openModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 ">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 flex flex-col">
-              {/* Tabs */}
-              <div className="flex space-x-6 border-b mb-4">
-                {["twilio", "exotel"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`pb-2 px-2 font-medium ${
-                      activeTab === tab
-                        ? "text-teal-600 border-b-2 border-teal-600"
-                        : "text-gray-500 hover:text-gray-700"
+      </main>
+
+      {/* IMPORT PHONE NUMBER MODAL */}
+      {openModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-2xl rounded-xl shadow-xl p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Import Phone Number</h3>
+              <button onClick={() => setOpenModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+
+            <div className="flex space-x-4 border-b pb-3 mb-4">
+              {(["twilio", "exotel"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTab(t)}
+                  className={`pb-2 px-3 text-sm rounded-md ${activeTab === t ? "text-emerald-600 border-b-2 border-emerald-600" : "text-gray-600"}`}
+                >
+                  {t.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Region</label>
+                <select className="w-full mt-1 border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                  <option>us-west</option>
+                  <option>us-east</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700">Country</label>
+                <select className="w-full mt-1 border rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                  <option>United States (+1)</option>
+                  <option>India (+91)</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-black">Phone Number</label>
+                <input className="w-full border mt-1 rounded px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="+12345678990" />
+              </div>
+
+              {activeTab === "twilio" ? (
+                <>
+                  <div>
+                    <InputField label="Account SID" value={twilioForm.accountSid} onChange={(v) => setTwilioForm((p) => ({ ...p, accountSid: v }))} />
+                  </div>
+                  <div>
+                    <InputField label="API Secret" value={twilioForm.authToken} onChange={(v) => setTwilioForm((p) => ({ ...p, authToken: v }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField label="Address" value={twilioForm.address} onChange={(v) => setTwilioForm((p) => ({ ...p, address: v }))} placeholder="zenvoice-test-trunk.pstn.twilio.com" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <InputField label="API Key" value={exotelForm.apiKey} onChange={(v) => setExotelForm((p) => ({ ...p, apiKey: v }))} />
+                  </div>
+                  <div>
+                    <InputField label="API Token" value={exotelForm.apiToken} onChange={(v) => setExotelForm((p) => ({ ...p, apiToken: v }))} />
+                  </div>
+                  <div>
+                    <InputField label="Account SID" value={exotelForm.accountSid} onChange={(v) => setExotelForm((p) => ({ ...p, accountSid: v }))} />
+                  </div>
+                  <div>
+                    <InputField label="Subdomain" value={exotelForm.subdomain} onChange={(v) => setExotelForm((p) => ({ ...p, subdomain: v }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField label="App ID" value={exotelForm.appId} onChange={(v) => setExotelForm((p) => ({ ...p, appId: v }))} />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setOpenModal(false)} className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">Close</button>
+              <button
+                onClick={activeTab === "twilio" ? importTwilioNumbers : importExotelNumbers}
+                disabled={
+                  loading ||
+                  (activeTab === "twilio" && (!twilioForm.accountSid || !twilioForm.authToken || !twilioForm.address)) ||
+                  (activeTab === "exotel" && (!exotelForm.apiKey || !exotelForm.apiToken || !exotelForm.accountSid || !exotelForm.subdomain || !exotelForm.appId))
+                }
+                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? "Importing..." : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SHOW ALL REGISTERED NUMBERS MODAL */}
+      {showAllRegisteredNumbersModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">All Registered Numbers ({registeredNumbers.length})</h3>
+              <button onClick={() => setShowAllRegisteredNumbersModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 pr-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {registeredNumbers.map((num) => (
+                  <div
+                    key={num.id}
+                    onClick={() => handleSelectNumber(num.id)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
+                      selectedRegisteredNumber === num.id ? "border-emerald-500 bg-emerald-50" : "border-gray-200 bg-white"
                     }`}
                   >
-                    {tab.toUpperCase()}
-                  </button>
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">{num.friendlyName}</p>
+                      <p className="text-xs text-gray-600">{num.phoneNo}</p>
+                      <p className="text-xs text-gray-400">Provider: {num.providerName}</p>
+                    </div>
+                    <div className="ml-4 text-right">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          num.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {num.active ? "Active" : "Inactive"}
+                      </span>
+                      {selectedRegisteredNumber === num.id && (
+                        <div className="mt-1">
+                          <span className="text-xs text-emerald-600 font-medium">✓ Selected</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
+            </div>
 
-              {/* Scrollable Form */}
-              <div className="flex-1 overflow-y-auto max-h-[400px] pr-2">
-                <form className="space-y-4">
-                  {/* Common fields */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 text-left">
-                      Region
-                    </label>
-                    <select className="w-full mt-1 text-gray-700 border rounded-md px-3 py-2">
-                      <option>us-west</option>
-                      <option>us-east</option>
-                    </select>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Select the region matching your provider’s account region.
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 text-left">
-                      Country
-                    </label>
-                    <select className="w-full mt-1 border rounded-md text-gray-700 px-3 py-2">
-                      <option>United States (+1)</option>
-                      <option>India (+91)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 text-left">
-                      Phone Number
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="+12345678990"
-                      // FIX APPLIED HERE: Added 'text-gray-900'
-                      className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                    />
-                  </div>
-
-                  {/* Conditional Fields */}
-                  {activeTab === "twilio" ? (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          Account SID
-                        </label>
-                        <input
-                          type="text"
-                          value={twilioForm.accountSid}
-                          onChange={(e) =>
-                            setTwilioForm((prev) => ({
-                              ...prev,
-                              accountSid: e.target.value,
-                            }))
-                          }
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="Account SID"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          API Secret
-                        </label>
-                        <input
-                          type="text"
-                          value={twilioForm.authToken}
-                          onChange={(e) =>
-                            setTwilioForm((prev) => ({
-                              ...prev,
-                              authToken: e.target.value,
-                            }))
-                          }
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="API Secret"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          Address
-                        </label>
-                        <input
-                          type="text"
-                          value={twilioForm.address}
-                          onChange={(e) =>
-                            setTwilioForm((prev) => ({
-                              ...prev,
-                              address: e.target.value,
-                            }))
-                          }
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="zenvoice-test-trunk.pstn.twilio.com"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          API Key
-                        </label>
-                        <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="Provider API Key"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          API Token
-                        </label>
-                        <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="API Token"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          Account SID
-                        </label>
-                        <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="Account SID"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          Subdomain
-                        </label>
-                        <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="Subdomain"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 text-left">
-                          App ID
-                        </label>
-                        <input
-                          // FIX APPLIED HERE: Added 'text-gray-900'
-                          className="w-full mt-1 border rounded-md px-3 py-2 text-gray-900"
-                          placeholder="App ID"
-                        />
-                      </div>
-                    </>
-                  )}
-                </form>
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-between items-center mt-6">
-                {/* <a href="#" className="text-teal-600 text-sm hover:underline">Tutorials</a> */}
-                <div className="space-x-3">
-                  <button
-                    onClick={() => setOpenModal(false)}
-                    className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={
-                      activeTab === "twilio" ? importTwilioNumbers : undefined
-                    }
-                    disabled={
-                      loading ||
-                      (activeTab === "twilio" &&
-                        (!twilioForm.accountSid ||
-                          !twilioForm.authToken ||
-                          !twilioForm.address))
-                    }
-                    className="px-4 py-2 rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  >
-                    {loading ? "Importing..." : "Import"}
-                  </button>
-                </div>
-              </div>
+            <div className="mt-4 pt-4 border-t flex justify-end">
+              <button
+                onClick={() => setShowAllRegisteredNumbersModal(false)}
+                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Done
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ADD CONTACT MODAL */}
+      {showAddContactModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-xl p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Add New Contact</h3>
+              <button onClick={() => setShowAddContactModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={newContact.name}
+                  onChange={(e) => setNewContact((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter contact name"
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={newContact.phoneNo}
+                  onChange={(e) => setNewContact((prev) => ({ ...prev, phoneNo: e.target.value }))}
+                  placeholder="+916382831505"
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAddContactModal(false)}
+                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddContact}
+                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SHOW ALL CONTACTS MODAL (now shows contacts) */}
+      {showAllNumbersModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">All Contact Numbers ({contactNumbers.length})</h3>
+              <button onClick={() => setShowAllNumbersModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 pr-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {contactNumbers.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="p-4 border rounded-lg flex items-center justify-between bg-white"
+                  >
+                    <div>
+                      <p className="font-medium text-sm text-gray-900">{contact.name}</p>
+                      <p className="text-xs text-gray-600">{contact.phoneNo}</p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                      <button
+                        onClick={() => {
+                          // If required preconditions not met, show a message instead of attempting call
+                          if (!selectedRegisteredNumber) {
+                            alert("Please select a registered number to make calls from.");
+                            return;
+                          }
+                          if (!selectedAssistant) {
+                            alert("Please select an assistant to handle the call.");
+                            return;
+                          }
+                          // call and close modal
+                          makeCall(contact);
+                          setShowAllNumbersModal(false);
+                        }}
+                        className="px-3 py-1 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700"
+                      >
+                        Call
+                      </button>
+                      <div className="text-xs text-gray-400">{activeCalls.has(contact.id) ? "Live" : "Idle"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t flex justify-end">
+              <button
+                onClick={() => setShowAllNumbersModal(false)}
+                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

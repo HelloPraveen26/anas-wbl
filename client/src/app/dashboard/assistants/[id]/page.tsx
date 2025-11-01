@@ -1,0 +1,1183 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Modal } from "antd";
+import { Copy, Trash2 } from "lucide-react";
+
+import {
+  Plus,
+  Search,
+  Settings,
+  MessageSquare,
+  Mic,
+  BarChart3,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Phone,
+  PhoneOff,
+  ArrowLeft,
+} from "lucide-react";
+
+import { CreateAssistantModal } from "@/components/CreateAssistantModal";
+import { authManager } from "@/lib/auth";
+import { getApiBaseUrl } from "@/lib/api";
+import LiveKitApplication from "@/app/livekit-talk-agent";
+import AIVOCOApplication from "@/app/aivoco-agent";
+
+// -------------------- Interfaces --------------------
+interface Assistant {
+  id: string;
+  name: string;
+  firstMessage: string;
+  systemPrompt: string;
+  llmModelId: string;
+  transcriberModelId: string;
+  synthesizerVoiceId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  llmModel: {
+    id: string;
+    name: string;
+    llmProvider: { id: string; name: string };
+  };
+  transcriberModel: {
+    id: string;
+    name: string;
+    transcriberProvider: { id: string; name: string };
+  };
+  synthesizerVoice: {
+    id: string;
+    name: string;
+    synthesizerModel: {
+      id: string;
+      name: string;
+      synthesizerProvider: { id: string; name: string };
+    };
+  };
+}
+
+interface Provider {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+interface Model {
+  id: string;
+  name: string;
+  isActive: boolean;
+  llmProvider: { id: string; name: string };
+}
+
+interface SynthesizerProvider {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+interface SynthesizerModel {
+  id: string;
+  name: string;
+  isActive: boolean;
+  synthesizerProvider: { id: string; name: string };
+}
+interface SynthesizerVoice {
+  id: string;
+  name: string;
+  isActive: boolean;
+  synthesizerModel: {
+    id: string;
+    name: string;
+    synthesizerProvider: { id: string; name: string };
+  };
+}
+
+interface TranscriberProvider {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+interface TranscriberModel {
+  id: string;
+  name: string;
+  isActive: boolean;
+  transcriberProvider: { id: string; name: string };
+}
+
+// -------------------- Component --------------------
+export default function AssistantEditPage() {
+  const params = useParams();
+  const router = useRouter();
+  const assistantId = params.id as string;
+
+  // UI + selection
+  const [activeTab, setActiveTab] = useState<
+    "assistant" | "model" | "voice" | "transcriber"
+  >("assistant");
+  const [modelExpanded, setModelExpanded] = useState(true);
+
+  // LLM
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+
+  // Synthesizer
+  const [synthesizerProviders, setSynthesizerProviders] = useState<
+    SynthesizerProvider[]
+  >([]);
+  const [synthesizerModels, setSynthesizerModels] = useState<
+    SynthesizerModel[]
+  >([]);
+  const [synthesizerVoices, setSynthesizerVoices] = useState<
+    SynthesizerVoice[]
+  >([]);
+  const [selectedSynthesizerProvider, setSelectedSynthesizerProvider] =
+    useState("");
+  const [selectedSynthesizerModel, setSelectedSynthesizerModel] = useState("");
+  const [selectedSynthesizerVoice, setSelectedSynthesizerVoice] = useState("");
+
+  // Transcriber
+  const [transcriberProviders, setTranscriberProviders] = useState<
+    TranscriberProvider[]
+  >([]);
+  const [transcriberModels, setTranscriberModels] = useState<
+    TranscriberModel[]
+  >([]);
+  const [selectedTranscriberProvider, setSelectedTranscriberProvider] =
+    useState("");
+  const [selectedTranscriberModel, setSelectedTranscriberModel] = useState("");
+
+  // Phone call state
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [inCall, setInCall] = useState(false);
+  const [callId, setCallId] = useState<string | null>(null);
+
+  const handleCall = async () => {
+    if (!phoneNumber) {
+      console.warn("Phone number is empty");
+      return;
+    }
+    try {
+      const url = `${getApiBaseUrl()}/phone/make_call`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          phoneNumber: phoneNumber,
+          firstMessage: firstMessage,
+          systemPrompt: systemPrompt,
+          selectedAssistant: assistantId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("Call failed:", data);
+      } else {
+        console.log("Call initiated:", data);
+        const id = data.room_name as string;
+        setCallId(id);
+        setInCall(true);
+      }
+    } catch (error) {
+      console.error("Error initiating call:", error);
+    }
+  };
+
+  const handleHangup = async () => {
+    if (!callId) return;
+    try {
+      const url = `${getApiBaseUrl()}/phone/hangup`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ room_name: callId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("Hangup failed:", data);
+      } else {
+        console.log("Call ended:", data);
+        setInCall(false);
+        setCallId(null);
+      }
+    } catch (error) {
+      console.error("Error hanging up call:", error);
+    }
+  };
+
+  // Data + modal
+  const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [showLiveKitModal, setShowLiveKitModal] = useState(false);
+  const [showAivocoModal, setShowAivocoModal] = useState(false);
+
+  // Prompt generation
+  const [generateLoading, setGenerateLoading] = useState(false);
+  const [taskDescription, setTaskDescription] = useState("");
+  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+  const [editableTaskDescription, setEditableTaskDescription] = useState("");
+  const [hasGeneratedBefore, setHasGeneratedBefore] = useState(false);
+
+  const [copied, setCopied] = useState(false);
+
+  // Assistant form
+  const [assistantName, setAssistantName] = useState("");
+  const [firstMessage, setFirstMessage] = useState("Hello.");
+  const [firstMessageMode, setFirstMessageMode] = useState<"speak_first" | "wait_for_user" | "speak_first_generated">("speak_first");
+  const [systemPrompt, setSystemPrompt] = useState(
+    `[Identity]
+  You are an AI Hotel Booking Assistant.
+
+  [Style]
+  - Speak with a warm and welcoming tone.
+  - Be concise and clear, offering helpful guidance throughout the booking process.
+
+  [Response Guidelines]
+  - Use a conversational style and spell out numbers to improve voice realism.
+  - Provide dates in a Month Day format (e.g., January 15).`,
+  );
+
+  // -------------------- Helpers --------------------
+  const getAuthHeaders = () => {
+    const token = authManager.getToken();
+    return {
+      accept: "application/json",
+      Authorization: token ? `Bearer ${token}` : "",
+    };
+  };
+
+  const fetchAssistants = useCallback(async () => {
+    try {
+      const token = authManager.getToken();
+      if (!token) {
+        setAssistants([]);
+        return;
+      }
+      const res = await fetch(`${getApiBaseUrl()}/assistants`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAssistants(data);
+      } else {
+        setAssistants([]);
+      }
+    } catch (e) {
+      console.error("Error fetching assistants:", e);
+      setAssistants([]);
+    }
+  }, []);
+
+  const fetchProviders = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/llm/providers`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setProviders(d.filter((p: Provider) => p.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchModels = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/llm/models`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setModels(d.filter((m: Model) => m.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchSynthesizerProviders = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/synthesizer/providers`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setSynthesizerProviders(d.filter((p: SynthesizerProvider) => p.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchSynthesizerModels = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/synthesizer/models`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setSynthesizerModels(d.filter((m: SynthesizerModel) => m.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchSynthesizerVoices = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/synthesizer/voices`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setSynthesizerVoices(d.filter((v: SynthesizerVoice) => v.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchTranscriberProviders = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/transcriber/providers`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setTranscriberProviders(d.filter((p: TranscriberProvider) => p.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchTranscriberModels = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/transcriber/models`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setTranscriberModels(d.filter((m: TranscriberModel) => m.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssistants();
+    fetchProviders();
+    fetchModels();
+    fetchSynthesizerProviders();
+    fetchSynthesizerModels();
+    fetchSynthesizerVoices();
+    fetchTranscriberProviders();
+    fetchTranscriberModels();
+  }, [fetchAssistants]);
+
+  useEffect(() => {
+    if (assistantId && assistants.length > 0) {
+      const a = assistants.find((x) => x.id === assistantId);
+      if (!a) {
+        router.push("/dashboard/assistants");
+        return;
+      }
+      setAssistantName(a.name);
+      setFirstMessage(a.firstMessage);
+      setSystemPrompt(a.systemPrompt);
+      setSelectedModel(a.llmModelId);
+      setSelectedProvider(a.llmModel?.llmProvider?.id || "");
+      setSelectedTranscriberModel(a.transcriberModelId);
+      setSelectedTranscriberProvider(
+        a.transcriberModel?.transcriberProvider?.id || "",
+      );
+      setSelectedSynthesizerVoice(a.synthesizerVoiceId);
+      setSelectedSynthesizerModel(
+        a.synthesizerVoice?.synthesizerModel?.id || "",
+      );
+      setSelectedSynthesizerProvider(
+        a.synthesizerVoice?.synthesizerModel?.synthesizerProvider?.id || "",
+      );
+      // Set firstMessageMode based on firstMessage
+      if (a.firstMessage === "") {
+        setFirstMessageMode("wait_for_user");
+      } else if (a.firstMessage === "Hello! How can I help you?") {
+        setFirstMessageMode("speak_first_generated");
+      } else {
+        setFirstMessageMode("speak_first");
+      }
+    }
+  }, [assistantId, assistants, router]);
+
+  const filteredModels = selectedProvider
+    ? models.filter((m) => m.llmProvider.id === selectedProvider)
+    : models;
+
+  const filteredSynthesizerModels = selectedSynthesizerProvider
+    ? synthesizerModels.filter(
+        (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
+      )
+    : synthesizerModels;
+
+  const filteredSynthesizerVoices = selectedSynthesizerModel
+    ? synthesizerVoices.filter(
+        (v) => v.synthesizerModel.id === selectedSynthesizerModel,
+      )
+    : synthesizerVoices;
+
+  const filteredTranscriberModels = selectedTranscriberProvider
+    ? transcriberModels.filter(
+        (m) => m.transcriberProvider.id === selectedTranscriberProvider,
+      )
+    : transcriberModels;
+
+  // Update firstMessage based on mode
+  useEffect(() => {
+    if (firstMessageMode === "wait_for_user") {
+      setFirstMessage("");
+    } else if (firstMessageMode === "speak_first_generated") {
+      setFirstMessage("Hello! How can I help you?");
+    }
+    // For "speak_first", do nothing, allow user input
+  }, [firstMessageMode]);
+
+  // -------------------- Actions --------------------
+  const handleDeleteAssistant = async () => {
+    if (!confirm("Are you sure you want to delete this assistant?")) return;
+
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/assistants/${assistantId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      alert("Assistant deleted successfully!");
+      router.push("/dashboard/assistants");
+    } catch (e) {
+      console.error("Error deleting assistant:", e);
+      alert("Error deleting assistant. Please try again.");
+    }
+  };
+
+  const handleSaveAssistant = async () => {
+    if (!assistantName.trim()) return alert("Please enter an assistant name");
+    if (!selectedModel) return alert("Please select a model");
+    if (!selectedTranscriberModel)
+      return alert("Please select a transcriber model");
+    if (!selectedSynthesizerVoice)
+      return alert("Please select a synthesizer voice");
+
+    setLoading(true);
+    try {
+      const isUpdating = assistants.some((a) => a.id === assistantId);
+      const url = isUpdating
+        ? `${getApiBaseUrl()}/assistants/${assistantId}`
+        : `${getApiBaseUrl()}/assistants`;
+      const method = isUpdating ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: assistantName,
+          firstMessage,
+          systemPrompt,
+          llmModelId: selectedModel,
+          transcriberModelId: selectedTranscriberModel,
+          synthesizerVoiceId: selectedSynthesizerVoice,
+          isActive: true,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      alert("Assistant saved successfully!");
+      await fetchAssistants();
+    } catch (e) {
+      console.error("Error saving assistant:", e);
+      alert("Error saving assistant. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePublishAssistant = async () => {
+    if (!assistantId)
+      return alert("Select or create an assistant first.");
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/assistants/${assistantId}`,
+        {
+          method: "PATCH",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: true }),
+        },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      alert("Assistant published!");
+      await fetchAssistants();
+    } catch (e) {
+      console.error("Publish error:", e);
+      alert("Failed to publish assistant.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generatePrompt = async () => {
+    if (!taskDescription.trim())
+      return alert("Please enter a task description");
+
+    if (!hasGeneratedBefore) {
+      setGenerateLoading(true);
+      const url = `${getApiBaseUrl()}/prompt/generate`;
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ taskDescription: taskDescription.trim() }),
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          if (res.status === 401 || res.status === 404) {
+            if (
+              e?.message?.includes("User not found") ||
+              e?.message?.includes("Unauthorized")
+            ) {
+              alert("Your session has expired. Please sign in again.");
+              authManager.clearAuth();
+              window.location.href = "/auth/signin";
+              return;
+            }
+          }
+          throw new Error(e?.message || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        setSystemPrompt(data.generatedPrompt);
+        setHasGeneratedBefore(true);
+      } catch (err: any) {
+        console.error("Prompt error:", err);
+        alert("Failed to generate prompt. Check console for details.");
+      } finally {
+        setGenerateLoading(false);
+      }
+    } else {
+      setEditableTaskDescription(taskDescription);
+      setShowEditTaskModal(true);
+    }
+  };
+
+  const handleAcceptTaskDescription = async () => {
+    setTaskDescription(editableTaskDescription);
+    setShowEditTaskModal(false);
+
+    setGenerateLoading(true);
+    const url = `${getApiBaseUrl()}/prompt/generate`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskDescription: editableTaskDescription.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        if (res.status === 401 || res.status === 404) {
+          if (
+            e?.message?.includes("User not found") ||
+            e?.message?.includes("Unauthorized")
+          ) {
+            alert("Your session has expired. Please sign in again.");
+            authManager.clearAuth();
+            window.location.href = "/auth/signin";
+            return;
+          }
+        }
+        throw new Error(e?.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setSystemPrompt(data.generatedPrompt);
+    } catch (err: any) {
+      console.error("Prompt error:", err);
+      alert("Failed to generate prompt. Check console for details.");
+    } finally {
+      setGenerateLoading(false);
+    }
+  };
+
+  const handleRejectTaskDescription = () => {
+    setShowEditTaskModal(false);
+  };
+
+  // -------------------- UI --------------------
+  const currentAssistant = assistants.find((a) => a.id === assistantId);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-8 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => router.push("/dashboard/assistants")}
+              className="text-xl text-emerald-600 hover:text--700 "
+            >
+              <ArrowLeft className="w-4 h-4 -ml-9 -mr-10"  />
+            </Button>
+           <div className="flex items-center justify-between">
+  <h1 className="text-xl font-bold text-gray-900 flex items-center gap-3 ">
+    {currentAssistant?.name || "Assistant"}
+
+    {assistantId && (
+      <div className="flex items-center gap-2 text-xs text-gray-700 font-mono">
+        <span>ID: {assistantId.slice(0, 15)}...</span>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(assistantId);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+          className="text-gray-400 hover:text-gray-600"
+        >
+          <Copy className="w-3 h-3" />
+        </button>
+        {copied && <span className="text-emerald-600">Copied!</span>}
+        <Button
+              variant="outline"
+              className="text-red-600 hover:bg-red-50 border-white"
+              onClick={handleDeleteAssistant}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+      </div>
+      
+    )}
+  </h1>
+</div>
+
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              placeholder="+919566999018"
+              className="w-44 bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 text-gray-900"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+            />
+            {inCall ? (
+              <Button
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50"
+                onClick={handleHangup}
+              >
+                <PhoneOff className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                className="border-gray-200 hover:bg-gray-50"
+                onClick={handleCall}
+              >
+                <Phone className="w-4 h-4 text-gray-600" />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="border-gray-200 hover:bg-gray-50 text-gray-600"
+              onClick={() => setShowLiveKitModal(true)}
+            >
+              ZX Global
+            </Button>
+            <Button
+              variant="outline"
+              className="border-gray-200 hover:bg-gray-50 text-gray-600"
+              onClick={() => setShowAivocoModal(true)}
+            >
+              ZX India
+            </Button>
+            
+            <Button
+              onClick={handlePublishAssistant}
+              variant="outline"
+              className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+              disabled={!assistantId || loading}
+            >
+              Publish
+            </Button>
+            <Button
+              onClick={handleSaveAssistant}
+              disabled={loading}
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md shadow-emerald-500/20 disabled:opacity-50"
+            >
+              {loading
+                ? "Saving..."
+                : assistants.some((a) => a.id === assistantId)
+                  ? "Update"
+                  : "Create"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex h-[calc(100vh-100px)]">
+        {/* Main */}
+        <div className="flex-1 flex flex-col">
+
+          {/* Tabs */}
+          <div className="bg-white border-b border-gray-100 px-8">
+            <div className="flex gap-6">
+              {[
+                { id: "assistant", label: "Assistant", icon: Settings },
+                { id: "model", label: "Model", icon: Zap },
+                { id: "voice", label: "Voice", icon: Mic },
+                {
+                  id: "transcriber",
+                  label: "Transcriber",
+                  icon: MessageSquare,
+                },
+              ].map((tab) => {
+                const Icon = tab.icon as any;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center gap-2 py-4 border-b-2 transition-colors font-medium text-xsl ${
+                      activeTab === (tab.id as any)
+                        ? "border-emerald-500 text-emerald-700"
+                        : "border-transparent text-gray-800 hover:text-gray-900"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Content */}
+           <div className="flex-1 overflow-y-auto p-8">
+            <div className="w-full">
+              {/* Assistant Tab */}
+              {activeTab === "assistant" && (
+                <Card className="bg-white border-green-300 shadow-xl">
+                  <CardHeader className="border-b border-gray-300">
+                    <CardTitle className="text-lg font-bold text-green-700">
+                      Assistant Configuration
+                    </CardTitle>
+                    <CardDescription className="text-sm text-gray-600">
+                      Configure your assistant's name and behavior
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-3">
+                    {/* Name */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-gray-700">
+                        Assistant Name
+                      </Label>
+                      <Input
+                        type="text"
+                        value={assistantName}
+                        onChange={(e) => setAssistantName(e.target.value)}
+                        placeholder="Enter assistant name"
+                        className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                      />
+                    </div>
+
+                    {/* Model section (expandable) */}
+                    <div className="space-y-3 border-t border-gray-100 pt-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-base font-bold text-green-700">
+                          Conversation Settings
+                        </h4>
+                        <button
+                          onClick={() => setModelExpanded(!modelExpanded)}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {modelExpanded ? (
+                            <ChevronUp className="w-5 h-5" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
+
+                      {modelExpanded && (
+                        <div className="space-y-4">
+                          {/* First Message Mode */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-gray-700">
+                              First Message Mode
+                            </Label>
+                            <select
+                              value={firstMessageMode}
+                              onChange={(e) => setFirstMessageMode(e.target.value as any)}
+                              className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                            >
+                              <option value="speak_first">Assistant speaks first</option>
+                              <option value="wait_for_user">Assistant waits for user</option>
+                              <option value="speak_first_generated">Assistant speaks first with model generated message</option>
+                            </select>
+                            <p className="text-xs text-gray-500">Choose how the conversation starts</p>
+                          </div>
+
+                          {/* First message */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-gray-700">
+                              First Message
+                            </Label>
+                            <Input
+                              type="text"
+                              value={firstMessage}
+                              onChange={(e) =>
+                                setFirstMessage(e.target.value)
+                              }
+                              disabled={firstMessageMode !== "speak_first"}
+                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            <p className="text-xs text-gray-500">The greeting message your assistant will say first</p>
+                          </div>
+
+                          {/* Prompt */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-gray-700">
+                              Task Description
+                            </Label>
+                            <Input
+                              type="text"
+                              value={taskDescription}
+                              onChange={(e) =>
+                                setTaskDescription(e.target.value)
+                              }
+                              placeholder="e.g., to book a hotel appointment"
+                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                            />
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                onClick={generatePrompt}
+                                disabled={generateLoading}
+                                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs shadow-sm disabled:opacity-50"
+                              >
+                                <Zap className="w-3 h-3 mr-1" />
+                                {generateLoading
+                                  ? "Generating..."
+                                  : "Generate Prompt"}
+                              </Button>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-semibold text-gray-700">
+                                  System Prompt
+                                </Label>
+                                <button
+                                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                                  title="Expand"
+                                >
+                                  <Maximize2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <textarea
+                                value={systemPrompt}
+                                onChange={(e) =>
+                                  setSystemPrompt(e.target.value)
+                                }
+                                className="w-full bg-gray-900 text-gray-100 p-4 rounded-xl text-sm font-mono min-h-[300px] border-0 focus:ring-2 focus:ring-emerald-500 resize-none"
+                                placeholder="Enter system prompt..."
+                              />
+                              <p className="text-xs text-gray-500">Define how your assistant should behave and respond</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Model Tab */}
+              {activeTab === "model" && (
+                <Card className="bg-white border-gray-200 shadow-sm">
+                  <CardHeader className="border-b border-gray-100">
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Model Configuration
+                    </CardTitle>
+                    <CardDescription className="text-sm text-gray-600">
+                      Select the AI model and provider for your assistant
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Provider
+                        </Label>
+                        <select
+                          value={selectedProvider}
+                          onChange={(e) => {
+                            setSelectedProvider(e.target.value);
+                            setSelectedModel("");
+                          }}
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                        >
+                          <option value="">Select a provider</option>
+                          {providers.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Model
+                        </Label>
+                        <select
+                          value={selectedModel}
+                          onChange={(e) => setSelectedModel(e.target.value)}
+                          disabled={!selectedProvider}
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="">Select a model</option>
+                          {filteredModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Voice Tab */}
+              {activeTab === "voice" && (
+                <Card className="bg-white border-gray-200 shadow-sm">
+                  <CardHeader className="border-b border-gray-100">
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Voice Configuration
+                    </CardTitle>
+                    <CardDescription className="text-sm text-gray-600">
+                      Choose the voice for your assistant's speech output
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-6">
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Synthesizer Provider
+                        </Label>
+                        <select
+                          value={selectedSynthesizerProvider}
+                          onChange={(e) => {
+                            setSelectedSynthesizerProvider(e.target.value);
+                            setSelectedSynthesizerModel("");
+                            setSelectedSynthesizerVoice("");
+                          }}
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                        >
+                          <option value="">
+                            Select a synthesizer provider
+                          </option>
+                          {synthesizerProviders.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Synthesizer Model
+                        </Label>
+                        <select
+                          value={selectedSynthesizerModel}
+                          onChange={(e) => {
+                            setSelectedSynthesizerModel(e.target.value);
+                            setSelectedSynthesizerVoice("");
+                          }}
+                          disabled={!selectedSynthesizerProvider}
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="">
+                            Select a synthesizer model
+                          </option>
+                          {filteredSynthesizerModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name} ({m.synthesizerProvider.name})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Voice
+                        </Label>
+                        <select
+                          value={selectedSynthesizerVoice}
+                          onChange={(e) =>
+                            setSelectedSynthesizerVoice(e.target.value)
+                          }
+                          disabled={!selectedSynthesizerModel}
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="">Select a voice</option>
+                          {filteredSynthesizerVoices.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name} ({v.synthesizerModel.name} -{" "}
+                              {v.synthesizerModel.synthesizerProvider.name})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Transcriber Tab */}
+              {activeTab === "transcriber" && (
+                <Card className="bg-white border-gray-200 shadow-sm">
+                  <CardHeader className="border-b border-gray-100">
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Transcriber Configuration
+                    </CardTitle>
+                    <CardDescription className="text-sm text-gray-600">
+                      Select the speech-to-text service for your assistant
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Transcriber Provider
+                        </Label>
+                        <select
+                          value={selectedTranscriberProvider}
+                          onChange={(e) => {
+                            setSelectedTranscriberProvider(e.target.value);
+                            setSelectedTranscriberModel("");
+                          }}
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                        >
+                          <option value="">
+                            Select a transcriber provider
+                          </option>
+                          {transcriberProviders.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-gray-700">
+                          Transcriber Model
+                        </Label>
+                        <select
+                          value={selectedTranscriberModel}
+                          onChange={(e) =>
+                            setSelectedTranscriberModel(e.target.value)
+                          }
+                          disabled={!selectedTranscriberProvider}
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="">
+                            Select a transcriber model
+                          </option>
+                          {filteredTranscriberModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name} ({m.transcriberProvider.name})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* LiveKit Modal */}
+      <Modal
+        open={showLiveKitModal}
+        onCancel={() => setShowLiveKitModal(false)}
+        footer={null}
+        width={900}
+      >
+        <LiveKitApplication />
+      </Modal>
+
+      {/* AIVOCO Modal */}
+      <Modal
+        open={showAivocoModal}
+        onCancel={() => setShowAivocoModal(false)}
+        footer={null}
+        width={900}
+      >
+        <AIVOCOApplication
+          systemPrompt={systemPrompt}
+          firstMessage={firstMessage}
+        />
+      </Modal>
+
+      {/* Edit Task Description Modal */}
+      <Modal
+        open={showEditTaskModal}
+        onCancel={() => setShowEditTaskModal(false)}
+        footer={null}
+        width={600}
+        title="Edit Task Description"
+        centered
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Review and edit the task description before accepting it.
+          </p>
+          <textarea
+            value={editableTaskDescription}
+            onChange={(e) => setEditableTaskDescription(e.target.value)}
+            className="w-full bg-gray-900 text-gray-100 p-4 rounded-xl text-sm font-mono min-h-[150px] border-0 focus:ring-2 focus:ring-emerald-500 resize-none"
+            placeholder="Enter task description..."
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={handleRejectTaskDescription}
+              variant="outline"
+              className="border-gray-200 hover:bg-gray-50"
+            >
+              Reject
+            </Button>
+            <Button
+              onClick={handleAcceptTaskDescription}
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md shadow-emerald-500/20"
+            >
+              Accept
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

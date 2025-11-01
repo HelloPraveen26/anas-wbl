@@ -1,171 +1,3 @@
-// 'use client';
-
-// import { Button } from '@/components/ui/button';
-// import { Card, CardContent } from '@/components/ui/card';
-// import { 
-//   User, 
-//   Zap,
-//   ChevronRight,
-//   TrendingUp
-// } from 'lucide-react';
-// import { useEffect, useState } from 'react';
-// import { authManager } from '@/lib/auth';
-// import { User as UserType } from '@/lib/api';
-
-// export default function DashboardOverview() {
-//   const [user, setUser] = useState<UserType | null>(null);
-
-//   useEffect(() => {
-//     const authState = authManager.getAuthState();
-//     setUser(authState.user);
-//   }, []);
-
-//   return (
-//     <div className="p-6">
-//       <div className="space-y-6">
-//         {/* Welcome Header */}  
-//         <div className="space-y-2">
-//           <h1 className="text-3xl font-bold text-gray-900">Welcome {user?.firstName}</h1>
-//         </div>
-
-//         {/* Assistant Cards */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           <Card className="bg-white/80 border-gray-200/50 hover:bg-white/90 transition-colors cursor-pointer group shadow-lg">
-//             <CardContent className="p-6">
-//               <div className="flex items-center justify-between">
-//                 <div className="flex items-center space-x-4">
-//                   <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-//                     <User className="w-6 h-6 text-white" />
-//                   </div>  
-//                   <div>
-//                     <h3 className="text-lg font-semibold text-gray-900">Single-prompt Assistant</h3>
-//                     <p className="text-gray-600 text-sm">Most useful for freeform conversations</p>
-//                   </div>
-//                 </div>
-//                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
-//               </div>
-//             </CardContent>
-//           </Card>
-
-//           <Card className="bg-white/80 border-gray-200/50 hover:bg-white/90 transition-colors cursor-pointer group shadow-lg">
-//             <CardContent className="p-6">
-//               <div className="flex items-center justify-between">
-//                 <div className="flex items-center space-x-4">
-//                   <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-//                     <Zap className="w-6 h-6 text-white" />
-//                   </div>
-//                   <div>
-//                     <h3 className="text-lg font-semibold text-gray-900">Multi-prompt Workflow</h3>
-//                     <p className="text-gray-600 text-sm">Fitting for structured complex conversation flows</p>
-//                     <span className="inline-block bg-blue-600 text-white text-xs px-2 py-1 rounded-full mt-1">New</span>
-//                   </div>
-//                 </div>
-//                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors" />
-//               </div>
-//             </CardContent>
-//           </Card>
-//         </div>
-
-//         {/* Metrics Section */}
-//         <div className="space-y-4">
-//           <div className="flex items-center justify-between">
-//             <h2 className="text-xl font-semibold text-gray-900">Metrics</h2>
-//             <div className="flex items-center space-x-4">
-//               <select className="bg-white border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 shadow-sm">
-//                 <option>All Assistants</option>
-//               </select>
-//               <select className="bg-white border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 shadow-sm">
-//                 <option>Last Month</option>
-//               </select>
-//             </div>
-//           </div>
-
-//           {/* Metrics Cards */}
-//           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-//             <Card className="bg-white/80 border-gray-200/50 shadow-lg">
-//               <CardContent className="p-6">
-//                 <div className="space-y-2">
-//                   <p className="text-gray-600 text-sm">Number of Calls</p>
-//                   <div className="flex items-baseline space-x-2">
-//                     <span className="text-3xl font-bold text-gray-900">2</span>
-//                     <span className="text-green-600 text-sm flex items-center">
-//                       <TrendingUp className="w-3 h-3 mr-1" />
-//                       +100.0%
-//                     </span>
-//                   </div>
-//                 </div>
-//               </CardContent>
-//             </Card>
-
-//             <Card className="bg-white/80 border-gray-200/50 shadow-lg">
-//               <CardContent className="p-6">
-//                 <div className="space-y-2">
-//                   <p className="text-gray-600 text-sm">Avg Duration</p>
-//                   <div className="flex items-baseline space-x-2">
-//                     <span className="text-3xl font-bold text-gray-900">0:00</span>
-//                     <span className="text-gray-500 text-sm">— 0.0%</span>
-//                   </div>
-//                 </div>
-//               </CardContent>
-//             </Card>
-
-//             <Card className="bg-white/80 border-gray-200/50 shadow-lg">
-//               <CardContent className="p-6">
-//                 <div className="space-y-2">
-//                   <p className="text-gray-600 text-sm">Total Cost</p>
-//                   <div className="flex items-baseline space-x-2">
-//                     <span className="text-3xl font-bold text-gray-900">0</span>
-//                     <span className="text-gray-600 text-sm">credits</span>
-//                     <span className="text-gray-500 text-sm">— 0.0%</span>
-//                   </div>
-//                 </div>
-//               </CardContent>
-//             </Card>
-
-//             <Card className="bg-white/80 border-gray-200/50 shadow-lg">
-//               <CardContent className="p-6">
-//                 <div className="space-y-2">
-//                   <p className="text-gray-600 text-sm">Avg Cost</p>
-//                   <div className="flex items-baseline space-x-2">
-//                     <span className="text-3xl font-bold text-gray-900">0</span>
-//                     <span className="text-gray-600 text-sm">¢/call</span>
-//                     <span className="text-gray-500 text-sm">— 0.0%</span>
-//                   </div>
-//                 </div>
-//               </CardContent>
-//             </Card>
-//           </div>
-
-//           {/* Call Success */}
-//           <Card className="bg-white/80 border-gray-200/50 shadow-lg">
-//             <CardContent className="p-6">
-//               <div className="space-y-4">
-//                 <div>
-//                   <h3 className="text-lg font-semibold text-gray-900">Call Success</h3>
-//                   <div className="flex items-baseline space-x-2 mt-2">
-//                     <span className="text-4xl font-bold text-gray-900">100%</span>
-//                     <span className="text-green-600 text-sm">+100.0% Compared to previous period</span>
-//                   </div>
-//                 </div>
-                
-//                 {/* Placeholder for chart */}
-//                 <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200">
-//                   <p className="text-gray-500">Chart visualization would go here</p>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -187,8 +19,6 @@ import {
   Users
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { authManager } from '@/lib/auth';
-import { User as UserType } from '@/lib/api';
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 // Mock data - replace with real API calls later
@@ -262,24 +92,25 @@ const mockData = {
   }
 };
 
-const COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444'];
+// Green and Gray color palette
+const COLORS = ['#10B981', '#059669', '#34D399', '#6EE7B7', '#A7F3D0'];
 
 export default function DashboardOverview() {
-  const [user, setUser] = useState<UserType | null>(null);
+  const [user, setUser] = useState(null);
   const [timeFilter, setTimeFilter] = useState('Last 7 days');
   const [assistantFilter, setAssistantFilter] = useState('All Assistants');
 
   useEffect(() => {
-    const authState = authManager.getAuthState();
-    setUser(authState.user);
+    // Mock user data
+    setUser({ firstName: 'User' });
   }, []);
 
-  const renderStars = (rating: number) => {
+  const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
         className={`w-4 h-4 ${
-          i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+          i < rating ? 'text-green-500 fill-current' : 'text-gray-300'
         }`}
       />
     ));
@@ -287,7 +118,7 @@ export default function DashboardOverview() {
 
   const CustomPieChart = ({ data, title, valueKey = 'value', showCenter = false, centerValue = '' }) => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+      <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
       <div className="relative">
         <ResponsiveContainer width="100%" height={200}>
           <PieChart>
@@ -309,7 +140,7 @@ export default function DashboardOverview() {
         {showCenter && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{centerValue}</div>
+              <div className="text-2xl font-bold text-gray-800">{centerValue}</div>
               <div className="text-sm text-gray-600">Total calls</div>
             </div>
           </div>
@@ -325,7 +156,7 @@ export default function DashboardOverview() {
               />
               <span className="text-sm text-gray-600">{entry.name}</span>
             </div>
-            <span className="text-sm font-medium text-gray-900">{entry[valueKey]}</span>
+            <span className="text-sm font-medium text-gray-800">{entry[valueKey]}</span>
           </div>
         ))}
       </div>
@@ -333,11 +164,11 @@ export default function DashboardOverview() {
   );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-100 min-h-screen">
       <div className="space-y-6">
         {/* Welcome Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome {user?.firstName || 'User'}</h1>
+          <h1 className="text-3xl font-bold text-green-600">Welcome {user?.firstName || 'User'}</h1>
           <p className="text-gray-600">Here's your dashboard overview and analytics</p>
         </div>
 
@@ -345,11 +176,10 @@ export default function DashboardOverview() {
         {/* Analytics Section */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Analytics</h2>
+            <h2 className="text-2xl font-bold text-gray-700">Analytics</h2>
             <div className="flex items-center space-x-4">
-
               <select 
-                className="bg-white border-gray-300 text-gray-900 text-sm rounded-lg px-3 py-2 shadow-sm"
+                className="bg-white border-gray-300 text-gray-700 text-sm rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 value={timeFilter}
                 onChange={(e) => setTimeFilter(e.target.value)}
               >
@@ -362,38 +192,38 @@ export default function DashboardOverview() {
 
           {/* Top Analytics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-white shadow-lg">
+            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
                 <div className="space-y-2">
-                  <p className="text-gray-600 text-sm">Total calls</p>
-                  <div className="text-3xl font-bold text-gray-900">53</div>
+                  <p className="text-gray-600 text-sm font-medium">Total calls</p>
+                  <div className="text-3xl font-bold text-green-600">53</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white shadow-lg">
+            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
                 <div className="space-y-2">
-                  <p className="text-gray-600 text-sm">Average Talk Time</p>
-                  <div className="text-3xl font-bold text-gray-900">3.02 min</div>
+                  <p className="text-gray-600 text-sm font-medium">Average Talk Time</p>
+                  <div className="text-3xl font-bold text-green-600">3.02 min</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white shadow-lg">
+            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
                 <div className="space-y-2">
-                  <p className="text-gray-600 text-sm">Usage</p>
-                  <div className="text-3xl font-bold text-gray-900">112 min</div>
+                  <p className="text-gray-600 text-sm font-medium">Usage</p>
+                  <div className="text-3xl font-bold text-green-600">112 min</div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white shadow-lg">
+            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
                 <div className="space-y-2">
-                  <p className="text-gray-600 text-sm">Average usage</p>
-                  <div className="text-3xl font-bold text-gray-900">4 min</div>
+                  <p className="text-gray-600 text-sm font-medium">Average usage</p>
+                  <div className="text-3xl font-bold text-green-600">4 min</div>
                 </div>
               </CardContent>
             </Card>
@@ -402,40 +232,46 @@ export default function DashboardOverview() {
           {/* First Row - Calls Volume and Caller Types */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Calls Volume */}
-            <Card className="bg-white shadow-lg">
+            <Card className="bg-white shadow-lg border-gray-200">
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Calls Success</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">Calls Success</h3>
                   <div className="flex items-center space-x-4 text-sm">
                     <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-500" />
-                      <span>Inbound</span>
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
+                      <span className="text-gray-600">Inbound</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-purple-500" />
-                      <span>Outbound</span>
+                      <div className="w-3 h-3 rounded-full bg-gray-500" />
+                      <span className="text-gray-600">Outbound</span>
                     </div>
                   </div>
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={mockData.callsVolume}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis dataKey="date" stroke="#6B7280" />
+                      <YAxis stroke="#6B7280" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px'
+                        }}
+                      />
                       <Area
                         type="monotone"
                         dataKey="inbound"
                         stackId="1"
-                        stroke="#3B82F6"
-                        fill="#3B82F6"
+                        stroke="#10B981"
+                        fill="#10B981"
                         fillOpacity={0.3}
                       />
                       <Area
                         type="monotone"
                         dataKey="outbound"
                         stackId="1"
-                        stroke="#8B5CF6"
-                        fill="#8B5CF6"
+                        stroke="#6B7280"
+                        fill="#6B7280"
                         fillOpacity={0.3}
                       />
                     </AreaChart>
@@ -445,17 +281,17 @@ export default function DashboardOverview() {
             </Card>
 
             {/* Caller Types */}
-            <Card className="bg-white shadow-lg">
+            <Card className="bg-white shadow-lg border-gray-200">
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Caller types</h3>
+                  <h3 className="text-lg font-semibold text-gray-800">Caller types</h3>
                   <div className="relative">
                     <ResponsiveContainer width="100%" height={200}>
                       <PieChart>
                         <Pie
                           data={[
-                            { name: 'Total', value: mockData.callerTypes.total, color: '#3B82F6' },
-                            { name: 'Repeat', value: mockData.callerTypes.repeat, color: '#8B5CF6' }
+                            { name: 'Total', value: mockData.callerTypes.total, color: '#10B981' },
+                            { name: 'Repeat', value: mockData.callerTypes.repeat, color: '#6B7280' }
                           ]}
                           cx="50%"
                           cy="50%"
@@ -464,30 +300,30 @@ export default function DashboardOverview() {
                           paddingAngle={2}
                           dataKey="value"
                         >
-                          <Cell fill="#3B82F6" />
-                          <Cell fill="#8B5CF6" />
+                          <Cell fill="#10B981" />
+                          <Cell fill="#6B7280" />
                         </Pie>
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900">38 </div>
+                        <div className="text-2xl font-bold text-gray-800">38</div>
                         <div className="text-sm text-gray-600">Overall</div>
                       </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <div className="text-xl font-bold text-gray-900">{mockData.callerTypes.total}</div>
+                      <div className="text-xl font-bold text-gray-800">{mockData.callerTypes.total}</div>
                       <div className="text-sm text-gray-600">Total</div>
                     </div>
                     <div>
-                      <div className="text-xl font-bold text-purple-600">{mockData.callerTypes.repeat}</div>
+                      <div className="text-xl font-bold text-gray-600">{mockData.callerTypes.repeat}</div>
                       <div className="text-sm text-gray-600">Web Call</div>
                     </div>
                     <div>
-                      <div className="text-xl font-bold text-blue-600">{mockData.callerTypes.unique}</div>
-                      <div className="text-sm text-gray-600">phone call</div>
+                      <div className="text-xl font-bold text-green-600">{mockData.callerTypes.unique}</div>
+                      <div className="text-sm text-gray-600">Phone call</div>
                     </div>
                   </div>
                 </div>
