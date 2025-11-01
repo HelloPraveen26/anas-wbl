@@ -4,6 +4,9 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Zenvoice',
   description: 'Manage your autonomous voice assistants',
+  icons: {
+    icon: '/assets/logo1.png',
+  },
 };
 
 export default function RootLayout({
@@ -13,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
+      <head>  
         {/* Google Fonts Preconnect Links - Recommended for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link

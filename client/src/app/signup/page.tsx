@@ -452,7 +452,7 @@ export default function SignUp() {
                 id="phone"
                 name="phone"
                 type="tel"
-                placeholder="+91 9xxxxxxxxx"
+                placeholder="+91 9XXXXXXXXX"
                 value={formData.phone}
                 onChange={handleInputChange}
                 className={`w-full h-12 px-4 border-2 rounded-xl focus:outline-none  bg-gray-800 text-white placeholder-gray-500 shadow-inner ${

@@ -100,7 +100,7 @@ export function CreateAssistantModal({
             />
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3  text-black">
             <Button
               type="button"
               variant="outline"
