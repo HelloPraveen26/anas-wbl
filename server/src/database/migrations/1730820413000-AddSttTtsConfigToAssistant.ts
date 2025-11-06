@@ -16,7 +16,7 @@ export class AddSttTtsConfigToAssistant1730820413000
     if (sttConfigExists.length === 0) {
       await queryRunner.query(`
         ALTER TABLE "assistants"
-        ADD COLUMN "stt_config" jsonb
+        ADD COLUMN "stt_config" jsonb DEFAULT '{}'
       `);
     }
 
@@ -30,7 +30,7 @@ export class AddSttTtsConfigToAssistant1730820413000
     if (ttsConfigExists.length === 0) {
       await queryRunner.query(`
         ALTER TABLE "assistants"
-        ADD COLUMN "tts_config" jsonb
+        ADD COLUMN "tts_config" jsonb DEFAULT '{}'
       `);
     }
   }

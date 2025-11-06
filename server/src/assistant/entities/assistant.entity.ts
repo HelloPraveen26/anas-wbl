@@ -31,10 +31,10 @@ export class Assistant {
   @Column({ name: "synthesizer_voice_id", type: "uuid" })
   synthesizerVoiceId: string;
 
-  @Column({ name: "stt_config", type: "json", nullable: true })
+  @Column({ name: "stt_config", type: "json", nullable: true, default: {} })
   sttConfig: Record<string, any>;
 
-  @Column({ name: "tts_config", type: "json", nullable: true })
+  @Column({ name: "tts_config", type: "json", nullable: true, default: {} })
   ttsConfig: Record<string, any>;
 
   @Column({ name: "is_active", default: true })
