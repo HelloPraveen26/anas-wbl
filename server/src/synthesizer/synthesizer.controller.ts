@@ -14,6 +14,7 @@ import {
   SynthesizerProvider,
   SynthesizerModel,
   SynthesizerVoice,
+  TtsConfig,
 } from "./entities";
 
 @ApiTags("synthesizer")
@@ -27,6 +28,8 @@ export class SynthesizerController {
     private synthesizerModelRepository: Repository<SynthesizerModel>,
     @InjectRepository(SynthesizerVoice)
     private synthesizerVoiceRepository: Repository<SynthesizerVoice>,
+    @InjectRepository(TtsConfig)
+    private ttsConfigRepository: Repository<TtsConfig>,
   ) {}
 
   @Get("providers")
@@ -247,6 +250,110 @@ export class SynthesizerController {
         },
       },
       order: { name: "ASC" },
+    });
+  }
+
+  @Get("configs")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Get TTS configs",
+    description:
+      "Retrieve TTS configuration options, optionally filtered by provider",
+  })
+  @ApiQuery({
+    name: "providerId",
+    required: false,
+    description: "Filter configs by provider ID",
+    type: "string",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "TTS configs retrieved successfully",
+    schema: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          label: { type: "string" },
+          key: { type: "string" },
+          type: {
+            type: "string",
+            enum: ["string", "number", "boolean", "select"],
+          },
+          list: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                displayName: { type: "string" },
+                value: { type: "string" },
+              },
+            },
+            nullable: true,
+          },
+          defaultValue: { type: "string", nullable: true },
+          active: { type: "boolean" },
+          synthesizerProvider: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              name: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    example: [
+      {
+        id: "123e4567-e89b-12d3-a456-426614174000",
+        label: "Speaker",
+        key: "speaker",
+        type: "select",
+        list: [
+          { displayName: "Anushka(F)", value: "anushka" },
+          { displayName: "Manisha(F)", value: "manisha" },
+          { displayName: "Abhilash(M)", value: "abhilash" },
+          { displayName: "Karun(M)", value: "karun" },
+        ],
+        defaultValue: "anushka",
+        active: true,
+        synthesizerProvider: {
+          id: "123e4567-e89b-12d3-a456-426614174001",
+          name: "OpenAI",
+        },
+      },
+    ],
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "Unauthorized - invalid token",
+  })
+  async getTtsConfigs(@Query("providerId") providerId?: string) {
+    const whereCondition: any = { active: true };
+
+    if (providerId) {
+      whereCondition.synthesizerProvider = { id: providerId };
+    }
+
+    return this.ttsConfigRepository.find({
+      where: whereCondition,
+      relations: ["synthesizerProvider"],
+      select: {
+        id: true,
+        label: true,
+        key: true,
+        type: true,
+        list: true,
+        defaultValue: true,
+        active: true,
+        synthesizerProvider: {
+          id: true,
+          name: true,
+        },
+      },
+      order: { label: "ASC" },
     });
   }
 }

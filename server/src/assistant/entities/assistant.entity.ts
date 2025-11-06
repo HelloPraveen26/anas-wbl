@@ -31,6 +31,12 @@ export class Assistant {
   @Column({ name: "synthesizer_voice_id", type: "uuid" })
   synthesizerVoiceId: string;
 
+  @Column({ name: "stt_config", type: "json", nullable: true })
+  sttConfig: Record<string, any>;
+
+  @Column({ name: "tts_config", type: "json", nullable: true })
+  ttsConfig: Record<string, any>;
+
   @Column({ name: "is_active", default: true })
   isActive: boolean;
 

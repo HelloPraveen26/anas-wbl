@@ -33,6 +33,8 @@ interface Assistant {
   llmModelId?: string;
   transcriberModelId?: string;
   synthesizerVoiceId?: string;
+  sttConfig?: Record<string, any>;
+  ttsConfig?: Record<string, any>;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;

@@ -8,6 +8,8 @@ import {
   JoinColumn,
   OneToMany,
 } from "typeorm";
+import { SynthesizerProvider } from "./synthesizer-provider.entity";
+import { SynthesizerVoice } from "./synthesizer-voice.entity";
 
 @Entity("synthesizer_models")
 export class SynthesizerModel {
@@ -20,12 +22,15 @@ export class SynthesizerModel {
   @Column({ name: "is_active", default: true })
   isActive: boolean;
 
-  @ManyToOne("SynthesizerProvider", "synthesizerModels")
+  @ManyToOne(
+    () => SynthesizerProvider,
+    (provider) => provider.synthesizerModels,
+  )
   @JoinColumn({ name: "synthesizer_provider_id" })
-  synthesizerProvider: any;
+  synthesizerProvider: SynthesizerProvider;
 
-  @OneToMany("SynthesizerVoice", "synthesizerModel")
-  synthesizerVoices: any[];
+  @OneToMany(() => SynthesizerVoice, (voice) => voice.synthesizerModel)
+  synthesizerVoices: SynthesizerVoice[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

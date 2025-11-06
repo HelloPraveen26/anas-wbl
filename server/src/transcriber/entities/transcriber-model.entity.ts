@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from "typeorm";
+import { TranscriberProvider } from "./transcriber-provider.entity";
 
 @Entity("transcriber_models")
 export class TranscriberModel {
@@ -19,9 +20,12 @@ export class TranscriberModel {
   @Column({ name: "is_active", default: true })
   isActive: boolean;
 
-  @ManyToOne("TranscriberProvider", "transcriberModels")
+  @ManyToOne(
+    () => TranscriberProvider,
+    (provider) => provider.transcriberModels,
+  )
   @JoinColumn({ name: "transcriber_provider_id" })
-  transcriberProvider: any;
+  transcriberProvider: TranscriberProvider;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

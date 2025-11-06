@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from "typeorm";
+import { TranscriberModel } from "./transcriber-model.entity";
+import { SttConfig } from "./stt-config.entity";
 
 @Entity("transcriber_providers")
 export class TranscriberProvider {
@@ -18,8 +20,11 @@ export class TranscriberProvider {
   @Column({ name: "is_active", default: true })
   isActive: boolean;
 
-  @OneToMany("TranscriberModel", "transcriberProvider")
-  transcriberModels: any[];
+  @OneToMany(() => TranscriberModel, (model) => model.transcriberProvider)
+  transcriberModels: TranscriberModel[];
+
+  @OneToMany(() => SttConfig, (config) => config.transcriberProvider)
+  sttConfigs: SttConfig[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

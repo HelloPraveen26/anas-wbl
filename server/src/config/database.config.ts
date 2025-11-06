@@ -2,11 +2,16 @@ import { ConfigService } from "@nestjs/config";
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { User } from "../users/entities/user.entity";
 import { LlmProvider, LlmModel } from "../llm/entities";
-import { TranscriberProvider, TranscriberModel } from "../transcriber/entities";
+import {
+  TranscriberProvider,
+  TranscriberModel,
+  SttConfig,
+} from "../transcriber/entities";
 import {
   SynthesizerProvider,
   SynthesizerModel,
   SynthesizerVoice,
+  TtsConfig,
 } from "../synthesizer/entities";
 import { Assistant } from "../assistant/entities";
 import { RegisteredNumber } from "../registered-numbers/entities/registered-number.entity";
@@ -28,9 +33,11 @@ export const databaseConfig = (
     LlmModel,
     TranscriberProvider,
     TranscriberModel,
+    SttConfig,
     SynthesizerProvider,
     SynthesizerModel,
     SynthesizerVoice,
+    TtsConfig,
     Assistant,
     RegisteredNumber,
     ContactNumber,

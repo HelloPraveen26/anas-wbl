@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { FileText, Download } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { FileText, Download } from "lucide-react";
 import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
 
@@ -13,6 +13,8 @@ interface Assistant {
   llmModelId: string;
   transcriberModelId: string;
   synthesizerVoiceId: string;
+  sttConfig?: Record<string, any>;
+  ttsConfig?: Record<string, any>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -33,8 +35,8 @@ interface CallLog {
 }
 
 export default function CallLogsPage() {
-  const [statusFilter, setStatusFilter] = useState('');
-  const [evaluationFilter, setEvaluationFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState("");
+  const [evaluationFilter, setEvaluationFilter] = useState("");
   const [allCalls, setAllCalls] = useState<CallLog[]>([]);
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,36 +86,49 @@ export default function CallLogsPage() {
   const generateDummyCallLogs = (assistants: Assistant[]) => {
     if (assistants.length === 0) return [];
 
-    const callStatuses = ['completed', 'failed', 'missed', 'in-progress'];
-    const callTypes = ['inbound', 'outbound'];
-    const successEvaluations = ['✅ Pass', '❌ Fail', '⏱️ Timeout', 'N/A'];
+    const callStatuses = ["completed", "failed", "missed", "in-progress"];
+    const callTypes = ["inbound", "outbound"];
+    const successEvaluations = ["✅ Pass", "❌ Fail", "⏱️ Timeout", "N/A"];
     const dummyCustomerPhones = [
-      '+15558889999',
-      '+15551234567',
-      '+15559876543',
-      '+15555551234',
-      '+15552468135'
+      "+15558889999",
+      "+15551234567",
+      "+15559876543",
+      "+15555551234",
+      "+15552468135",
     ];
 
     const dummyAssistantPhones = [
-      '+15550001111',
-      '+15550002222',
-      '+15550003333',
-      '+15550004444'
+      "+15550001111",
+      "+15550002222",
+      "+15550003333",
+      "+15550004444",
     ];
 
     return assistants.map((assistant, index) => {
-      const randomStatus = callStatuses[Math.floor(Math.random() * callStatuses.length)];
-      const randomType = callTypes[Math.floor(Math.random() * callTypes.length)];
-      const randomEvaluation = successEvaluations[Math.floor(Math.random() * successEvaluations.length)];
-      const randomCustomerPhone = dummyCustomerPhones[Math.floor(Math.random() * dummyCustomerPhones.length)];
-      const randomAssistantPhone = dummyAssistantPhones[Math.floor(Math.random() * dummyAssistantPhones.length)];
+      const randomStatus =
+        callStatuses[Math.floor(Math.random() * callStatuses.length)];
+      const randomType =
+        callTypes[Math.floor(Math.random() * callTypes.length)];
+      const randomEvaluation =
+        successEvaluations[
+          Math.floor(Math.random() * successEvaluations.length)
+        ];
+      const randomCustomerPhone =
+        dummyCustomerPhones[
+          Math.floor(Math.random() * dummyCustomerPhones.length)
+        ];
+      const randomAssistantPhone =
+        dummyAssistantPhones[
+          Math.floor(Math.random() * dummyAssistantPhones.length)
+        ];
       const randomDuration = Math.floor(Math.random() * 300) + 30; // 30-330 seconds
-      const randomCost = parseFloat((Math.random() * 2 + 0.10).toFixed(2)); // $0.10-$2.10
+      const randomCost = parseFloat((Math.random() * 2 + 0.1).toFixed(2)); // $0.10-$2.10
 
       // Generate start time (random time in the last 7 days)
       const now = new Date();
-      const randomTime = new Date(now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000);
+      const randomTime = new Date(
+        now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000,
+      );
 
       return {
         id: assistant.id, // Use assistant ID as call ID
@@ -126,7 +141,7 @@ export default function CallLogsPage() {
         successEvaluation: randomEvaluation,
         startTime: randomTime.toISOString(),
         duration: randomDuration,
-        cost: randomCost
+        cost: randomCost,
       };
     });
   };
@@ -156,15 +171,20 @@ export default function CallLogsPage() {
   }, [assistants]);
 
   // Filter the calls based on selected filters
-  const filteredCalls = allCalls.filter(call => {
+  const filteredCalls = allCalls.filter((call) => {
     const statusMatch = !statusFilter || call.callStatus === statusFilter;
-    const evaluationMatch = !evaluationFilter || 
-      (call.successEvaluation ? call.successEvaluation.toLowerCase().includes(evaluationFilter.toLowerCase()) : false);
+    const evaluationMatch =
+      !evaluationFilter ||
+      (call.successEvaluation
+        ? call.successEvaluation
+            .toLowerCase()
+            .includes(evaluationFilter.toLowerCase())
+        : false);
     return statusMatch && evaluationMatch;
   });
 
   const formatDuration = (seconds: number) => {
-    if (seconds === 0) return '0s';
+    if (seconds === 0) return "0s";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
@@ -172,61 +192,75 @@ export default function CallLogsPage() {
 
   const formatStartTime = (isoString: string) => {
     const date = new Date(isoString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return (
+      date.toLocaleDateString() +
+      " " +
+      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'text-green-600 bg-green-50';
-      case 'failed': return 'text-red-600 bg-red-50';
-      case 'missed': return 'text-yellow-600 bg-yellow-50';
-      case 'in-progress': return 'text-blue-600 bg-blue-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case "completed":
+        return "text-green-600 bg-green-50";
+      case "failed":
+        return "text-red-600 bg-red-50";
+      case "missed":
+        return "text-yellow-600 bg-yellow-50";
+      case "in-progress":
+        return "text-blue-600 bg-blue-50";
+      default:
+        return "text-gray-600 bg-gray-50";
     }
   };
 
   const getTypeColor = (type: string) => {
-    return type === 'inbound' 
-      ? 'text-blue-600 bg-blue-50' 
-      : 'text-orange-600 bg-orange-50';
+    return type === "inbound"
+      ? "text-blue-600 bg-blue-50"
+      : "text-orange-600 bg-orange-50";
   };
 
   const exportToCSV = () => {
     const headers = [
-      'Call ID',
-      'Assistant',
-      'Assistant Phone',
-      'Customer Phone',
-      'Type',
-      'Call Status',
-      'Success Evaluation',
-      'Start Time',
-      'Duration (seconds)',
-      'Cost'
+      "Call ID",
+      "Assistant",
+      "Assistant Phone",
+      "Customer Phone",
+      "Type",
+      "Call Status",
+      "Success Evaluation",
+      "Start Time",
+      "Duration (seconds)",
+      "Cost",
     ];
 
     const csvContent = [
-      headers.join(','),
-      ...filteredCalls.map(call => [
-        `"${call.id}"`,
-        `"${call.assistant?.name ?? ''}"`,
-        `"${call.assistantPhone}"`,
-        `"${call.customerPhone}"`,
-        `"${call.type}"`,
-        `"${call.callStatus}"`,
-        `"${call.successEvaluation ? call.successEvaluation.replace(/"/g, '""') : ''}"`,
-        `"${call.startTime}"`,
-        call.duration,
-        call.cost
-      ].join(','))
-    ].join('\n');
+      headers.join(","),
+      ...filteredCalls.map((call) =>
+        [
+          `"${call.id}"`,
+          `"${call.assistant?.name ?? ""}"`,
+          `"${call.assistantPhone}"`,
+          `"${call.customerPhone}"`,
+          `"${call.type}"`,
+          `"${call.callStatus}"`,
+          `"${call.successEvaluation ? call.successEvaluation.replace(/"/g, '""') : ""}"`,
+          `"${call.startTime}"`,
+          call.duration,
+          call.cost,
+        ].join(","),
+      ),
+    ].join("\n");
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `call-logs-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `call-logs-${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -249,7 +283,7 @@ export default function CallLogsPage() {
       <div className="min-h-screen bg-[#f8f9fa] p-6 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error loading call logs: {error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
@@ -271,11 +305,12 @@ export default function CallLogsPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Call Logs</h2>
             <p className="text-sm text-gray-600">
-              View and manage call logs for your assistants ({assistants.length} assistants loaded).
+              View and manage call logs for your assistants ({assistants.length}{" "}
+              assistants loaded).
             </p>
           </div>
         </div>
-        
+
         <button
           onClick={exportToCSV}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
@@ -331,51 +366,98 @@ export default function CallLogsPage() {
               <th className="px-4 py-3 text-left border-b">
                 <input type="checkbox" className="rounded" />
               </th>
-              <th className="px-4 py-3 text-left border-b font-medium">Call ID (Assistant ID)</th>
-              <th className="px-4 py-3 text-left border-b font-medium">Assistant</th>
-              <th className="px-4 py-3 text-left border-b font-medium">Assistant Phone</th>
-              <th className="px-4 py-3 text-left border-b font-medium">Customer Phone</th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Call ID (Assistant ID)
+              </th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Assistant
+              </th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Assistant Phone
+              </th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Customer Phone
+              </th>
               <th className="px-4 py-3 text-left border-b font-medium">Type</th>
-              <th className="px-4 py-3 text-left border-b font-medium">Call Status</th>
-              <th className="px-4 py-3 text-left border-b font-medium">Evaluation</th>
-              <th className="px-4 py-3 text-left border-b font-medium">Start Time</th>
-              <th className="px-4 py-3 text-left border-b font-medium">Duration</th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Call Status
+              </th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Evaluation
+              </th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Start Time
+              </th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Duration
+              </th>
               <th className="px-4 py-3 text-left border-b font-medium">Cost</th>
             </tr>
           </thead>
           <tbody>
             {filteredCalls.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
-                  {assistants.length === 0 ? "No assistants found. Create an assistant first." : "No call logs match the selected filters."}
+                <td
+                  colSpan={11}
+                  className="px-4 py-8 text-center text-gray-500"
+                >
+                  {assistants.length === 0
+                    ? "No assistants found. Create an assistant first."
+                    : "No call logs match the selected filters."}
                 </td>
               </tr>
             ) : (
               filteredCalls.map((call, index) => (
-                <tr key={call.id} className={`text-gray-800 hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}`}>
+                <tr
+                  key={call.id}
+                  className={`text-gray-800 hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-25"}`}
+                >
                   <td className="px-4 py-3 border-b">
                     <input type="checkbox" className="rounded" />
                   </td>
-                  <td className="px-4 py-3 border-b font-mono text-xs" title={call.id}>
-                    {call.id.length > 20 ? `${call.id.substring(0, 20)}...` : call.id}
+                  <td
+                    className="px-4 py-3 border-b font-mono text-xs"
+                    title={call.id}
+                  >
+                    {call.id.length > 20
+                      ? `${call.id.substring(0, 20)}...`
+                      : call.id}
                   </td>
-                  <td className="px-4 py-3 border-b font-medium">{call.assistant?.name ?? 'Unknown Assistant'}</td>
-                  <td className="px-4 py-3 border-b font-mono text-xs">{call.assistantPhone}</td>
-                  <td className="px-4 py-3 border-b font-mono text-xs">{call.customerPhone}</td>
+                  <td className="px-4 py-3 border-b font-medium">
+                    {call.assistant?.name ?? "Unknown Assistant"}
+                  </td>
+                  <td className="px-4 py-3 border-b font-mono text-xs">
+                    {call.assistantPhone}
+                  </td>
+                  <td className="px-4 py-3 border-b font-mono text-xs">
+                    {call.customerPhone}
+                  </td>
                   <td className="px-4 py-3 border-b">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getTypeColor(call.type)}`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getTypeColor(call.type)}`}
+                    >
                       {call.type}
                     </span>
                   </td>
                   <td className="px-4 py-3 border-b">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(call.callStatus)}`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(call.callStatus)}`}
+                    >
                       {call.callStatus}
                     </span>
                   </td>
-                  <td className="px-4 py-3 border-b">{call.successEvaluation ?? ''}</td>
-                  <td className="px-4 py-3 border-b text-xs">{formatStartTime(call.startTime)}</td>
-                  <td className="px-4 py-3 border-b">{formatDuration(call.duration)}</td>
-                  <td className="px-4 py-3 border-b font-medium">${call.cost.toFixed(2)}</td>
+                  <td className="px-4 py-3 border-b">
+                    {call.successEvaluation ?? ""}
+                  </td>
+                  <td className="px-4 py-3 border-b text-xs">
+                    {formatStartTime(call.startTime)}
+                  </td>
+                  <td className="px-4 py-3 border-b">
+                    {formatDuration(call.duration)}
+                  </td>
+                  <td className="px-4 py-3 border-b font-medium">
+                    ${call.cost.toFixed(2)}
+                  </td>
                 </tr>
               ))
             )}
@@ -385,10 +467,16 @@ export default function CallLogsPage() {
 
       {/* Footer */}
       <div className="flex justify-between items-center text-sm text-gray-500">
-        <span>Showing {filteredCalls.length} of {allCalls.length} calls</span>
+        <span>
+          Showing {filteredCalls.length} of {allCalls.length} calls
+        </span>
         <div className="flex gap-2">
-          <button className="px-3 py-1 border rounded hover:bg-gray-50">Previous</button>
-          <button className="px-3 py-1 border rounded hover:bg-gray-50">Next</button>
+          <button className="px-3 py-1 border rounded hover:bg-gray-50">
+            Previous
+          </button>
+          <button className="px-3 py-1 border rounded hover:bg-gray-50">
+            Next
+          </button>
         </div>
       </div>
     </div>

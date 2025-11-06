@@ -326,47 +326,6 @@
 //   );
 // }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -388,6 +347,56 @@ import { CreateAssistantModal } from "@/components/CreateAssistantModal";
 import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
 
+interface Provider {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+interface Model {
+  id: string;
+  name: string;
+  isActive: boolean;
+  llmProvider: { id: string; name: string };
+}
+
+interface SynthesizerProvider {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+interface SynthesizerModel {
+  id: string;
+  name: string;
+  isActive: boolean;
+  synthesizerProvider: { id: string; name: string };
+}
+
+interface SynthesizerVoice {
+  id: string;
+  name: string;
+  isActive: boolean;
+  synthesizerModel: {
+    id: string;
+    name: string;
+    synthesizerProvider: { id: string; name: string };
+  };
+}
+
+interface TranscriberProvider {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+interface TranscriberModel {
+  id: string;
+  name: string;
+  isActive: boolean;
+  transcriberProvider: { id: string; name: string };
+}
+
 interface Assistant {
   id: string;
   name: string;
@@ -396,6 +405,8 @@ interface Assistant {
   llmModelId: string;
   transcriberModelId: string;
   synthesizerVoiceId: string;
+  sttConfig?: Record<string, any>;
+  ttsConfig?: Record<string, any>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -575,17 +586,20 @@ export default function AssistantsListingPage() {
   }, [fetchAssistants]);
 
   const filteredAssistants = assistants.filter((assistant) =>
-    assistant.name.toLowerCase().includes(searchTerm.toLowerCase())
+    assistant.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleCreateAssistant = async (name: string) => {
     setCreateAssistantLoading(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/assistants/create-with-name`, {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+      const res = await fetch(
+        `${getApiBaseUrl()}/assistants/create-with-name`,
+        {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        },
+      );
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e?.message || `HTTP ${res.status}`);
@@ -702,7 +716,9 @@ export default function AssistantsListingPage() {
                 <Bot className="w-10 h-10 text-gray-400" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">
-                {searchTerm ? "No assistants found" : "Create Your First Assistant"}
+                {searchTerm
+                  ? "No assistants found"
+                  : "Create Your First Assistant"}
               </h3>
               <p className="text-gray-600 mb-6">
                 {searchTerm
@@ -744,10 +760,11 @@ export default function AssistantsListingPage() {
                         </h3>
                         <div className="flex items-center gap-2">
                           <div
-                            className={`w-2 h-2 rounded-full ${assistant.isActive
-                              ? "bg-emerald-500"
-                              : "bg-gray-400"
-                              }`}
+                            className={`w-2 h-2 rounded-full ${
+                              assistant.isActive
+                                ? "bg-emerald-500"
+                                : "bg-gray-400"
+                            }`}
                           ></div>
                           <span className="text-xs text-gray-500">
                             {assistant.isActive ? "Active" : "Offline"}

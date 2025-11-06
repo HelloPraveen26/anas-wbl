@@ -7,6 +7,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from "typeorm";
+import { SynthesizerModel } from "./synthesizer-model.entity";
 
 @Entity("synthesizer_voices")
 export class SynthesizerVoice {
@@ -19,9 +20,9 @@ export class SynthesizerVoice {
   @Column({ name: "is_active", default: true })
   isActive: boolean;
 
-  @ManyToOne("SynthesizerModel", "synthesizerVoices")
+  @ManyToOne(() => SynthesizerModel, (model) => model.synthesizerVoices)
   @JoinColumn({ name: "synthesizer_model_id" })
-  synthesizerModel: any;
+  synthesizerModel: SynthesizerModel;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

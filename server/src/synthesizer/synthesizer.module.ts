@@ -4,6 +4,7 @@ import {
   SynthesizerProvider,
   SynthesizerModel,
   SynthesizerVoice,
+  TtsConfig,
 } from "./entities";
 import { SynthesizerController } from "./synthesizer.controller";
 import { SynthesizerService } from "./synthesizer.service";
@@ -14,6 +15,7 @@ import { SynthesizerService } from "./synthesizer.service";
       SynthesizerProvider,
       SynthesizerModel,
       SynthesizerVoice,
+      TtsConfig,
     ]),
   ],
   providers: [SynthesizerService],

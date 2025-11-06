@@ -3,15 +3,21 @@ import { ConfigService } from "@nestjs/config";
 import { config } from "dotenv";
 import { User } from "../users/entities/user.entity";
 import { LlmProvider, LlmModel } from "../llm/entities";
-import { TranscriberProvider, TranscriberModel } from "../transcriber/entities";
+import {
+  TranscriberProvider,
+  TranscriberModel,
+  SttConfig,
+} from "../transcriber/entities";
 import {
   SynthesizerProvider,
   SynthesizerModel,
   SynthesizerVoice,
+  TtsConfig,
 } from "../synthesizer/entities";
 import { Assistant } from "../assistant/entities";
 import { RegisteredNumber } from "../registered-numbers/entities/registered-number.entity";
 import { ContactNumber } from "../contact-numbers/entities/contact-number.entity";
+import { CallLog } from "../call-logs/entities/call-log.entity";
 
 config();
 
@@ -30,12 +36,15 @@ export const AppDataSource = new DataSource({
     LlmModel,
     TranscriberProvider,
     TranscriberModel,
+    SttConfig,
     SynthesizerProvider,
     SynthesizerModel,
     SynthesizerVoice,
+    TtsConfig,
     Assistant,
     RegisteredNumber,
     ContactNumber,
+    CallLog,
   ],
   migrations: [__dirname + "/migrations/*.{ts,js}"],
   migrationsTableName: "migrations",

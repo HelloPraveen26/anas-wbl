@@ -46,6 +46,8 @@ interface Assistant {
   llmModelId: string;
   transcriberModelId: string;
   synthesizerVoiceId: string;
+  sttConfig?: Record<string, any>;
+  ttsConfig?: Record<string, any>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -116,6 +118,44 @@ interface TranscriberModel {
   transcriberProvider: { id: string; name: string };
 }
 
+interface STTConfigListOption {
+  value: string;
+  displayName: string;
+}
+
+interface STTConfig {
+  id: string;
+  label: string;
+  key: string;
+  type: string;
+  list: STTConfigListOption[] | null;
+  defaultValue: string;
+  active: boolean;
+  transcriberProvider: {
+    id: string;
+    name: string;
+  };
+}
+
+interface SynthesizerConfigListOption {
+  value: string;
+  displayName: string;
+}
+
+interface SynthesizerConfig {
+  id: string;
+  label: string;
+  key: string;
+  type: string;
+  list: SynthesizerConfigListOption[] | null;
+  defaultValue: string;
+  active: boolean;
+  synthesizerProvider: {
+    id: string;
+    name: string;
+  };
+}
+
 // -------------------- Component --------------------
 export default function AssistantEditPage() {
   const params = useParams();
@@ -159,6 +199,20 @@ export default function AssistantEditPage() {
   const [selectedTranscriberProvider, setSelectedTranscriberProvider] =
     useState("");
   const [selectedTranscriberModel, setSelectedTranscriberModel] = useState("");
+
+  // STT Configs
+  const [sttConfigs, setSttConfigs] = useState<STTConfig[]>([]);
+  const [sttConfigValues, setSttConfigValues] = useState<{
+    [key: string]: any;
+  }>({});
+
+  // Synthesizer Configs
+  const [synthesizerConfigs, setSynthesizerConfigs] = useState<
+    SynthesizerConfig[]
+  >([]);
+  const [synthesizerConfigValues, setSynthesizerConfigValues] = useState<{
+    [key: string]: any;
+  }>({});
 
   // Phone call state
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -243,7 +297,9 @@ export default function AssistantEditPage() {
   // Assistant form
   const [assistantName, setAssistantName] = useState("");
   const [firstMessage, setFirstMessage] = useState("Hello.");
-  const [firstMessageMode, setFirstMessageMode] = useState<"speak_first" | "wait_for_user" | "speak_first_generated">("speak_first");
+  const [firstMessageMode, setFirstMessageMode] = useState<
+    "speak_first" | "wait_for_user" | "speak_first_generated"
+  >("speak_first");
   const [systemPrompt, setSystemPrompt] = useState(
     `[Identity]
   You are an AI Hotel Booking Assistant.
@@ -373,6 +429,78 @@ export default function AssistantEditPage() {
     }
   };
 
+  const fetchSynthesizerConfigs = async (providerId: string) => {
+    console.log("fetchSynthesizerConfigs called with providerId:", providerId);
+    if (!providerId) {
+      setSynthesizerConfigs([]);
+      setSynthesizerConfigValues({});
+      return;
+    }
+
+    try {
+      const url = `${getApiBaseUrl()}/synthesizer/configs?providerId=${providerId}`;
+      console.log("Fetching synthesizer configs from:", url);
+      const r = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
+      console.log("Response status:", r.status);
+      const d = await r.json();
+      console.log("Raw synthesizer configs response:", d);
+      const activeConfigs = d.filter(
+        (config: SynthesizerConfig) => config.active,
+      );
+      console.log("Active synthesizer configs:", activeConfigs);
+      setSynthesizerConfigs(activeConfigs);
+
+      // Initialize config values with default values
+      const initialValues: { [key: string]: any } = {};
+      activeConfigs.forEach((config: SynthesizerConfig) => {
+        if (config.type === "boolean") {
+          initialValues[config.key] = config.defaultValue === "true";
+        } else {
+          initialValues[config.key] = config.defaultValue;
+        }
+      });
+      console.log("Initial synthesizer config values:", initialValues);
+      setSynthesizerConfigValues(initialValues);
+    } catch (e) {
+      console.error("Error fetching synthesizer configs:", e);
+    }
+  };
+
+  const fetchSTTConfigs = async (providerId: string) => {
+    if (!providerId) {
+      setSttConfigs([]);
+      setSttConfigValues({});
+      return;
+    }
+
+    try {
+      const r = await fetch(
+        `${getApiBaseUrl()}/transcriber/stt-configs?providerId=${providerId}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
+      const d = await r.json();
+      const activeConfigs = d.filter((config: STTConfig) => config.active);
+      setSttConfigs(activeConfigs);
+
+      // Initialize config values with default values
+      const initialValues: { [key: string]: any } = {};
+      activeConfigs.forEach((config: STTConfig) => {
+        if (config.type === "boolean") {
+          initialValues[config.key] = config.defaultValue === "true";
+        } else {
+          initialValues[config.key] = config.defaultValue;
+        }
+      });
+      setSttConfigValues(initialValues);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchAssistants();
     fetchProviders();
@@ -400,6 +528,14 @@ export default function AssistantEditPage() {
       setSelectedTranscriberProvider(
         a.transcriberModel?.transcriberProvider?.id || "",
       );
+      // Load STT configs if transcriber provider exists
+      if (a.transcriberModel?.transcriberProvider?.id) {
+        fetchSTTConfigs(a.transcriberModel.transcriberProvider.id);
+      }
+      // Load existing STT config values
+      if (a.sttConfig) {
+        setSttConfigValues(a.sttConfig);
+      }
       setSelectedSynthesizerVoice(a.synthesizerVoiceId);
       setSelectedSynthesizerModel(
         a.synthesizerVoice?.synthesizerModel?.id || "",
@@ -407,6 +543,16 @@ export default function AssistantEditPage() {
       setSelectedSynthesizerProvider(
         a.synthesizerVoice?.synthesizerModel?.synthesizerProvider?.id || "",
       );
+      // Load Synthesizer configs if synthesizer provider exists
+      if (a.synthesizerVoice?.synthesizerModel?.synthesizerProvider?.id) {
+        fetchSynthesizerConfigs(
+          a.synthesizerVoice.synthesizerModel.synthesizerProvider.id,
+        );
+      }
+      // Load existing TTS config values
+      if (a.ttsConfig) {
+        setSynthesizerConfigValues(a.ttsConfig);
+      }
       // Set firstMessageMode based on firstMessage
       if (a.firstMessage === "") {
         setFirstMessageMode("wait_for_user");
@@ -496,6 +642,8 @@ export default function AssistantEditPage() {
           llmModelId: selectedModel,
           transcriberModelId: selectedTranscriberModel,
           synthesizerVoiceId: selectedSynthesizerVoice,
+          sttConfig: sttConfigValues,
+          ttsConfig: synthesizerConfigValues,
           isActive: true,
         }),
       });
@@ -513,18 +661,14 @@ export default function AssistantEditPage() {
   };
 
   const handlePublishAssistant = async () => {
-    if (!assistantId)
-      return alert("Select or create an assistant first.");
+    if (!assistantId) return alert("Select or create an assistant first.");
     setLoading(true);
     try {
-      const res = await fetch(
-        `${getApiBaseUrl()}/assistants/${assistantId}`,
-        {
-          method: "PATCH",
-          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: true }),
-        },
-      );
+      const res = await fetch(`${getApiBaseUrl()}/assistants/${assistantId}`, {
+        method: "PATCH",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: true }),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       alert("Assistant published!");
       await fetchAssistants();
@@ -636,39 +780,39 @@ export default function AssistantEditPage() {
               onClick={() => router.push("/dashboard/assistants")}
               className="text-xl text-emerald-600 hover:text--700 "
             >
-              <ArrowLeft className="w-4 h-4 -ml-9 -mr-10"  />
+              <ArrowLeft className="w-4 h-4 -ml-9 -mr-10" />
             </Button>
-           <div className="flex items-center justify-between">
-  <h1 className="text-xl font-bold text-gray-900 flex items-center gap-3 ">
-    {currentAssistant?.name || "Assistant"}
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900 flex items-center gap-3 ">
+                {currentAssistant?.name || "Assistant"}
 
-    {assistantId && (
-      <div className="flex items-center gap-2 text-xs text-gray-700 font-mono">
-        <span>ID: {assistantId.slice(0, 15)}...</span>
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(assistantId);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-          className="text-gray-400 hover:text-gray-600"
-        >
-          <Copy className="w-3 h-3" />
-        </button>
-        {copied && <span className="text-emerald-600">Copied!</span>}
-        <Button
-              variant="outline"
-              className="text-red-600 hover:bg-red-50 border-white"
-              onClick={handleDeleteAssistant}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-      </div>
-      
-    )}
-  </h1>
-</div>
-
+                {assistantId && (
+                  <div className="flex items-center gap-2 text-xs text-gray-700 font-mono">
+                    <span>ID: {assistantId.slice(0, 15)}...</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(assistantId);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                    {copied && (
+                      <span className="text-emerald-600">Copied!</span>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="text-red-600 hover:bg-red-50 border-white"
+                      onClick={handleDeleteAssistant}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </h1>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Input
@@ -709,7 +853,7 @@ export default function AssistantEditPage() {
             >
               ZX India
             </Button>
-            
+
             <Button
               onClick={handlePublishAssistant}
               variant="outline"
@@ -736,7 +880,6 @@ export default function AssistantEditPage() {
       <div className="flex h-[calc(100vh-100px)]">
         {/* Main */}
         <div className="flex-1 flex flex-col">
-
           {/* Tabs */}
           <div className="bg-white border-b border-gray-100 px-8">
             <div className="flex gap-6">
@@ -770,7 +913,7 @@ export default function AssistantEditPage() {
           </div>
 
           {/* Content */}
-           <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex-1 overflow-y-auto p-8">
             <div className="w-full">
               {/* Assistant Tab */}
               {activeTab === "assistant" && (
@@ -825,14 +968,25 @@ export default function AssistantEditPage() {
                             </Label>
                             <select
                               value={firstMessageMode}
-                              onChange={(e) => setFirstMessageMode(e.target.value as any)}
+                              onChange={(e) =>
+                                setFirstMessageMode(e.target.value as any)
+                              }
                               className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
                             >
-                              <option value="speak_first">Assistant speaks first</option>
-                              <option value="wait_for_user">Assistant waits for user</option>
-                              <option value="speak_first_generated">Assistant speaks first with model generated message</option>
+                              <option value="speak_first">
+                                Assistant speaks first
+                              </option>
+                              <option value="wait_for_user">
+                                Assistant waits for user
+                              </option>
+                              <option value="speak_first_generated">
+                                Assistant speaks first with model generated
+                                message
+                              </option>
                             </select>
-                            <p className="text-xs text-gray-500">Choose how the conversation starts</p>
+                            <p className="text-xs text-gray-500">
+                              Choose how the conversation starts
+                            </p>
                           </div>
 
                           {/* First message */}
@@ -843,13 +997,13 @@ export default function AssistantEditPage() {
                             <Input
                               type="text"
                               value={firstMessage}
-                              onChange={(e) =>
-                                setFirstMessage(e.target.value)
-                              }
+                              onChange={(e) => setFirstMessage(e.target.value)}
                               disabled={firstMessageMode !== "speak_first"}
                               className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                             />
-                            <p className="text-xs text-gray-500">The greeting message your assistant will say first</p>
+                            <p className="text-xs text-gray-500">
+                              The greeting message your assistant will say first
+                            </p>
                           </div>
 
                           {/* Prompt */}
@@ -900,7 +1054,10 @@ export default function AssistantEditPage() {
                                 className="w-full bg-gray-900 text-gray-100 p-4 rounded-xl text-sm font-mono min-h-[300px] border-0 focus:ring-2 focus:ring-emerald-500 resize-none"
                                 placeholder="Enter system prompt..."
                               />
-                              <p className="text-xs text-gray-500">Define how your assistant should behave and respond</p>
+                              <p className="text-xs text-gray-500">
+                                Define how your assistant should behave and
+                                respond
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -989,6 +1146,7 @@ export default function AssistantEditPage() {
                             setSelectedSynthesizerProvider(e.target.value);
                             setSelectedSynthesizerModel("");
                             setSelectedSynthesizerVoice("");
+                            fetchSynthesizerConfigs(e.target.value);
                           }}
                           className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
                         >
@@ -1016,9 +1174,7 @@ export default function AssistantEditPage() {
                           disabled={!selectedSynthesizerProvider}
                           className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <option value="">
-                            Select a synthesizer model
-                          </option>
+                          <option value="">Select a synthesizer model</option>
                           {filteredSynthesizerModels.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.name} ({m.synthesizerProvider.name})
@@ -1048,6 +1204,94 @@ export default function AssistantEditPage() {
                           ))}
                         </select>
                       </div>
+
+                      {/* Synthesizer Configuration Fields */}
+                      {synthesizerConfigs.length > 0 && (
+                        <div className="space-y-4 pt-6 border-t border-gray-100">
+                          <h3 className="text-base font-semibold text-gray-900">
+                            Advanced Settings
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {synthesizerConfigs.map((config) => (
+                              <div key={config.id} className="space-y-2">
+                                <Label className="text-sm font-semibold text-gray-700">
+                                  {config.label}
+                                </Label>
+
+                                {config.type === "select" && config.list && (
+                                  <select
+                                    value={
+                                      synthesizerConfigValues[config.key] ||
+                                      config.defaultValue
+                                    }
+                                    onChange={(e) =>
+                                      setSynthesizerConfigValues((prev) => ({
+                                        ...prev,
+                                        [config.key]: e.target.value,
+                                      }))
+                                    }
+                                    className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                  >
+                                    {config.list.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.displayName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+
+                                {config.type === "boolean" && (
+                                  <select
+                                    value={
+                                      synthesizerConfigValues[config.key]
+                                        ? "true"
+                                        : "false"
+                                    }
+                                    onChange={(e) =>
+                                      setSynthesizerConfigValues((prev) => ({
+                                        ...prev,
+                                        [config.key]: e.target.value === "true",
+                                      }))
+                                    }
+                                    className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                  >
+                                    <option value="false">Disabled</option>
+                                    <option value="true">Enabled</option>
+                                  </select>
+                                )}
+
+                                {(config.type === "string" ||
+                                  config.type === "number") && (
+                                  <Input
+                                    type={
+                                      config.type === "number"
+                                        ? "number"
+                                        : "text"
+                                    }
+                                    value={
+                                      synthesizerConfigValues[config.key] ||
+                                      config.defaultValue
+                                    }
+                                    onChange={(e) =>
+                                      setSynthesizerConfigValues((prev) => ({
+                                        ...prev,
+                                        [config.key]:
+                                          config.type === "number"
+                                            ? Number(e.target.value)
+                                            : e.target.value,
+                                      }))
+                                    }
+                                    className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                  />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1075,6 +1319,7 @@ export default function AssistantEditPage() {
                           onChange={(e) => {
                             setSelectedTranscriberProvider(e.target.value);
                             setSelectedTranscriberModel("");
+                            fetchSTTConfigs(e.target.value);
                           }}
                           className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
                         >
@@ -1100,9 +1345,7 @@ export default function AssistantEditPage() {
                           disabled={!selectedTranscriberProvider}
                           className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <option value="">
-                            Select a transcriber model
-                          </option>
+                          <option value="">Select a transcriber model</option>
                           {filteredTranscriberModels.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.name} ({m.transcriberProvider.name})
@@ -1111,6 +1354,93 @@ export default function AssistantEditPage() {
                         </select>
                       </div>
                     </div>
+
+                    {/* STT Configuration Fields */}
+                    {sttConfigs.length > 0 && (
+                      <div className="space-y-4 pt-6 border-t border-gray-100">
+                        <h3 className="text-base font-semibold text-gray-900">
+                          Additional Configuration
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {sttConfigs.map((config) => (
+                            <div key={config.id} className="space-y-2">
+                              <Label className="text-sm font-semibold text-gray-700">
+                                {config.label}
+                              </Label>
+
+                              {config.type === "select" && config.list && (
+                                <select
+                                  value={
+                                    sttConfigValues[config.key] ||
+                                    config.defaultValue
+                                  }
+                                  onChange={(e) =>
+                                    setSttConfigValues((prev) => ({
+                                      ...prev,
+                                      [config.key]: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                >
+                                  {config.list.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.displayName}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+
+                              {config.type === "boolean" && (
+                                <select
+                                  value={
+                                    sttConfigValues[config.key]
+                                      ? "true"
+                                      : "false"
+                                  }
+                                  onChange={(e) =>
+                                    setSttConfigValues((prev) => ({
+                                      ...prev,
+                                      [config.key]: e.target.value === "true",
+                                    }))
+                                  }
+                                  className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                >
+                                  <option value="false">Disabled</option>
+                                  <option value="true">Enabled</option>
+                                </select>
+                              )}
+
+                              {(config.type === "string" ||
+                                config.type === "number") && (
+                                <Input
+                                  type={
+                                    config.type === "number" ? "number" : "text"
+                                  }
+                                  value={
+                                    sttConfigValues[config.key] ||
+                                    config.defaultValue
+                                  }
+                                  onChange={(e) =>
+                                    setSttConfigValues((prev) => ({
+                                      ...prev,
+                                      [config.key]:
+                                        config.type === "number"
+                                          ? Number(e.target.value)
+                                          : e.target.value,
+                                    }))
+                                  }
+                                  placeholder={config.defaultValue}
+                                  className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}

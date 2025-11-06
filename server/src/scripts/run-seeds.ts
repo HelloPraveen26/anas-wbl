@@ -1,9 +1,11 @@
 import { AppDataSource } from "../database/data-source";
 import { LlmSeed } from "../database/seeds/llm-seed";
 import { TranscriberSeed } from "../database/seeds/transcriber-seed";
+import { SttConfigSeed } from "../database/seeds/stt-config-seed";
 import { SynthesizerSeed } from "../database/seeds/synthesizer-seed";
 import { RegisteredNumbersSeed } from "../database/seeds/registered-numbers-seed";
 import { ContactNumbersSeed } from "../database/seeds/contact-numbers-seed";
+import { TtsConfigSeed } from "../database/seeds/tts-config-seed";
 
 async function runSeeds() {
   try {
@@ -19,9 +21,17 @@ async function runSeeds() {
     const transcriberSeed = new TranscriberSeed();
     await transcriberSeed.run(AppDataSource);
 
+    console.log("Running STT Config seed...");
+    const sttConfigSeed = new SttConfigSeed();
+    await sttConfigSeed.run(AppDataSource);
+
     console.log("Running Synthesizer seed...");
     const synthesizerSeed = new SynthesizerSeed();
     await synthesizerSeed.run(AppDataSource);
+
+    console.log("Running TTS Config seed...");
+    const ttsConfigSeed = new TtsConfigSeed();
+    await ttsConfigSeed.run(AppDataSource);
 
     console.log("Running Registered Numbers seed...");
     const registeredNumbersSeed = new RegisteredNumbersSeed();
