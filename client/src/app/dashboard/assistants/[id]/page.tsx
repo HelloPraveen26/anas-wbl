@@ -429,7 +429,7 @@ export default function AssistantEditPage() {
     }
   };
 
-  const fetchSynthesizerConfigs = async (providerId: string) => {
+  const fetchSynthesizerConfigs = async (providerId: string): Promise<void> => {
     console.log("fetchSynthesizerConfigs called with providerId:", providerId);
     if (!providerId) {
       setSynthesizerConfigs([]);
@@ -468,7 +468,7 @@ export default function AssistantEditPage() {
     }
   };
 
-  const fetchSTTConfigs = async (providerId: string) => {
+  const fetchSTTConfigs = async (providerId: string): Promise<void> => {
     if (!providerId) {
       setSttConfigs([]);
       setSttConfigValues({});
@@ -530,11 +530,15 @@ export default function AssistantEditPage() {
       );
       // Load STT configs if transcriber provider exists
       if (a.transcriberModel?.transcriberProvider?.id) {
-        fetchSTTConfigs(a.transcriberModel.transcriberProvider.id);
-      }
-      // Load existing STT config values
-      if (a.sttConfig) {
-        setSttConfigValues(a.sttConfig);
+        fetchSTTConfigs(a.transcriberModel.transcriberProvider.id).then(() => {
+          // Merge existing STT config values with defaults
+          if (a.sttConfig) {
+            setSttConfigValues((prevDefaults) => ({
+              ...prevDefaults,
+              ...a.sttConfig,
+            }));
+          }
+        });
       }
       setSelectedSynthesizerVoice(a.synthesizerVoiceId);
       setSelectedSynthesizerModel(
@@ -547,11 +551,15 @@ export default function AssistantEditPage() {
       if (a.synthesizerVoice?.synthesizerModel?.synthesizerProvider?.id) {
         fetchSynthesizerConfigs(
           a.synthesizerVoice.synthesizerModel.synthesizerProvider.id,
-        );
-      }
-      // Load existing TTS config values
-      if (a.ttsConfig) {
-        setSynthesizerConfigValues(a.ttsConfig);
+        ).then(() => {
+          // Merge existing TTS config values with defaults
+          if (a.ttsConfig) {
+            setSynthesizerConfigValues((prevDefaults) => ({
+              ...prevDefaults,
+              ...a.ttsConfig,
+            }));
+          }
+        });
       }
       // Set firstMessageMode based on firstMessage
       if (a.firstMessage === "") {
@@ -1209,7 +1217,7 @@ export default function AssistantEditPage() {
                       {synthesizerConfigs.length > 0 && (
                         <div className="space-y-4 pt-6 border-t border-gray-100">
                           <h3 className="text-base font-semibold text-gray-900">
-                            Advanced Settings
+                            Additional Configuration
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {synthesizerConfigs.map((config) => (
