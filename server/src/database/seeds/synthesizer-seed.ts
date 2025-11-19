@@ -64,7 +64,7 @@ export class SynthesizerSeed {
 
     const sarvamTts1 = synthesizerModelRepository.create({
       name: "bulbul:v2",
-      synthesizerProvider: openaiProvider,
+      synthesizerProvider: sarvamProvider,
       isActive: true,
     });
     await synthesizerModelRepository.save(sarvamTts1);

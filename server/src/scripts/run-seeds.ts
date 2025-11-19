@@ -1,11 +1,11 @@
 import { AppDataSource } from "../database/data-source";
 import { LlmSeed } from "../database/seeds/llm-seed";
 import { TranscriberSeed } from "../database/seeds/transcriber-seed";
-import { SttConfigSeed } from "../database/seeds/stt-config-seed";
+import { SttConfigSeed } from "../database/seeds/sarvam-stt-config-seed";
 import { SynthesizerSeed } from "../database/seeds/synthesizer-seed";
 import { RegisteredNumbersSeed } from "../database/seeds/registered-numbers-seed";
 import { ContactNumbersSeed } from "../database/seeds/contact-numbers-seed";
-import { TtsConfigSeed } from "../database/seeds/tts-config-seed";
+import { TtsConfigSeed } from "../database/seeds/sarvam-tts-config-seed";
 
 async function runSeeds() {
   try {
