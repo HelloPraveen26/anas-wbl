@@ -1,10 +1,15 @@
 import { DataSource } from "typeorm";
-import { TranscriberProvider, TranscriberModel } from "../../transcriber/entities";
+import {
+  TranscriberProvider,
+  TranscriberModel,
+} from "../../transcriber/entities";
 
 export class TranscriberSeed {
   public async run(dataSource: DataSource): Promise<void> {
-    const transcriberProviderRepository = dataSource.getRepository(TranscriberProvider);
-    const transcriberModelRepository = dataSource.getRepository(TranscriberModel);
+    const transcriberProviderRepository =
+      dataSource.getRepository(TranscriberProvider);
+    const transcriberModelRepository =
+      dataSource.getRepository(TranscriberModel);
 
     // Check if providers already exist
     const existingProviders = await transcriberProviderRepository.find();
@@ -54,6 +59,19 @@ export class TranscriberSeed {
       isActive: true,
     });
     await transcriberProviderRepository.save(deepgramProvider);
+
+    const sarvamProvider = transcriberProviderRepository.create({
+      name: "Sarvam",
+      isActive: true,
+    });
+    await transcriberProviderRepository.save(sarvamProvider);
+
+    const sarvamModel = transcriberModelRepository.create({
+      name: "saarika:v2.5",
+      transcriberProvider: sarvamProvider,
+      isActive: true,
+    });
+    await transcriberModelRepository.save(sarvamModel);
 
     // Create OpenAI models
     const openaiModels = [
@@ -128,12 +146,7 @@ export class TranscriberSeed {
     }
 
     // Create AssemblyAI models
-    const assemblyAiModels = [
-      "best",
-      "nano",
-      "conformer-2",
-      "conformer-1",
-    ];
+    const assemblyAiModels = ["best", "nano", "conformer-2", "conformer-1"];
 
     for (const modelName of assemblyAiModels) {
       const model = transcriberModelRepository.create({
@@ -145,13 +158,7 @@ export class TranscriberSeed {
     }
 
     // Create Deepgram models
-    const deepgramModels = [
-      "nova-2",
-      "nova",
-      "enhanced",
-      "base",
-      "whisper",
-    ];
+    const deepgramModels = ["nova-2", "nova", "enhanced", "base", "whisper"];
 
     for (const modelName of deepgramModels) {
       const model = transcriberModelRepository.create({
@@ -162,7 +169,9 @@ export class TranscriberSeed {
       await transcriberModelRepository.save(model);
     }
 
-    console.log("Transcriber providers and models have been seeded successfully!");
+    console.log(
+      "Transcriber providers and models have been seeded successfully!",
+    );
     console.log(`Created ${openaiModels.length} OpenAI models`);
     console.log(`Created ${googleModels.length} Google models`);
     console.log(`Created ${awsModels.length} AWS models`);

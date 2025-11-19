@@ -7,9 +7,12 @@ import {
 
 export class SynthesizerSeed {
   public async run(dataSource: DataSource): Promise<void> {
-    const synthesizerProviderRepository = dataSource.getRepository(SynthesizerProvider);
-    const synthesizerModelRepository = dataSource.getRepository(SynthesizerModel);
-    const synthesizerVoiceRepository = dataSource.getRepository(SynthesizerVoice);
+    const synthesizerProviderRepository =
+      dataSource.getRepository(SynthesizerProvider);
+    const synthesizerModelRepository =
+      dataSource.getRepository(SynthesizerModel);
+    const synthesizerVoiceRepository =
+      dataSource.getRepository(SynthesizerVoice);
 
     // Check if providers already exist
     const existingProviders = await synthesizerProviderRepository.find();
@@ -52,6 +55,19 @@ export class SynthesizerSeed {
       isActive: true,
     });
     await synthesizerProviderRepository.save(elevenlabsProvider);
+
+    const sarvamProvider = synthesizerProviderRepository.create({
+      name: "Sarvam",
+      isActive: true,
+    });
+    await synthesizerProviderRepository.save(sarvamProvider);
+
+    const sarvamTts1 = synthesizerModelRepository.create({
+      name: "bulbul:v2",
+      synthesizerProvider: openaiProvider,
+      isActive: true,
+    });
+    await synthesizerModelRepository.save(sarvamTts1);
 
     // Create OpenAI models and voices
     const openaiTts1 = synthesizerModelRepository.create({
@@ -302,7 +318,9 @@ export class SynthesizerSeed {
       await synthesizerVoiceRepository.save(voice3);
     }
 
-    console.log("Synthesizer providers, models, and voices have been seeded successfully!");
+    console.log(
+      "Synthesizer providers, models, and voices have been seeded successfully!",
+    );
     console.log("Created 5 synthesizer providers");
     console.log("Created 10 synthesizer models");
     console.log("OpenAI: 2 models with 12 voices total");
