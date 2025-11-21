@@ -451,24 +451,51 @@ export default function PhoneNumbersPage() {
     setShowAllRegisteredNumbersModal(false);
   };
 
-  const handleAddContact = () => {
+  const handleAddContact = async () => {
     if (!newContact.name.trim() || !newContact.phoneNo.trim()) {
       alert("Please fill in both name and phone number.");
       return;
     }
-    // Generate a temporary ID for frontend only
-    const tempId = `temp-${Date.now()}`;
-    const contact: ContactNumber = {
-      id: tempId,
-      name: newContact.name.trim(),
-      phoneNo: newContact.phoneNo.trim(),
-      userId: "", // Will be set by backend later
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setContactNumbers((prev) => [contact, ...prev]);
-    setNewContact({ name: "", phoneNo: "" });
-    setShowAddContactModal(false);
+
+    try {
+      setLoading(true);
+      const token = authManager.getToken();
+      if (!token) {
+        alert("Authentication token not found. Please log in again.");
+        return;
+      }
+
+      const res = await fetch(`${getApiBaseUrl()}/contact-numbers`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: newContact.name.trim(),
+          phoneNo: newContact.phoneNo.trim(),
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+
+      const newContactFromApi: ContactNumber = await res.json();
+
+      // Add the new contact to the list
+      setContactNumbers((prev) => [newContactFromApi, ...prev]);
+      setNewContact({ name: "", phoneNo: "" });
+      setShowAddContactModal(false);
+    } catch (err) {
+      console.error("Error adding contact:", err);
+      alert(
+        `Failed to add contact: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* -------------------- Realtime WS Handling -------------------- */
@@ -1282,9 +1309,14 @@ export default function PhoneNumbersPage() {
               </button>
               <button
                 onClick={handleAddContact}
-                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+                disabled={loading}
+                className={`px-4 py-2 rounded-md text-white ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
               >
-                Save
+                {loading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

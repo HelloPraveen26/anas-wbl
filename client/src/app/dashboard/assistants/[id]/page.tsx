@@ -234,8 +234,8 @@ export default function AssistantEditPage() {
         },
         body: JSON.stringify({
           phoneNumber: phoneNumber,
-          firstMessage: firstMessage,
-          systemPrompt: systemPrompt,
+          //  firstMessage: firstMessage,
+          //  systemPrompt: systemPrompt,
           selectedAssistant: assistantId,
         }),
       });
