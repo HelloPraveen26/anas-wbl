@@ -131,15 +131,21 @@ async def entrypoint(ctx: JobContext):
     # Set up STT provider based on metadata
     stt = None
     if stt_provider_name == "Sarvam":
-        stt = sarvam.STT(language="unknown", model="saarika:v2.5")
+        language_code = (stt_config or {}).get("language") or "en_IN"
+        logger.info("Language Code: %s", language_code)
+        stt = sarvam.STT(language=language_code, model="saarika:v2.5")
     else:
         stt = deepgram.STT(model="nova-3", language="multi")
 
     # Set up TTS provider based on metadata
     tts = None
     if tts_provider_name == "Sarvam":
+        speaker = (tts_config or {}).get("speaker") or "anushka"
+        logger.info("Speaker: %s", speaker)
+        language_code = (stt_config or {}).get("language") or "en_IN"
+        logger.info("Language Code: %s", language_code)
         tts = sarvam.TTS(
-            target_language_code="en-IN", model="bulbul:v2", speaker="anushka"
+            target_language_code=language_code, model="bulbul:v2", speaker=speaker
         )
     else:
         tts = deepgram.TTS()
