@@ -34,7 +34,12 @@ export class PhoneService {
       let systemPrompt = "";
       let firstMessage = "";
 
-      // Get systemPrompt and firstMessage from assistant if selectedAssistant is provided
+      // Get systemPrompt, firstMessage, and model configs from assistant if selectedAssistant is provided
+      let sttProviderName: string | undefined;
+      let ttsProviderName: string | undefined;
+      let sttConfig: Record<string, any> | undefined;
+      let ttsConfig: Record<string, any> | undefined;
+
       if (dto.selectedAssistant) {
         this.logger.log(
           `Making call with selected assistant: ${dto.selectedAssistant}`,
@@ -49,6 +54,35 @@ export class PhoneService {
           );
           systemPrompt = assistant.systemPrompt;
           firstMessage = assistant.firstMessage;
+
+          // Extract STT provider name from transcriber model
+          if (assistant.transcriberModel?.transcriberProvider) {
+            sttProviderName =
+              assistant.transcriberModel.transcriberProvider.name;
+            this.logger.log(`STT Provider Name: ${sttProviderName}`);
+          }
+
+          // Extract TTS provider name from synthesizer voice
+          if (
+            assistant.synthesizerVoice?.synthesizerModel?.synthesizerProvider
+          ) {
+            ttsProviderName =
+              assistant.synthesizerVoice.synthesizerModel.synthesizerProvider
+                .name;
+            this.logger.log(`TTS Provider Name: ${ttsProviderName}`);
+          }
+
+          // Extract STT config
+          if (assistant.sttConfig) {
+            sttConfig = assistant.sttConfig;
+            this.logger.log(`STT Config: ${JSON.stringify(sttConfig)}`);
+          }
+
+          // Extract TTS config
+          if (assistant.ttsConfig) {
+            ttsConfig = assistant.ttsConfig;
+            this.logger.log(`TTS Config: ${JSON.stringify(ttsConfig)}`);
+          }
         } catch (error) {
           this.logger.warn(
             `Failed to fetch assistant ${dto.selectedAssistant}:`,
@@ -81,11 +115,24 @@ export class PhoneService {
         outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
         ...(systemPrompt && { instructions: systemPrompt }),
         ...(firstMessage && { first_message: firstMessage }),
+        ...(sttProviderName && { stt_provider_name: sttProviderName }),
+        ...(ttsProviderName && { tts_provider_name: ttsProviderName }),
+        ...(sttConfig && { stt_config: sttConfig }),
+        ...(ttsConfig && { tts_config: ttsConfig }),
       };
-      this.logger.log(payload);
+
+      this.logger.log(
+        `Making call with payload: ${JSON.stringify(payload, null, 2)}`,
+      );
+
       const { data } = await firstValueFrom(
         this.httpService.post(`${this.baseUrl}/make_call`, payload),
       );
+
+      this.logger.log(
+        `Call initiated successfully. Response: ${JSON.stringify(data)}`,
+      );
+
       return data;
     } catch (error) {
       this.logger.error(
