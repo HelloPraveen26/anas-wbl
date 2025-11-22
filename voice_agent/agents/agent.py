@@ -1,7 +1,7 @@
+import base64
 import json
 import logging
 import os
-import base64
 
 from dotenv import load_dotenv
 from livekit.agents import (
@@ -17,15 +17,15 @@ from livekit.agents import (
     cli,
     metrics,
 )
+from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
     deepgram,
-    sarvam,
     elevenlabs,
     noise_cancellation,
     openai,
+    sarvam,
     silero,
 )
-from livekit.agents.telemetry import set_tracer_provider
 
 logger = logging.getLogger("agent")
 
@@ -114,19 +114,41 @@ async def entrypoint(ctx: JobContext):
     custom_first_message = metadata.get(
         "first_message", "Hello! How can I help you today?"
     )
+    stt_provider_name = metadata.get("stt_provider_name")
+    tts_provider_name = metadata.get("tts_provider_name")
+    stt_config = metadata.get("stt_config")
+    tts_config = metadata.get("tts_config")
+
     logger.info("---------------------------------------------")
     logger.info("Custom instructions: %s", custom_instructions)
     logger.info("Custom first message: %s", custom_first_message)
+    logger.info("STT Provider Name: %s", stt_provider_name)
+    logger.info("TTS Provider Name: %s", tts_provider_name)
+    logger.info("STT Config: %s", stt_config)
+    logger.info("TTS Config: %s", tts_config)
     logger.info("---------------------------------------------")
+
+    # Set up STT provider based on metadata
+    stt = None
+    if stt_provider_name == "Sarvam":
+        stt = sarvam.STT(language="unknown", model="saarika:v2.5")
+    else:
+        stt = deepgram.STT(model="nova-3", language="multi")
+
+    # Set up TTS provider based on metadata
+    tts = None
+    if tts_provider_name == "Sarvam":
+        tts = sarvam.TTS(
+            target_language_code="en-IN", model="bulbul:v2", speaker="anushka"
+        )
+    else:
+        tts = deepgram.TTS()
+
     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
     session = AgentSession(
         llm=openai.LLM(model="gpt-4.1-mini"),
-        # stt=deepgram.STT(model="nova-3", language="multi"),
-        stt=sarvam.STT(language="unknown", model="saarika:v2.5"),
-        # tts=deepgram.TTS(),
-        tts=sarvam.TTS(
-            target_language_code="en-IN", model="bulbul:v2", speaker="anushka"
-        ),
+        stt=stt,
+        tts=tts,
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
