@@ -8,9 +8,9 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from pydantic import BaseModel, Field, validator
-from fastapi.middleware.cors import CORSMiddleware
 
 # Load environment variables
 _ = load_dotenv()
@@ -39,6 +39,11 @@ class CallRequest(BaseModel):
         description="Outbound trunk ID to use for the call",
         examples=["trunk1", "trunk2", "trunk3"],
     )
+    from_phone_number: Optional[str] = Field(
+        None,
+        description="From phone number in E.164 format",
+        pattern=r"^\+[1-9]\d{1,14}$",
+    )
 
     instructions: Optional[str] = Field(
         None, description="Custom instructions for the AI agent"
@@ -47,6 +52,11 @@ class CallRequest(BaseModel):
     first_message: Optional[str] = Field(
         None, description="Custom first message the agent should say"
     )
+
+    stt_provider_name: Optional[str] = Field(None, description="stt_provider_name")
+    tts_provider_name: Optional[str] = Field(None, description="tts_provider_name")
+    stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
+    tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
 
     @validator("phone_number")
     def validate_e164_format(cls, v):
@@ -356,6 +366,10 @@ async def make_call_endpoint(request: CallRequest):
     phone_number = request.phone_number
     instructions = request.instructions
     first_message = request.first_message
+    stt_provider_name = request.stt_provider_name
+    tts_provider_name = request.tts_provider_name
+    stt_config = request.stt_config
+    tts_config = request.tts_config
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -377,6 +391,10 @@ async def make_call_endpoint(request: CallRequest):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "instructions": instructions,
             "first_message": first_message,
+            "stt_provider_name": stt_provider_name,
+            "tts_provider_name": tts_provider_name,
+            "stt_config": stt_config,
+            "tts_config": tts_config,
         }
 
         # Generate unique room name
