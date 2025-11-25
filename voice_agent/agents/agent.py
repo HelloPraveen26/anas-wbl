@@ -17,10 +17,12 @@ from livekit.agents import (
     cli,
     metrics,
 )
+from livekit.agents.inference.tts import TTSEncoding
 from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
     deepgram,
     elevenlabs,
+    google,
     noise_cancellation,
     openai,
     sarvam,
@@ -134,6 +136,7 @@ async def entrypoint(ctx: JobContext):
         language_code = (stt_config or {}).get("language") or "en_IN"
         logger.info("Language Code: %s", language_code)
         stt = sarvam.STT(language=language_code, model="saarika:v2.5")
+
     else:
         stt = deepgram.STT(model="nova-3", language="multi")
 
@@ -146,6 +149,18 @@ async def entrypoint(ctx: JobContext):
         logger.info("Language Code: %s", language_code)
         tts = sarvam.TTS(
             target_language_code=language_code, model="bulbul:v2", speaker=speaker
+        )
+    elif tts_provider_name == "Gemini":
+        voice = (tts_config or {}).get("voice_name") or "Zephyr"
+        logger.info("Voice Name: %s", voice)
+        instructions = (tts_config or {}).get(
+            "instructions"
+        ) or "Speak in a friendly and engaging tone."
+        logger.info("Instructions: %s", instructions)
+        tts = google.beta.GeminiTTS(
+            model="gemini-2.5-flash-preview-tts",
+            voice_name=voice,
+            instructions=instructions,
         )
     else:
         tts = deepgram.TTS()

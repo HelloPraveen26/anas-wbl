@@ -6,6 +6,7 @@ import { SynthesizerSeed } from "../database/seeds/synthesizer-seed";
 import { RegisteredNumbersSeed } from "../database/seeds/registered-numbers-seed";
 import { ContactNumbersSeed } from "../database/seeds/contact-numbers-seed";
 import { TtsConfigSeed } from "../database/seeds/sarvam-tts-config-seed";
+import { GeminiSeed } from "../database/seeds/gemini";
 
 async function runSeeds() {
   try {
@@ -32,6 +33,10 @@ async function runSeeds() {
     console.log("Running TTS Config seed...");
     const ttsConfigSeed = new TtsConfigSeed();
     await ttsConfigSeed.run(AppDataSource);
+
+    console.log("Running Gemini seed...");
+    const geminiSeed = new GeminiSeed();
+    await geminiSeed.run(AppDataSource);
 
     console.log("Running Registered Numbers seed...");
     const registeredNumbersSeed = new RegisteredNumbersSeed();
