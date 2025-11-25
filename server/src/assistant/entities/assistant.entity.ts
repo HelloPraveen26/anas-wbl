@@ -28,8 +28,8 @@ export class Assistant {
   @Column({ name: "transcriber_model_id", type: "uuid" })
   transcriberModelId: string;
 
-  @Column({ name: "synthesizer_voice_id", type: "uuid" })
-  synthesizerVoiceId: string;
+  @Column({ name: "synthesizer_model_id", type: "uuid" })
+  synthesizerModelId: string;
 
   @Column({ name: "stt_config", type: "json", nullable: true, default: {} })
   sttConfig: Record<string, any>;
@@ -53,9 +53,9 @@ export class Assistant {
   @JoinColumn({ name: "transcriber_model_id" })
   transcriberModel: any;
 
-  @ManyToOne("SynthesizerVoice")
-  @JoinColumn({ name: "synthesizer_voice_id" })
-  synthesizerVoice: any;
+  @ManyToOne("SynthesizerModel")
+  @JoinColumn({ name: "synthesizer_model_id" })
+  synthesizerModel: any;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

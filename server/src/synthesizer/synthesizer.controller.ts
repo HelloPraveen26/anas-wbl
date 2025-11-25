@@ -10,12 +10,7 @@ import { ThrottlerGuard } from "@nestjs/throttler";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import {
-  SynthesizerProvider,
-  SynthesizerModel,
-  SynthesizerVoice,
-  TtsConfig,
-} from "./entities";
+import { SynthesizerProvider, SynthesizerModel, TtsConfig } from "./entities";
 
 @ApiTags("synthesizer")
 @Controller("synthesizer")
@@ -26,8 +21,6 @@ export class SynthesizerController {
     private synthesizerProviderRepository: Repository<SynthesizerProvider>,
     @InjectRepository(SynthesizerModel)
     private synthesizerModelRepository: Repository<SynthesizerModel>,
-    @InjectRepository(SynthesizerVoice)
-    private synthesizerVoiceRepository: Repository<SynthesizerVoice>,
     @InjectRepository(TtsConfig)
     private ttsConfigRepository: Repository<TtsConfig>,
   ) {}
@@ -146,107 +139,6 @@ export class SynthesizerController {
         synthesizerProvider: {
           id: true,
           name: true,
-        },
-      },
-      order: { name: "ASC" },
-    });
-  }
-
-  @Get("voices")
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth("JWT-auth")
-  @ApiOperation({
-    summary: "Get synthesizer voices",
-    description: "Retrieve synthesizer voices, optionally filtered by model",
-  })
-  @ApiQuery({
-    name: "modelId",
-    required: false,
-    description: "Filter voices by model ID",
-    type: "string",
-  })
-  @ApiQuery({
-    name: "providerId",
-    required: false,
-    description: "Filter voices by provider ID",
-    type: "string",
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: "Synthesizer voices retrieved successfully",
-    schema: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string", format: "uuid" },
-          name: { type: "string" },
-          isActive: { type: "boolean" },
-          synthesizerModel: {
-            type: "object",
-            properties: {
-              id: { type: "string", format: "uuid" },
-              name: { type: "string" },
-              synthesizerProvider: {
-                type: "object",
-                properties: {
-                  id: { type: "string", format: "uuid" },
-                  name: { type: "string" },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    example: [
-      {
-        id: "123e4567-e89b-12d3-a456-426614174000",
-        name: "alloy",
-        isActive: true,
-        synthesizerModel: {
-          id: "123e4567-e89b-12d3-a456-426614174001",
-          name: "TTS-1",
-          synthesizerProvider: {
-            id: "123e4567-e89b-12d3-a456-426614174002",
-            name: "OpenAI",
-          },
-        },
-      },
-    ],
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: "Unauthorized - invalid token",
-  })
-  async getVoices(
-    @Query("modelId") modelId?: string,
-    @Query("providerId") providerId?: string,
-  ) {
-    const whereCondition: any = { isActive: true };
-
-    if (modelId) {
-      whereCondition.synthesizerModel = { id: modelId };
-    } else if (providerId) {
-      whereCondition.synthesizerModel = {
-        synthesizerProvider: { id: providerId },
-      };
-    }
-
-    return this.synthesizerVoiceRepository.find({
-      where: whereCondition,
-      relations: ["synthesizerModel", "synthesizerModel.synthesizerProvider"],
-      select: {
-        id: true,
-        name: true,
-        isActive: true,
-        synthesizerModel: {
-          id: true,
-          name: true,
-          synthesizerProvider: {
-            id: true,
-            name: true,
-          },
         },
       },
       order: { name: "ASC" },

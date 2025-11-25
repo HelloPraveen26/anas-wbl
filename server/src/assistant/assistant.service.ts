@@ -16,7 +16,7 @@ import {
 } from "./dto";
 import { LlmModel } from "../llm/entities/llm-model.entity";
 import { TranscriberModel } from "../transcriber/entities/transcriber-model.entity";
-import { SynthesizerVoice } from "../synthesizer/entities/synthesizer-voice.entity";
+import { SynthesizerModel } from "../synthesizer/entities/synthesizer-model.entity";
 
 @Injectable()
 export class AssistantService {
@@ -27,8 +27,8 @@ export class AssistantService {
     private llmModelRepository: Repository<LlmModel>,
     @InjectRepository(TranscriberModel)
     private transcriberModelRepository: Repository<TranscriberModel>,
-    @InjectRepository(SynthesizerVoice)
-    private synthesizerVoiceRepository: Repository<SynthesizerVoice>,
+    @InjectRepository(SynthesizerModel)
+    private synthesizerModelRepository: Repository<SynthesizerModel>,
     private configService: ConfigService,
   ) {}
 
@@ -40,9 +40,8 @@ export class AssistantService {
         "llmModel.llmProvider",
         "transcriberModel",
         "transcriberModel.transcriberProvider",
-        "synthesizerVoice",
-        "synthesizerVoice.synthesizerModel",
-        "synthesizerVoice.synthesizerModel.synthesizerProvider",
+        "synthesizerModel",
+        "synthesizerModel.synthesizerProvider",
       ],
       order: { createdAt: "DESC" },
     });
@@ -58,9 +57,8 @@ export class AssistantService {
         "llmModel.llmProvider",
         "transcriberModel",
         "transcriberModel.transcriberProvider",
-        "synthesizerVoice",
-        "synthesizerVoice.synthesizerModel",
-        "synthesizerVoice.synthesizerModel.synthesizerProvider",
+        "synthesizerModel",
+        "synthesizerModel.synthesizerProvider",
       ],
     });
 
@@ -107,14 +105,14 @@ export class AssistantService {
     if (
       updateAssistantDto.llmModelId ||
       updateAssistantDto.transcriberModelId ||
-      updateAssistantDto.synthesizerVoiceId
+      updateAssistantDto.synthesizerModelId
     ) {
       const validationDto = {
         llmModelId: updateAssistantDto.llmModelId || assistant.llmModelId,
         transcriberModelId:
           updateAssistantDto.transcriberModelId || assistant.transcriberModelId,
-        synthesizerVoiceId:
-          updateAssistantDto.synthesizerVoiceId || assistant.synthesizerVoiceId,
+        synthesizerModelId:
+          updateAssistantDto.synthesizerModelId || assistant.synthesizerModelId,
       };
       await this.validateReferences(validationDto);
     }
@@ -154,12 +152,12 @@ export class AssistantService {
       relations: ["transcriberProvider"],
     });
 
-    const synthesizerVoice = await this.synthesizerVoiceRepository.findOne({
+    const synthesizerModel = await this.synthesizerModelRepository.findOne({
       where: { isActive: true },
-      relations: ["synthesizerModel", "synthesizerModel.synthesizerProvider"],
+      relations: ["synthesizerProvider"],
     });
 
-    if (!llmModel || !transcriberModel || !synthesizerVoice) {
+    if (!llmModel || !transcriberModel || !synthesizerModel) {
       throw new BadRequestException(
         "Required models not available for default assistant creation",
       );
@@ -172,7 +170,7 @@ export class AssistantService {
         "You are a helpful AI assistant. Be friendly, concise, and helpful in your responses.",
       llmModelId: llmModel.id,
       transcriberModelId: transcriberModel.id,
-      synthesizerVoiceId: synthesizerVoice.id,
+      synthesizerModelId: synthesizerModel.id,
       isActive: true,
     };
 
@@ -182,7 +180,7 @@ export class AssistantService {
   private async validateReferences(dto: {
     llmModelId: string;
     transcriberModelId: string;
-    synthesizerVoiceId: string;
+    synthesizerModelId: string;
   }): Promise<void> {
     // Validate LLM Model
     const llmModel = await this.llmModelRepository.findOne({
@@ -200,12 +198,12 @@ export class AssistantService {
       throw new BadRequestException("Invalid transcriber model ID");
     }
 
-    // Validate Synthesizer Voice
-    const synthesizerVoice = await this.synthesizerVoiceRepository.findOne({
-      where: { id: dto.synthesizerVoiceId, isActive: true },
+    // Validate Synthesizer Model
+    const synthesizerModel = await this.synthesizerModelRepository.findOne({
+      where: { id: dto.synthesizerModelId, isActive: true },
     });
-    if (!synthesizerVoice) {
-      throw new BadRequestException("Invalid synthesizer voice ID");
+    if (!synthesizerModel) {
+      throw new BadRequestException("Invalid synthesizer model ID");
     }
   }
 

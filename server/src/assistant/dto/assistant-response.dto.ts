@@ -39,10 +39,10 @@ export class AssistantResponseDto {
   transcriberModelId: string;
 
   @ApiProperty({
-    description: "UUID of the synthesizer voice being used",
+    description: "UUID of the synthesizer model being used",
     example: "123e4567-e89b-12d3-a456-426614174003",
   })
-  synthesizerVoiceId: string;
+  synthesizerModelId: string;
 
   @ApiPropertyOptional({
     description: "STT (Speech-to-Text) configuration for transcriber",
@@ -115,38 +115,27 @@ export class AssistantResponseDto {
   };
 
   @ApiProperty({
-    description: "Synthesizer voice details",
+    description: "Synthesizer model details",
     type: "object",
     properties: {
       id: { type: "string" },
       name: { type: "string" },
-      synthesizerModel: {
+      synthesizerProvider: {
         type: "object",
         properties: {
           id: { type: "string" },
           name: { type: "string" },
-          synthesizerProvider: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              name: { type: "string" },
-            },
-          },
         },
       },
     },
     required: false,
   })
-  synthesizerVoice?: {
+  synthesizerModel?: {
     id: string;
     name: string;
-    synthesizerModel: {
+    synthesizerProvider: {
       id: string;
       name: string;
-      synthesizerProvider: {
-        id: string;
-        name: string;
-      };
     };
   };
 
@@ -169,7 +158,7 @@ export class AssistantResponseDto {
     this.systemPrompt = assistant.systemPrompt;
     this.llmModelId = assistant.llmModelId;
     this.transcriberModelId = assistant.transcriberModelId;
-    this.synthesizerVoiceId = assistant.synthesizerVoiceId;
+    this.synthesizerModelId = assistant.synthesizerModelId;
     this.sttConfig = assistant.sttConfig;
     this.ttsConfig = assistant.ttsConfig;
     this.isActive = assistant.isActive;
@@ -199,19 +188,13 @@ export class AssistantResponseDto {
       };
     }
 
-    if (assistant.synthesizerVoice) {
-      this.synthesizerVoice = {
-        id: assistant.synthesizerVoice.id,
-        name: assistant.synthesizerVoice.name,
-        synthesizerModel: {
-          id: assistant.synthesizerVoice.synthesizerModel?.id,
-          name: assistant.synthesizerVoice.synthesizerModel?.name,
-          synthesizerProvider: {
-            id: assistant.synthesizerVoice.synthesizerModel?.synthesizerProvider
-              ?.id,
-            name: assistant.synthesizerVoice.synthesizerModel
-              ?.synthesizerProvider?.name,
-          },
+    if (assistant.synthesizerModel) {
+      this.synthesizerModel = {
+        id: assistant.synthesizerModel.id,
+        name: assistant.synthesizerModel.name,
+        synthesizerProvider: {
+          id: assistant.synthesizerModel.synthesizerProvider?.id,
+          name: assistant.synthesizerModel.synthesizerProvider?.name,
         },
       };
     }

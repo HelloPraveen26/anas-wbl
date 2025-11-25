@@ -11,7 +11,6 @@ import {
 import {
   SynthesizerProvider,
   SynthesizerModel,
-  SynthesizerVoice,
   TtsConfig,
 } from "../synthesizer/entities";
 import { Assistant } from "../assistant/entities";
@@ -39,7 +38,6 @@ export const AppDataSource = new DataSource({
     SttConfig,
     SynthesizerProvider,
     SynthesizerModel,
-    SynthesizerVoice,
     TtsConfig,
     Assistant,
     RegisteredNumber,

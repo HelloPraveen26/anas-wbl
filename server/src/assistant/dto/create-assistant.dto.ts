@@ -52,12 +52,12 @@ export class CreateAssistantDto {
   transcriberModelId: string;
 
   @ApiProperty({
-    description: "UUID of the synthesizer voice to use",
+    description: "UUID of the synthesizer model to use",
     example: "123e4567-e89b-12d3-a456-426614174002",
   })
   @IsUUID()
   @IsNotEmpty()
-  synthesizerVoiceId: string;
+  synthesizerModelId: string;
 
   @ApiPropertyOptional({
     description: "STT (Speech-to-Text) configuration for transcriber",

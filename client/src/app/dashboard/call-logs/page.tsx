@@ -12,7 +12,7 @@ interface Assistant {
   systemPrompt: string;
   llmModelId: string;
   transcriberModelId: string;
-  synthesizerVoiceId: string;
+  synthesizerModelId: string;
   sttConfig?: Record<string, any>;
   ttsConfig?: Record<string, any>;
   isActive: boolean;

@@ -45,7 +45,7 @@ interface Assistant {
   systemPrompt: string;
   llmModelId: string;
   transcriberModelId: string;
-  synthesizerVoiceId: string;
+  synthesizerModelId: string;
   sttConfig?: Record<string, any>;
   ttsConfig?: Record<string, any>;
   isActive: boolean;
@@ -61,14 +61,10 @@ interface Assistant {
     name: string;
     transcriberProvider: { id: string; name: string };
   };
-  synthesizerVoice: {
+  synthesizerModel: {
     id: string;
     name: string;
-    synthesizerModel: {
-      id: string;
-      name: string;
-      synthesizerProvider: { id: string; name: string };
-    };
+    synthesizerProvider: { id: string; name: string };
   };
 }
 
@@ -94,16 +90,6 @@ interface SynthesizerModel {
   name: string;
   isActive: boolean;
   synthesizerProvider: { id: string; name: string };
-}
-interface SynthesizerVoice {
-  id: string;
-  name: string;
-  isActive: boolean;
-  synthesizerModel: {
-    id: string;
-    name: string;
-    synthesizerProvider: { id: string; name: string };
-  };
 }
 
 interface TranscriberProvider {
@@ -181,13 +167,9 @@ export default function AssistantEditPage() {
   const [synthesizerModels, setSynthesizerModels] = useState<
     SynthesizerModel[]
   >([]);
-  const [synthesizerVoices, setSynthesizerVoices] = useState<
-    SynthesizerVoice[]
-  >([]);
   const [selectedSynthesizerProvider, setSelectedSynthesizerProvider] =
     useState("");
   const [selectedSynthesizerModel, setSelectedSynthesizerModel] = useState("");
-  const [selectedSynthesizerVoice, setSelectedSynthesizerVoice] = useState("");
 
   // Transcriber
   const [transcriberProviders, setTranscriberProviders] = useState<
@@ -393,18 +375,6 @@ export default function AssistantEditPage() {
     }
   };
 
-  const fetchSynthesizerVoices = async () => {
-    try {
-      const r = await fetch(`${getApiBaseUrl()}/synthesizer/voices`, {
-        headers: getAuthHeaders(),
-      });
-      const d = await r.json();
-      setSynthesizerVoices(d.filter((v: SynthesizerVoice) => v.isActive));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const fetchTranscriberProviders = async () => {
     try {
       const r = await fetch(`${getApiBaseUrl()}/transcriber/providers`, {
@@ -507,7 +477,6 @@ export default function AssistantEditPage() {
     fetchModels();
     fetchSynthesizerProviders();
     fetchSynthesizerModels();
-    fetchSynthesizerVoices();
     fetchTranscriberProviders();
     fetchTranscriberModels();
   }, [fetchAssistants]);
@@ -540,26 +509,23 @@ export default function AssistantEditPage() {
           }
         });
       }
-      setSelectedSynthesizerVoice(a.synthesizerVoiceId);
-      setSelectedSynthesizerModel(
-        a.synthesizerVoice?.synthesizerModel?.id || "",
-      );
+      setSelectedSynthesizerModel(a.synthesizerModelId);
       setSelectedSynthesizerProvider(
-        a.synthesizerVoice?.synthesizerModel?.synthesizerProvider?.id || "",
+        a.synthesizerModel?.synthesizerProvider?.id || "",
       );
       // Load Synthesizer configs if synthesizer provider exists
-      if (a.synthesizerVoice?.synthesizerModel?.synthesizerProvider?.id) {
-        fetchSynthesizerConfigs(
-          a.synthesizerVoice.synthesizerModel.synthesizerProvider.id,
-        ).then(() => {
-          // Merge existing TTS config values with defaults
-          if (a.ttsConfig) {
-            setSynthesizerConfigValues((prevDefaults) => ({
-              ...prevDefaults,
-              ...a.ttsConfig,
-            }));
-          }
-        });
+      if (a.synthesizerModel?.synthesizerProvider?.id) {
+        fetchSynthesizerConfigs(a.synthesizerModel.synthesizerProvider.id).then(
+          () => {
+            // Merge existing TTS config values with defaults
+            if (a.ttsConfig) {
+              setSynthesizerConfigValues((prevDefaults) => ({
+                ...prevDefaults,
+                ...a.ttsConfig,
+              }));
+            }
+          },
+        );
       }
       // Set firstMessageMode based on firstMessage
       if (a.firstMessage === "") {
@@ -581,12 +547,6 @@ export default function AssistantEditPage() {
         (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
       )
     : synthesizerModels;
-
-  const filteredSynthesizerVoices = selectedSynthesizerModel
-    ? synthesizerVoices.filter(
-        (v) => v.synthesizerModel.id === selectedSynthesizerModel,
-      )
-    : synthesizerVoices;
 
   const filteredTranscriberModels = selectedTranscriberProvider
     ? transcriberModels.filter(
@@ -629,8 +589,8 @@ export default function AssistantEditPage() {
     if (!selectedModel) return alert("Please select a model");
     if (!selectedTranscriberModel)
       return alert("Please select a transcriber model");
-    if (!selectedSynthesizerVoice)
-      return alert("Please select a synthesizer voice");
+    if (!selectedSynthesizerModel)
+      return alert("Please select a synthesizer model");
 
     setLoading(true);
     try {
@@ -649,7 +609,7 @@ export default function AssistantEditPage() {
           systemPrompt,
           llmModelId: selectedModel,
           transcriberModelId: selectedTranscriberModel,
-          synthesizerVoiceId: selectedSynthesizerVoice,
+          synthesizerModelId: selectedSynthesizerModel,
           sttConfig: sttConfigValues,
           ttsConfig: synthesizerConfigValues,
           isActive: true,
@@ -1153,7 +1113,6 @@ export default function AssistantEditPage() {
                           onChange={(e) => {
                             setSelectedSynthesizerProvider(e.target.value);
                             setSelectedSynthesizerModel("");
-                            setSelectedSynthesizerVoice("");
                             fetchSynthesizerConfigs(e.target.value);
                           }}
                           className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
@@ -1177,7 +1136,6 @@ export default function AssistantEditPage() {
                           value={selectedSynthesizerModel}
                           onChange={(e) => {
                             setSelectedSynthesizerModel(e.target.value);
-                            setSelectedSynthesizerVoice("");
                           }}
                           disabled={!selectedSynthesizerProvider}
                           className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1186,28 +1144,6 @@ export default function AssistantEditPage() {
                           {filteredSynthesizerModels.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.name} ({m.synthesizerProvider.name})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold text-gray-700">
-                          Voice
-                        </Label>
-                        <select
-                          value={selectedSynthesizerVoice}
-                          onChange={(e) =>
-                            setSelectedSynthesizerVoice(e.target.value)
-                          }
-                          disabled={!selectedSynthesizerModel}
-                          className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <option value="">Select a voice</option>
-                          {filteredSynthesizerVoices.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name} ({v.synthesizerModel.name} -{" "}
-                              {v.synthesizerModel.synthesizerProvider.name})
                             </option>
                           ))}
                         </select>

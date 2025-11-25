@@ -62,13 +62,10 @@ export class PhoneService {
             this.logger.log(`STT Provider Name: ${sttProviderName}`);
           }
 
-          // Extract TTS provider name from synthesizer voice
-          if (
-            assistant.synthesizerVoice?.synthesizerModel?.synthesizerProvider
-          ) {
+          // Extract TTS provider name from synthesizer model
+          if (assistant.synthesizerModel?.synthesizerProvider) {
             ttsProviderName =
-              assistant.synthesizerVoice.synthesizerModel.synthesizerProvider
-                .name;
+              assistant.synthesizerModel.synthesizerProvider.name;
             this.logger.log(`TTS Provider Name: ${ttsProviderName}`);
           }
 

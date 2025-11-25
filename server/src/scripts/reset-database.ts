@@ -42,7 +42,6 @@ async function resetDatabase() {
       // Drop tables in the correct order to avoid foreign key constraints
       const tablesToDrop = [
         "assistants",
-        "synthesizer_voices",
         "synthesizer_models",
         "synthesizer_providers",
         "transcriber_models",

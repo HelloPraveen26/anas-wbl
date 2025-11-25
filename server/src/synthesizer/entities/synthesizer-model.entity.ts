@@ -6,10 +6,8 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  OneToMany,
 } from "typeorm";
 import { SynthesizerProvider } from "./synthesizer-provider.entity";
-import { SynthesizerVoice } from "./synthesizer-voice.entity";
 
 @Entity("synthesizer_models")
 export class SynthesizerModel {
@@ -28,9 +26,6 @@ export class SynthesizerModel {
   )
   @JoinColumn({ name: "synthesizer_provider_id" })
   synthesizerProvider: SynthesizerProvider;
-
-  @OneToMany(() => SynthesizerVoice, (voice) => voice.synthesizerModel)
-  synthesizerVoices: SynthesizerVoice[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

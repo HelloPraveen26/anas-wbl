@@ -373,17 +373,6 @@ interface SynthesizerModel {
   synthesizerProvider: { id: string; name: string };
 }
 
-interface SynthesizerVoice {
-  id: string;
-  name: string;
-  isActive: boolean;
-  synthesizerModel: {
-    id: string;
-    name: string;
-    synthesizerProvider: { id: string; name: string };
-  };
-}
-
 interface TranscriberProvider {
   id: string;
   name: string;
@@ -404,7 +393,7 @@ interface Assistant {
   systemPrompt: string;
   llmModelId: string;
   transcriberModelId: string;
-  synthesizerVoiceId: string;
+  synthesizerModelId: string;
   sttConfig?: Record<string, any>;
   ttsConfig?: Record<string, any>;
   isActive: boolean;
@@ -420,14 +409,10 @@ interface Assistant {
     name: string;
     transcriberProvider: { id: string; name: string };
   };
-  synthesizerVoice: {
+  synthesizerModel: {
     id: string;
     name: string;
-    synthesizerModel: {
-      id: string;
-      name: string;
-      synthesizerProvider: { id: string; name: string };
-    };
+    synthesizerProvider: { id: string; name: string };
   };
 }
 
@@ -454,13 +439,9 @@ export default function AssistantsListingPage() {
   const [synthesizerModels, setSynthesizerModels] = useState<
     SynthesizerModel[]
   >([]);
-  const [synthesizerVoices, setSynthesizerVoices] = useState<
-    SynthesizerVoice[]
-  >([]);
   const [selectedSynthesizerProvider, setSelectedSynthesizerProvider] =
     useState("");
   const [selectedSynthesizerModel, setSelectedSynthesizerModel] = useState("");
-  const [selectedSynthesizerVoice, setSelectedSynthesizerVoice] = useState("");
 
   // Transcriber
   const [transcriberProviders, setTranscriberProviders] = useState<

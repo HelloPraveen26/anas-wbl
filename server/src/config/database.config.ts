@@ -10,7 +10,6 @@ import {
 import {
   SynthesizerProvider,
   SynthesizerModel,
-  SynthesizerVoice,
   TtsConfig,
 } from "../synthesizer/entities";
 import { Assistant } from "../assistant/entities";
@@ -36,7 +35,6 @@ export const databaseConfig = (
     SttConfig,
     SynthesizerProvider,
     SynthesizerModel,
-    SynthesizerVoice,
     TtsConfig,
     Assistant,
     RegisteredNumber,

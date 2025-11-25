@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { SynthesizerProvider, SynthesizerModel, SynthesizerVoice } from './entities';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { SynthesizerProvider, SynthesizerModel } from "./entities";
 
 @Injectable()
 export class SynthesizerService {
@@ -10,15 +10,13 @@ export class SynthesizerService {
     private synthesizerProviderRepository: Repository<SynthesizerProvider>,
     @InjectRepository(SynthesizerModel)
     private synthesizerModelRepository: Repository<SynthesizerModel>,
-    @InjectRepository(SynthesizerVoice)
-    private synthesizerVoiceRepository: Repository<SynthesizerVoice>,
   ) {}
 
   async findAllProviders() {
     return this.synthesizerProviderRepository.find({
       where: { isActive: true },
-      select: ['id', 'name', 'isActive'],
-      order: { name: 'ASC' },
+      select: ["id", "name", "isActive"],
+      order: { name: "ASC" },
     });
   }
 
@@ -31,7 +29,7 @@ export class SynthesizerService {
 
     return this.synthesizerModelRepository.find({
       where: whereCondition,
-      relations: ['synthesizerProvider'],
+      relations: ["synthesizerProvider"],
       select: {
         id: true,
         name: true,
@@ -41,52 +39,14 @@ export class SynthesizerService {
           name: true,
         },
       },
-      order: { name: 'ASC' },
-    });
-  }
-
-  async findAllVoices(modelId?: string, providerId?: string) {
-    const whereCondition: any = { isActive: true };
-
-    if (modelId) {
-      whereCondition.synthesizerModel = { id: modelId };
-    } else if (providerId) {
-      whereCondition.synthesizerModel = {
-        synthesizerProvider: { id: providerId },
-      };
-    }
-
-    return this.synthesizerVoiceRepository.find({
-      where: whereCondition,
-      relations: ['synthesizerModel', 'synthesizerModel.synthesizerProvider'],
-      select: {
-        id: true,
-        name: true,
-        isActive: true,
-        synthesizerModel: {
-          id: true,
-          name: true,
-          synthesizerProvider: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      order: { name: 'ASC' },
-    });
-  }
-
-  async findVoiceById(id: string): Promise<SynthesizerVoice | null> {
-    return this.synthesizerVoiceRepository.findOne({
-      where: { id, isActive: true },
-      relations: ['synthesizerModel', 'synthesizerModel.synthesizerProvider'],
+      order: { name: "ASC" },
     });
   }
 
   async findModelById(id: string): Promise<SynthesizerModel | null> {
     return this.synthesizerModelRepository.findOne({
       where: { id, isActive: true },
-      relations: ['synthesizerProvider'],
+      relations: ["synthesizerProvider"],
     });
   }
 
