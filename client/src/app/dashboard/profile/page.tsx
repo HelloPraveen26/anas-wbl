@@ -8,7 +8,6 @@ interface UserProfile {
   lastName: string;
   email: string;
   phone?: string;
-  isVerified: boolean;
   authProvider: string;
   profilePicture?: string;
   createdAt: string;
@@ -212,9 +211,9 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">Loading profile...</p>
         </div>
       </div>
@@ -222,28 +221,30 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-600 h-48"></div>
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-56 relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-6">
         {/* Profile Header Card */}
         <div className="relative -mt-32 mb-8">
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-emerald-100 overflow-hidden">
             <div className="p-8">
               <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                 {/* Profile Picture */}
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl bg-gradient-to-br from-emerald-400 to-teal-500">
+                  <div className="w-36 h-36 rounded-2xl overflow-hidden border-4 border-white shadow-2xl shadow-emerald-500/20 bg-gradient-to-br from-emerald-400 to-teal-500">
                     {profilePicture ? (
                       <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-5xl font-bold text-white">{userProfile?.firstName?.[0] || 'U'}</span>
+                        <span className="text-6xl font-bold text-white">{userProfile?.firstName?.[0] || 'U'}</span>
                       </div>
                     )}
                   </div>
-                  <label className="absolute bottom-0 right-0 w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-emerald-700 transition shadow-lg">
+                  <label className="absolute bottom-2 right-2 w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center cursor-pointer hover:from-emerald-600 hover:to-teal-600 transition shadow-lg shadow-emerald-500/30">
                     <input type="file" accept="image/*" onChange={handleProfilePictureChange} className="hidden" />
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -255,41 +256,31 @@ export default function ProfilePage() {
                 {/* User Info */}
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl font-bold text-gray-900">{userProfile?.firstName} {userProfile?.lastName}</h1>
-                    {userProfile?.isVerified && (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-white text-emerald-800">
-                       
-                      
-                      </span>
-                    )}
+                    <h1 className="text-4xl font-bold text-gray-900">{userProfile?.firstName} {userProfile?.lastName}</h1>
+
                   </div>
-                  <p className="text-gray-600 mb-4 flex items-center gap-2">
+                  <p className="text-gray-600 mb-4 flex items-center gap-2 text-lg">
                     {userProfile?.email}
-                    <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                    </svg>
                   </p>
                   <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg">
                       <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      <span>{orgForm.organizationName || 'No organization'}</span>
+                      <span className="font-medium">{orgForm.organizationName || 'No organization'}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-2 bg-teal-50 px-3 py-1.5 rounded-lg">
+                      <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <span>Joined {userProfile?.createdAt?.split('T')?.[0] || '—'}</span>
+                      <span className="font-medium">Joined {userProfile?.createdAt?.split('T')?.[0] || '—'}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex gap-3">
-                  {/* <button className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition shadow-sm">
-                    Save Changes
-                  </button> */}
-                  <button className="px-6 py-2 bg-white border-2 border-gray-300 hover:border-emerald-600 text-gray-700 hover:text-emerald-600 rounded-lg font-medium transition">
+                  <button className="px-6 py-3 bg-white border-2 border-emerald-200 hover:border-emerald-400 text-emerald-700 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md">
                     Credits
                   </button>
                 </div>
@@ -300,55 +291,56 @@ export default function ProfilePage() {
 
         {/* Message Alert */}
         {message && (
-          <div className={`mb-6 p-4 rounded-lg border ${message.type === "success" ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "bg-red-50 border-red-300 text-red-800"}`}>
+          <div className={`mb-6 p-4 rounded-xl border-2 shadow-md ${message.type === "success" ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "bg-red-50 border-red-300 text-red-800"}`}>
             <div className="flex items-center gap-3">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 {message.type === "success" ? (
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 ) : (
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 )}
               </svg>
-              <span className="font-medium">{message.text}</span>
+              <span className="font-semibold">{message.text}</span>
             </div>
           </div>
         )}
 
         {/* Tabs Navigation */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              {[
-                { id: 'profile', label: 'Profile Information', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-                { id: 'billing', label: 'Billing Address', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z' },
-                { id: 'organization', label: 'Organization', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16 M3 10h18 M9 21v-8a1 1 0 011-1h4a1 1 0 011 1v8' },
-                { id: 'security', label: 'Security', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition ${
-                    activeTab === tab.id
-                      ? 'border-emerald-600 text-emerald-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+        <div className="bg-white rounded-2xl shadow-lg border border-emerald-100 mb-6 p-2">
+          <nav className="flex gap-2">
+            {[
+              { id: 'profile', label: 'Profile Information', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+              { id: 'billing', label: 'Billing Address', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z' },
+              { id: 'organization', label: 'Organization', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16 M3 10h18 M9 21v-8a1 1 0 011-1h4a1 1 0 011 1v8' },
+              { id: 'security', label: 'Security', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl transition-all ${activeTab === tab.id
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
+                    : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
                   }`}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
-                  </svg>
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
+                </svg>
+                <span className="hidden md:inline">{tab.label}</span>
+              </button>
+            ))}
+          </nav>
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-lg shadow p-8 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg border border-emerald-100 p-8 mb-8 overflow-y-auto max-h-[500px]">
           {/* Profile Information Tab */}
           {activeTab === 'profile' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile Information</h2>
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 -mx-8 -mt-8 px-8 py-5 mb-8 border-b border-emerald-100 ">
+                <h2 className="text-2xl font-bold text-emerald-900">Profile Information</h2>
+                <p className="text-sm text-emerald-700 mt-1">Update your personal details</p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -358,7 +350,7 @@ export default function ProfilePage() {
                     type="text"
                     value={basicForm.firstName}
                     onChange={(e) => setBasicForm({ ...basicForm, firstName: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="Enter first name"
                   />
                 </div>
@@ -369,7 +361,7 @@ export default function ProfilePage() {
                     type="text"
                     value={basicForm.lastName}
                     onChange={(e) => setBasicForm({ ...basicForm, lastName: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="Enter last name"
                   />
                 </div>
@@ -381,9 +373,9 @@ export default function ProfilePage() {
                       type="email"
                       value={userProfile?.email || ''}
                       disabled
-                      className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                      className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
-                    <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </div>
@@ -396,10 +388,10 @@ export default function ProfilePage() {
                       type="tel"
                       value={basicForm.phone}
                       disabled
-                      className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                      className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
                       placeholder="Enter phone number"
                     />
-                    <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </div>
@@ -409,13 +401,13 @@ export default function ProfilePage() {
               <div className="mt-8 flex justify-end gap-3">
                 <button
                   onClick={() => setBasicForm({ firstName: userProfile?.firstName || "", lastName: userProfile?.lastName || "", phone: userProfile?.phone || "" })}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                  className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleProfileNext}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition"
+                  className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition shadow-lg shadow-emerald-500/30"
                 >
                   Next
                 </button>
@@ -426,7 +418,11 @@ export default function ProfilePage() {
           {/* Billing Address Tab */}
           {activeTab === 'billing' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Billing Address</h2>
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 -mx-8 -mt-8 px-8 py-5 mb-8 border-b border-emerald-100">
+                <h2 className="text-2xl font-bold text-emerald-900">Billing Address</h2>
+                <p className="text-sm text-emerald-700 mt-1">Manage your billing information</p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Building / House No</label>
@@ -434,7 +430,7 @@ export default function ProfilePage() {
                     type="text"
                     value={billingForm.building}
                     onChange={(e) => setBillingForm({ ...billingForm, building: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="Building number"
                   />
                 </div>
@@ -445,7 +441,7 @@ export default function ProfilePage() {
                     type="text"
                     value={billingForm.street}
                     onChange={(e) => setBillingForm({ ...billingForm, street: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="Street address"
                   />
                 </div>
@@ -456,7 +452,7 @@ export default function ProfilePage() {
                     type="text"
                     value={billingForm.city}
                     onChange={(e) => setBillingForm({ ...billingForm, city: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="City"
                   />
                 </div>
@@ -467,7 +463,7 @@ export default function ProfilePage() {
                     type="text"
                     value={billingForm.state}
                     onChange={(e) => setBillingForm({ ...billingForm, state: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="State or province"
                   />
                 </div>
@@ -478,7 +474,7 @@ export default function ProfilePage() {
                     type="text"
                     value={billingForm.zipCode}
                     onChange={(e) => setBillingForm({ ...billingForm, zipCode: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="Postal code"
                   />
                 </div>
@@ -489,7 +485,7 @@ export default function ProfilePage() {
                     type="text"
                     value={billingForm.country}
                     onChange={(e) => setBillingForm({ ...billingForm, country: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="Country"
                   />
                 </div>
@@ -498,20 +494,20 @@ export default function ProfilePage() {
               <div className="mt-8 flex justify-between gap-3">
                 <button
                   onClick={() => setActiveTab('profile')}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                  className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
                 >
                   Back
                 </button>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setBillingForm({ building: "", street: "", city: "", state: "", zipCode: "", country: "" })}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                    className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
                   >
                     Clear
                   </button>
                   <button
                     onClick={handleBillingNext}
-                    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition"
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition shadow-lg shadow-emerald-500/30"
                   >
                     Next
                   </button>
@@ -523,7 +519,11 @@ export default function ProfilePage() {
           {/* Organization Tab */}
           {activeTab === 'organization' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Organization Details</h2>
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 -mx-8 -mt-8 px-8 py-5 mb-8 border-b border-emerald-100">
+                <h2 className="text-2xl font-bold text-emerald-900">Organization Details</h2>
+                <p className="text-sm text-emerald-700 mt-1">Configure your organization settings</p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Organization Name</label>
@@ -531,7 +531,7 @@ export default function ProfilePage() {
                     type="text"
                     value={orgForm.organizationName}
                     onChange={(e) => setOrgForm({ ...orgForm, organizationName: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="Your company name"
                   />
                 </div>
@@ -542,7 +542,7 @@ export default function ProfilePage() {
                     type="text"
                     value={orgForm.domain}
                     onChange={(e) => setOrgForm({ ...orgForm, domain: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                     placeholder="example.com"
                   />
                 </div>
@@ -551,21 +551,21 @@ export default function ProfilePage() {
               <div className="mt-8 flex justify-between gap-3">
                 <button
                   onClick={() => setActiveTab('billing')}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                  className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
                 >
                   Back
                 </button>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setOrgForm({ organizationName: "", domain: "" })}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                    className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
                   >
                     Clear
                   </button>
                   <button
                     onClick={handleFinalSave}
                     disabled={saving}
-                    className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition disabled:opacity-50"
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-semibold transition shadow-lg shadow-emerald-500/30 disabled:opacity-50"
                   >
                     {saving ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -577,9 +577,11 @@ export default function ProfilePage() {
           {/* Security Tab */}
           {activeTab === 'security' && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Security Settings</h2>
-              <p className="text-gray-600 mb-6">Update your password to keep your account secure</p>
-              
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 -mx-8 -mt-8 px-8 py-5 mb-8 border-b border-emerald-100">
+                <h2 className="text-2xl font-bold text-emerald-900">Security Settings</h2>
+                <p className="text-sm text-emerald-700 mt-1">Update your password to keep your account secure</p>
+              </div>
+
               <div className="max-w-2xl">
                 <div className="space-y-6">
                   <div>
@@ -588,7 +590,7 @@ export default function ProfilePage() {
                       type="password"
                       value={passwordForm.currentPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                       placeholder="Enter current password"
                     />
                   </div>
@@ -599,10 +601,10 @@ export default function ProfilePage() {
                       type="password"
                       value={passwordForm.newPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                       placeholder="Enter new password"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters with uppercase, lowercase, and a number</p>
+                    <p className="text-xs text-gray-500 mt-2">Must be at least 6 characters with uppercase, lowercase, and a number</p>
                   </div>
 
                   <div>
@@ -611,19 +613,19 @@ export default function ProfilePage() {
                       type="password"
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
                       placeholder="Confirm new password"
                     />
                   </div>
                 </div>
 
-                <div className="mt-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="mt-8 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl">
                   <div className="flex gap-3">
-                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <h4 className="text-sm font-semibold text-amber-900 mb-1">Password Security</h4>
+                      <h4 className="text-sm font-bold text-amber-900 mb-1">Password Security</h4>
                       <p className="text-xs text-amber-800">Make sure your password is strong and unique. Last changed: {localStorage.getItem('passwordChange') ? JSON.parse(localStorage.getItem('passwordChange')!).changedAt.split('T')[0] : 'Never'}</p>
                     </div>
                   </div>
@@ -632,13 +634,13 @@ export default function ProfilePage() {
                 <div className="mt-8 flex justify-end gap-3">
                   <button
                     onClick={() => setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" })}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
+                    className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handlePasswordSave}
-                    className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition"
+                    className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold transition shadow-lg shadow-red-500/30"
                   >
                     Update Password
                   </button>

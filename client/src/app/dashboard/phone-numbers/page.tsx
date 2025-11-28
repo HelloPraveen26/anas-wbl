@@ -95,6 +95,19 @@ export default function PhoneNumbersPage() {
   const [selectedRegisteredNumber, setSelectedRegisteredNumber] =
     useState<string>("");
   const [selectedAssistant, setSelectedAssistant] = useState<string>("");
+  // Keep a ref with the latest selectedAssistant to avoid stale-closure issues
+  const selectedAssistantRef = useRef<string>(selectedAssistant);
+
+  // keep the ref in sync with state
+  useEffect(() => {
+    selectedAssistantRef.current = selectedAssistant;
+  }, [selectedAssistant]);
+
+  // helper to synchronously update both state and ref to avoid races with WS messages
+  const selectAssistant = (id: string) => {
+    selectedAssistantRef.current = id;
+    setSelectedAssistant(id);
+  };
   // activeCalls map: contactId -> room_name
   const [activeCalls, setActiveCalls] = useState<Map<string, string>>(
     new Map(),
@@ -218,8 +231,8 @@ export default function PhoneNumbersPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setAssistants(Array.isArray(data) ? data : []);
-      if (Array.isArray(data) && data.length > 0 && !selectedAssistant) {
-        setSelectedAssistant(data[0].id);
+      if (Array.isArray(data) && data.length > 0 && !selectedAssistantRef.current) {
+        selectAssistant(data[0].id);
       }
     } catch (err) {
       console.error("fetchAssistants error:", err);
@@ -551,13 +564,16 @@ export default function PhoneNumbersPage() {
               );
               break;
             case "assistants":
+              // update assistants list
               setAssistants(Array.isArray(payload.data) ? payload.data : []);
+              // Only auto-select the first assistant if nothing is currently selected.
+              // Use the ref to check the live selection (avoid stale closure of selectedAssistant).
               if (
-                (!selectedAssistant || selectedAssistant === "") &&
+                (!selectedAssistantRef.current || selectedAssistantRef.current === "") &&
                 Array.isArray(payload.data) &&
                 payload.data.length > 0
               ) {
-                setSelectedAssistant(payload.data[0].id);
+                selectAssistant(payload.data[0].id);
               }
               break;
             case "active_calls":
@@ -624,7 +640,7 @@ export default function PhoneNumbersPage() {
     if (wsRef.current) {
       try {
         wsRef.current.close();
-      } catch (e) {}
+      } catch (e) { }
       wsRef.current = null;
     }
   };
@@ -710,7 +726,7 @@ export default function PhoneNumbersPage() {
       <header className="w-full bg-white border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="text-emerald-600 font-semibold text-lg">
+            <div className="text-emerald-800 font-semibold text-2xl">
               Phone Numbers
             </div>
           </div>
@@ -726,7 +742,9 @@ export default function PhoneNumbersPage() {
                 className="w-40 px-3 py-2 border border-green-500 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-500"
               />
               <button
-                className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-sm"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-full font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+
+                //className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-sm"
                 title="Call"
               >
                 <svg
@@ -748,7 +766,9 @@ export default function PhoneNumbersPage() {
 
             <button
               onClick={() => setOpenModal(true)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+
+            //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
             >
               Import Phone Number
             </button>
@@ -778,11 +798,10 @@ export default function PhoneNumbersPage() {
                   <div
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
-                      selectedRegisteredNumber === num.id
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                    }`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 bg-white"
+                      }`}
                   >
                     <div>
                       <p className="font-medium text-sm text-gray-900">
@@ -795,11 +814,10 @@ export default function PhoneNumbersPage() {
                     </div>
                     <div className="ml-4 text-right">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          num.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                          }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
@@ -859,12 +877,11 @@ export default function PhoneNumbersPage() {
                   assistants.map((a) => (
                     <div
                       key={a.id}
-                      onClick={() => setSelectedAssistant(a.id)}
-                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${
-                        selectedAssistant === a.id
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-gray-200 bg-white"
-                      }`}
+                      onClick={() => selectAssistant(a.id)}
+                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${selectedAssistant === a.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
+                        }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
@@ -911,22 +928,10 @@ export default function PhoneNumbersPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowAddContactModal(true)}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm font-medium flex items-center gap-2"
+                  //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm font-medium flex items-center gap-2"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={2}
-                    stroke="currentColor"
-                    className="w-4 h-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 4.5v15m7.5-7.5h-15"
-                    />
-                  </svg>
                   Add New Contact
                 </button>
               </div>
@@ -968,7 +973,9 @@ export default function PhoneNumbersPage() {
                               !selectedAssistant ||
                               isLoading
                             }
-                            className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+
+                          //className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
                           >
                             {isLoading ? "Calling..." : "Call"}
                           </button>
@@ -1199,11 +1206,10 @@ export default function PhoneNumbersPage() {
                   <div
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
-                      selectedRegisteredNumber === num.id
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                    }`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 bg-white"
+                      }`}
                   >
                     <div>
                       <p className="font-medium text-sm text-gray-900">
@@ -1216,11 +1222,10 @@ export default function PhoneNumbersPage() {
                     </div>
                     <div className="ml-4 text-right">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          num.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                          }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
@@ -1310,11 +1315,10 @@ export default function PhoneNumbersPage() {
               <button
                 onClick={handleAddContact}
                 disabled={loading}
-                className={`px-4 py-2 rounded-md text-white ${
-                  loading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-emerald-600 hover:bg-emerald-700"
-                }`}
+                className={`px-4 py-2 rounded-md text-white ${loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
               >
                 {loading ? "Saving..." : "Save"}
               </button>
@@ -1323,73 +1327,79 @@ export default function PhoneNumbersPage() {
         </div>
       )}
 
-      {/* SHOW ALL CONTACTS MODAL (now shows contacts) */}
+     {/* SHOW ALL CONTACTS MODAL (now shows contacts) */}
       {showAllNumbersModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                All Contact Numbers ({contactNumbers.length})
-              </h3>
-              <button
-                onClick={() => setShowAllNumbersModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
+              <h3 className="text-lg font-semibold text-gray-800">All Contact Numbers ({contactNumbers.length})</h3>
+              <button onClick={() => setShowAllNumbersModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
 
             <div className="overflow-y-auto flex-1 pr-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {contactNumbers.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="p-4 border rounded-lg flex items-center justify-between bg-white"
-                  >
-                    <div>
-                      <p className="font-medium text-sm text-gray-900">
-                        {contact.name}
-                      </p>
-                      <p className="text-xs text-gray-600">{contact.phoneNo}</p>
-                    </div>
+                {contactNumbers.map((contact) => {
+                  const isActive = activeCalls.has(contact.id);
+                  const isLoading = callLoading.has(contact.id);
+                  return (
+                    <div
+                      key={contact.id}
+                      className="p-4 border rounded-lg flex items-center justify-between bg-white"
+                    >
+                      <div>
+                        <p className="font-medium text-sm text-gray-900">{contact.name}</p>
+                        <p className="text-xs text-gray-600">{contact.phoneNo}</p>
+                      </div>
 
-                    <div className="flex flex-col items-end gap-2">
-                      <button
-                        onClick={() => {
-                          // If required preconditions not met, show a message instead of attempting call
-                          if (!selectedRegisteredNumber) {
-                            alert(
-                              "Please select a registered number to make calls from.",
-                            );
-                            return;
-                          }
-                          if (!selectedAssistant) {
-                            alert(
-                              "Please select an assistant to handle the call.",
-                            );
-                            return;
-                          }
-                          // call and close modal
-                          makeCall(contact);
-                          setShowAllNumbersModal(false);
-                        }}
-                        className="px-3 py-1 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700"
-                      >
-                        Call
-                      </button>
-                      <div className="text-xs text-gray-400">
-                        {activeCalls.has(contact.id) ? "Live" : "Idle"}
+                      <div className="flex flex-col items-end gap-2">
+                        {isActive ? (
+                          <button
+                            onClick={() => disconnectCall(contact)}
+                            disabled={isLoading}
+                            className="px-3 py-1 rounded-md bg-red-100 text-red-700 text-sm hover:bg-red-200 disabled:opacity-50"
+                          >
+                            {isLoading ? "Disconnecting..." : "Disconnect"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              // If required preconditions not met, show a message instead of attempting call
+                              if (!selectedRegisteredNumber) {
+                                alert("Please select a registered number to make calls from.");
+                                return;
+                              }
+                              if (!selectedAssistant) {
+                                alert("Please select an assistant to handle the call.");
+                                return;
+                              }
+                              // call without closing modal
+                              makeCall(contact);
+                            }}
+                            disabled={!selectedRegisteredNumber || !selectedAssistant || isLoading}
+                             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-sm font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+                          >
+                            {isLoading ? "Calling..." : "Call"}
+                          </button>
+                        )}
+                        {isActive ? (
+                          <div className="inline-flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                            <span className="text-xs text-gray-500">Live</span>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400">Idle</div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             <div className="mt-4 pt-4 border-t flex justify-end">
               <button
                 onClick={() => setShowAllNumbersModal(false)}
-                className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+                             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
               >
                 Done
               </button>
