@@ -2,7 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
-import { FaFacebookF, FaLinkedinIn, FaYoutube ,FaInstagram} from "react-icons/fa";
+import {
+  FaFacebookF,
+  FaLinkedinIn,
+  FaYoutube,
+  FaInstagram,
+} from "react-icons/fa";
 import Image from "next/image";
 
 type Props = {};
@@ -12,13 +17,14 @@ const ACCENT_COLOR = "#38BDF8";
 const GREEN_ACCENT = "text-green-500";
 
 const Footer = (props: Props) => {
- const contactInfo = {
-  addressLine1: "3rd Floor, Lakshmi Bhavan, No. 609, Sundaram Ave, Anna Salai,",
-  addressLine3: "Chennai – 600006",
-  phone: "+91 90031 03018",
-  email: "hello@zenxai.io",
-};
-
+  const contactInfo = {
+    addressLine1:
+      "3rd Floor, Lakshmi Bhavan, No. 609, Sundaram Ave, Anna Salai,",
+    addressLine2: undefined as string | undefined,
+    addressLine3: "Chennai – 600006",
+    phone: "+91 90031 03018",
+    email: "hello@zenxai.io",
+  };
 
   const quickLinks = [
     { name: "Terms & Condition", href: "https://zenxai.io/terms" },
@@ -33,10 +39,22 @@ const Footer = (props: Props) => {
   ];
 
   const socialLinks = [
-    { icon: FaInstagram, href:"https://www.instagram.com/harivikashhh?igsh=ZXZ6MXF2Nmt2anQ1"},
-    { icon: FaFacebookF, href: " https://www.facebook.com/share/1CXv9zsABN/?mibextid=wwXIfr" },
-    { icon: FaYoutube, href: "https://youtube.com/@harivikashhh?si=OJfJU_lJUWSZZxxt" },
-    { icon: FaLinkedinIn, href: " https://www.linkedin.com/in/harivikash?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=ios_app" },
+    {
+      icon: FaInstagram,
+      href: "https://www.instagram.com/harivikashhh?igsh=ZXZ6MXF2Nmt2anQ1",
+    },
+    {
+      icon: FaFacebookF,
+      href: " https://www.facebook.com/share/1CXv9zsABN/?mibextid=wwXIfr",
+    },
+    {
+      icon: FaYoutube,
+      href: "https://youtube.com/@harivikashhh?si=OJfJU_lJUWSZZxxt",
+    },
+    {
+      icon: FaLinkedinIn,
+      href: " https://www.linkedin.com/in/harivikash?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=ios_app",
+    },
   ];
 
   return (
@@ -45,8 +63,7 @@ const Footer = (props: Props) => {
     >
       <div className="w-full px-10 sm:px-16 lg:px-24">
         {/* Changed grid-cols-2 to grid-cols-2 for mobile and md:grid-cols-4 for desktop */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-16"> 
-          
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-16">
           {/* Column 1: Our Office & Contact Us */}
           <div>
             <h4
@@ -54,42 +71,48 @@ const Footer = (props: Props) => {
             >
               Our Office
             </h4>
-            <div className="text-base space-y-4 mb-8"> {/* Added mb-8 for separation */}
+            <div className="text-base space-y-4 mb-8">
+              {" "}
+              {/* Added mb-8 for separation */}
               <p className="flex flex-col text-gray-300">
                 <span className="mb-1">{contactInfo.addressLine1}</span>
                 {/* Check if addressLine2 exists before rendering */}
-                {contactInfo.addressLine2 && <span className="mb-1">{contactInfo.addressLine2}</span>}
+                {contactInfo.addressLine2 && (
+                  <span className="mb-1">{contactInfo.addressLine2}</span>
+                )}
                 <span>{contactInfo.addressLine3}</span>
               </p>
             </div>
-            
+
             {/* Added new "Contact Us" heading here */}
             <h4
               className={`text-xl font-bold mb-6 ${GREEN_ACCENT} uppercase tracking-wider`}
             >
               Contact Us
             </h4>
-            
+
             <div className="text-base space-y-4">
-                <p className="flex items-center space-x-3">
-                    <span className={`${GREEN_ACCENT} text-lg`}>📞</span>
-                    <span className="text-white hover:text-gray-300 transition duration-200">
-                    {contactInfo.phone}
-                    </span>
-                </p>
-                <p className="flex items-center space-x-3">
-                    <span className={`${GREEN_ACCENT} text-lg`}>📧</span>
-                    <a
-                    href={`mailto:${contactInfo.email}`}
-                    className={`text-white hover:text-[${ACCENT_COLOR}] transition duration-200`}
-                    >
-                    {contactInfo.email}
-                    </a>
-                </p>
+              <p className="flex items-center space-x-3">
+                <span className={`${GREEN_ACCENT} text-lg`}>📞</span>
+                <span className="text-white hover:text-gray-300 transition duration-200">
+                  {contactInfo.phone}
+                </span>
+              </p>
+              <p className="flex items-center space-x-3">
+                <span className={`${GREEN_ACCENT} text-lg`}>📧</span>
+                <a
+                  href={`mailto:${contactInfo.email}`}
+                  className={`text-white hover:text-[${ACCENT_COLOR}] transition duration-200`}
+                >
+                  {contactInfo.email}
+                </a>
+              </p>
             </div>
 
             {/* Social Links */}
-            <div className="flex space-x-4 pt-8"> {/* Increased pt for separation */}
+            <div className="flex space-x-4 pt-8">
+              {" "}
+              {/* Increased pt for separation */}
               {socialLinks.map((item, index) => {
                 const Icon = item.icon;
                 return (
@@ -164,9 +187,7 @@ const Footer = (props: Props) => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <span
-              className={`text-[${ACCENT_COLOR}] font-semibold text-lg`}
-            >
+            <span className={`text-[${ACCENT_COLOR}] font-semibold text-lg`}>
               Zenxai Presents ZenVoice
             </span>
 

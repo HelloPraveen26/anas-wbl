@@ -6,13 +6,22 @@ type Props = {
   className?: string;
   title: string;
   description?: string;
+  tag?: string;
 };
 
-const Heading = ({ className, title, description }: Props) => {
+const Heading = ({ className, title, description, tag }: Props) => {
   return (
-    <div className={cn(className, "max-w-[50rem] mx-auto mb-12 lg:mb-20 md:text-center")}>
+    <div
+      className={cn(
+        className,
+        "max-w-[50rem] mx-auto mb-12 lg:mb-20 md:text-center",
+      )}
+    >
+      {tag && <TagLine className="mb-4 md:justify-center">{tag}</TagLine>}
       {title && <h2 className="h2">{title}</h2>}
-      {description && <p className="body-2 mt-4 text-n-4 text-blue-2  00">{description}</p>}
+      {description && (
+        <p className="body-2 mt-4 text-n-4 text-blue-2  00">{description}</p>
+      )}
     </div>
   );
 };

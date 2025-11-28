@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { ConnectionDetails } from "@/app/api/connection-details/route";
 import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
+
+// Define ConnectionDetails type locally
+export interface ConnectionDetails {
+  serverUrl: string;
+  token: string;
+  [key: string]: any;
+}
 
 export default function useConnectionDetails() {
   const [connectionDetails, setConnectionDetails] =

@@ -14,7 +14,7 @@ type Props = {};
 
 const Collaboration = (props: Props) => {
   const lines = ["What You Can Do", "with Zenvoice"];
-  
+
   const container = {
     hidden: { opacity: 0 },
     visible: {
@@ -36,7 +36,7 @@ const Collaboration = (props: Props) => {
       y: 0,
       transition: {
         duration: 0.3,
-        ease: "easeOut",
+        ease: "easeOut" as const,
       },
     },
   };
@@ -62,8 +62,8 @@ const Collaboration = (props: Props) => {
             {lines.map((line, lineIndex) => (
               <React.Fragment key={lineIndex}>
                 {line.split("").map((char, charIndex) => (
-                  <motion.span 
-                    key={`${lineIndex}-${charIndex}`} 
+                  <motion.span
+                    key={`${lineIndex}-${charIndex}`}
                     variants={child}
                   >
                     {char === " " ? "\u00A0" : char}
@@ -73,16 +73,23 @@ const Collaboration = (props: Props) => {
               </React.Fragment>
             ))}
           </motion.h2>
-          
+
           {/* Content List */}
           <ul className="mb-10 max-w-[22rem] md:mb-14">
             {collabContent.map((item) => (
               <li key={item.id} className="mb-3 py-3">
                 <div className="flex items-center">
-                  <Image src={images.check} width={24} height={24} alt="check" />
+                  <Image
+                    src={images.check}
+                    width={24}
+                    height={24}
+                    alt="check"
+                  />
                   <h6 className="body-2 ml-5">{item.title}</h6>
                 </div>
-                {item.text && <p className="body-2 mt-3 text-n-4">{item.text}</p>}
+                {item.text && (
+                  <p className="body-2 mt-3 text-n-4">{item.text}</p>
+                )}
               </li>
             ))}
           </ul>
@@ -95,7 +102,7 @@ const Collaboration = (props: Props) => {
 
         {/* Right Section */}
         <div className="mt-4 lg:ml-auto xl:w-[38rem]">
-          {/* This paragraph is now hidden by default ('hidden') and only 
+          {/* This paragraph is now hidden by default ('hidden') and only
             shown on large screens and up ('lg:block').
           */}
           <p className="hidden body-2 mb-8 text-n-4 md:mb-16 lg:block lg:mx-auto lg:mb-32 lg:w-[22rem]">
@@ -107,7 +114,12 @@ const Collaboration = (props: Props) => {
             <div className="m-auto flex aspect-square w-60 rounded-full border border-n-6">
               <div className="m-auto aspect-square w-24 rounded-full bg-conic-gradient p-[0.2rem]">
                 <div className="flex h-full items-center justify-center rounded-full bg-n-8">
-                  <Image src={images.ZV} width={58} height={58} alt="brainwave" />
+                  <Image
+                    src={images.ZV}
+                    width={58}
+                    height={58}
+                    alt="brainwave"
+                  />
                 </div>
               </div>
             </div>
@@ -120,13 +132,13 @@ const Collaboration = (props: Props) => {
                   <li
                     key={item.id}
                     className={cn(
-                      "absolute left-1/2 top-0 -ml-[1.6rem] h-1/2 origin-bottom"
+                      "absolute left-1/2 top-0 -ml-[1.6rem] h-1/2 origin-bottom",
                     )}
                     style={{ transform: `rotate(${angle}deg)` }}
                   >
                     <div
                       className={cn(
-                        "relative -top-[1.6rem] flex w-[3.2rem] h-[3.2rem] bg-n-7 border border-n-1/15 rounded-xl"
+                        "relative -top-[1.6rem] flex w-[3.2rem] h-[3.2rem] bg-n-7 border border-n-1/15 rounded-xl",
                       )}
                       style={{ transform: `rotate(-${angle}deg)` }}
                     >
