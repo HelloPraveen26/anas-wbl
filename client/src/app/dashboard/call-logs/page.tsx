@@ -41,6 +41,8 @@ export default function CallLogsPage() {
   const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Helper function to get authenticated headers
   const getAuthHeaders = () => {
@@ -182,6 +184,18 @@ export default function CallLogsPage() {
         : false);
     return statusMatch && evaluationMatch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCalls.length / itemsPerPage);
+  const paginatedCalls = filteredCalls.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, evaluationFilter]);
 
   const formatDuration = (seconds: number) => {
     if (seconds === 0) return "0s";
@@ -395,7 +409,7 @@ export default function CallLogsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredCalls.length === 0 ? (
+            {paginatedCalls.length === 0 ? (
               <tr>
                 <td
                   colSpan={11}
@@ -407,7 +421,7 @@ export default function CallLogsPage() {
                 </td>
               </tr>
             ) : (
-              filteredCalls.map((call, index) => (
+              paginatedCalls.map((call, index) => (
                 <tr
                   key={call.id}
                   className={`text-gray-800 hover:bg-gray-50 ${index % 2 === 0 ? "bg-white" : "bg-gray-25"}`}
@@ -468,13 +482,21 @@ export default function CallLogsPage() {
       {/* Footer */}
       <div className="flex justify-between items-center text-sm text-gray-500">
         <span>
-          Showing {filteredCalls.length} of {allCalls.length} calls
+          Showing {paginatedCalls.length} of {filteredCalls.length} calls (Page {currentPage} of {totalPages})
         </span>
         <div className="flex gap-2">
-          <button className="px-3 py-1 border rounded hover:bg-gray-50">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Previous
           </button>
-          <button className="px-3 py-1 border rounded hover:bg-gray-50">
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Next
           </button>
         </div>
