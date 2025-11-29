@@ -12,6 +12,7 @@ import { RegisteredNumbersService } from "../../registered-numbers/registered-nu
 export class PhoneService {
   private readonly baseUrl: string;
   private readonly logger = new Logger(PhoneService.name);
+  private readonly agentServiceUrl: string;
 
   constructor(
     private readonly httpService: HttpService,
@@ -22,31 +23,61 @@ export class PhoneService {
     this.baseUrl =
       this.configService.get<string>("PHONE_SERVICE_URL") ||
       "http://localhost:8003";
+    this.agentServiceUrl =
+      this.configService.get<string>("AGENT_SERVICE_URL") ||
+      "http://localhost:8000";
   }
 
   /**
-   * Initiates a phone call by proxying the request to the telephony service.
-   * @param dto MakeCallDto containing the phone_number to call
-   * @returns AxiosResponse<any> with { success: boolean, call_id?: string }
+   * Load tool configuration for an assistant
+   */
+  async getToolConfig(assistantId: string): Promise<any> {
+    try {
+      this.logger.log(`🔄 Fetching tool config for assistant: ${assistantId}`);
+      
+      const response = await firstValueFrom(
+        this.httpService.get(
+          `${this.agentServiceUrl}/api/v1/assistants/tool-config/${assistantId}`
+        ),
+      );
+
+      if (response.data?.success && response.data?.data) {
+        this.logger.log(
+          `✅ Tool config loaded: ${response.data.data.toolName}`
+        );
+        return response.data.data;
+      }
+
+      this.logger.warn(`⚠️ No tool configuration found for assistant`);
+      return null;
+    } catch (error) {
+      this.logger.warn(
+        `⚠️ Error loading tool config: ${error instanceof Error ? error.message : error}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Initiates a phone call with tool configuration support
    */
   async makeCall(dto: MakeCallDto, userId: string): Promise<any> {
     try {
       let systemPrompt = "";
       let firstMessage = "";
-
-      // Get systemPrompt, firstMessage, and model configs from assistant if selectedAssistant is provided
       let sttProviderName: string | undefined;
       let ttsProviderName: string | undefined;
       let sttConfig: Record<string, any> | undefined;
       let ttsConfig: Record<string, any> | undefined;
+      let toolConfig: any = null;
+      let webhookUrl = "http://127.0.0.1:9005/"; // Default webhook
 
+      // Get assistant details if selectedAssistant is provided
       if (dto.selectedAssistant) {
         this.logger.log(
-          `Making call with selected assistant: ${dto.selectedAssistant}`,
+          `📞 Making call with selected assistant: ${dto.selectedAssistant}`,
         );
 
-        // Note: We need userId to fetch assistant, but it's not available in this context
-        // This might need to be passed from the controller or extracted from request context
         try {
           const assistant = await this.assistantService.findOne(
             dto.selectedAssistant,
@@ -55,40 +86,44 @@ export class PhoneService {
           systemPrompt = assistant.systemPrompt;
           firstMessage = assistant.firstMessage;
 
-          // Extract STT provider name from transcriber model
           if (assistant.transcriberModel?.transcriberProvider) {
             sttProviderName =
               assistant.transcriberModel.transcriberProvider.name;
-            this.logger.log(`STT Provider Name: ${sttProviderName}`);
+            this.logger.log(`🎤 STT Provider: ${sttProviderName}`);
           }
 
-          // Extract TTS provider name from synthesizer model
           if (assistant.synthesizerModel?.synthesizerProvider) {
             ttsProviderName =
               assistant.synthesizerModel.synthesizerProvider.name;
-            this.logger.log(`TTS Provider Name: ${ttsProviderName}`);
+            this.logger.log(`🔊 TTS Provider: ${ttsProviderName}`);
           }
 
-          // Extract STT config
           if (assistant.sttConfig) {
             sttConfig = assistant.sttConfig;
-            this.logger.log(`STT Config: ${JSON.stringify(sttConfig)}`);
           }
 
-          // Extract TTS config
           if (assistant.ttsConfig) {
             ttsConfig = assistant.ttsConfig;
-            this.logger.log(`TTS Config: ${JSON.stringify(ttsConfig)}`);
+          }
+
+          // 🔧 NEW: Load tool configuration for this assistant
+          toolConfig = await this.getToolConfig(dto.selectedAssistant);
+          
+          if (toolConfig) {
+            this.logger.log(
+              `🔧 Tool configured: ${toolConfig.toolName} with ${Object.keys(toolConfig.parameters || {}).length} parameters`
+            );
+            webhookUrl = toolConfig.webhookUrl || webhookUrl;
           }
         } catch (error) {
           this.logger.warn(
-            `Failed to fetch assistant ${dto.selectedAssistant}:`,
-            error.message,
+            `⚠️ Failed to fetch assistant details:`,
+            error instanceof Error ? error.message : error,
           );
         }
       }
 
-      // Get livekitOutboundTrunkId from registered number using fromPhoneNumber
+      // Get livekitOutboundTrunkId from registered number
       const fromPhoneNumber = dto.fromPhoneNumber || "+19282185402";
       const registeredNumbers =
         await this.registeredNumbersService.findAllByUser(userId);
@@ -98,7 +133,7 @@ export class PhoneService {
 
       if (!registeredNumber || !registeredNumber.livekitOutboundTrunkId) {
         this.logger.error(
-          `Outbound trunk ID missing for phone number: ${fromPhoneNumber}`,
+          `❌ Outbound trunk ID missing for phone number: ${fromPhoneNumber}`,
         );
         throw new HttpException(
           "Outbound trunk ID missing for the selected phone number",
@@ -106,20 +141,43 @@ export class PhoneService {
         );
       }
 
+      // 🔧 Build instructions that include tool parameters if configured
+      let instructions = systemPrompt;
+      if (toolConfig) {
+        const requiredFields = Object.keys(toolConfig.parameters || {})
+          .filter(k => toolConfig.parameters[k].required)
+          .join(", ");
+
+        const toolInstructions = `
+
+IMPORTANT - DATA COLLECTION TOOL ACTIVATED:
+You are configured with a data collection tool. Your primary mission is to collect the following information:
+Required fields: ${requiredFields}
+
+When the user provides ANY of this information, IMMEDIATELY call the collect_user_data tool with the appropriate key and value. Extract information naturally from conversation - don't make it feel like an interrogation.
+
+After collecting all required information, the system will automatically send the data to the webhook.`;
+
+        instructions = instructions ? instructions + toolInstructions : toolInstructions;
+      }
+
       const payload = {
         phone_number: dto.phoneNumber,
         from_phone_number: fromPhoneNumber,
         outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
-        ...(systemPrompt && { instructions: systemPrompt }),
+        ...(instructions && { instructions }),
         ...(firstMessage && { first_message: firstMessage }),
         ...(sttProviderName && { stt_provider_name: sttProviderName }),
         ...(ttsProviderName && { tts_provider_name: ttsProviderName }),
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
+        // 🔧 Add assistant ID and webhook for tool data forwarding
+        ...(dto.selectedAssistant && { assistant_id: dto.selectedAssistant }),
+        ...(webhookUrl && { webhook_url: webhookUrl }),
       };
 
       this.logger.log(
-        `Making call with payload: ${JSON.stringify(payload, null, 2)}`,
+        `📤 Sending call payload:\n${JSON.stringify(payload, null, 2)}`,
       );
 
       const { data } = await firstValueFrom(
@@ -127,13 +185,16 @@ export class PhoneService {
       );
 
       this.logger.log(
-        `Call initiated successfully. Response: ${JSON.stringify(data)}`,
+        `✅ Call initiated successfully. Call ID: ${data.call_id || "N/A"}`,
       );
 
-      return data;
+      return {
+        ...data,
+        toolConfig, // Return tool config to frontend for UI display
+      };
     } catch (error) {
       this.logger.error(
-        "makeCall failed",
+        "❌ makeCall failed",
         error instanceof Error ? error.stack : error,
       );
       throw new HttpException(
@@ -144,19 +205,18 @@ export class PhoneService {
   }
 
   /**
-   * Hangs up an active call by proxying the request to the telephony service.
-   * @param dto HangupDto containing the room_name to hang up
-   * @returns AxiosResponse<any> with { success: boolean }
+   * Hangs up an active call
    */
   async hangup(dto: HangupDto): Promise<any> {
     try {
       const { data } = await firstValueFrom(
         this.httpService.post(`${this.baseUrl}/hangup`, dto),
       );
+      this.logger.log(`✅ Call hung up successfully`);
       return data;
     } catch (error) {
       this.logger.error(
-        "hangup failed",
+        "❌ hangup failed",
         error instanceof Error ? error.stack : error,
       );
       throw new HttpException(
@@ -167,8 +227,7 @@ export class PhoneService {
   }
 
   /**
-   * Retrieves details of the current active call from the telephony service.
-   * @returns AxiosResponse<any> with { active: boolean, call_id?: string }
+   * Retrieves active call details
    */
   async getActiveCall(): Promise<any> {
     try {
@@ -178,7 +237,7 @@ export class PhoneService {
       return data;
     } catch (error) {
       this.logger.error(
-        "getActiveCall failed",
+        "❌ getActiveCall failed",
         error instanceof Error ? error.stack : error,
       );
       throw new HttpException(

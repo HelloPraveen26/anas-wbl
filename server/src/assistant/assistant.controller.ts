@@ -10,6 +10,8 @@ import {
   Request,
   ParseUUIDPipe,
   HttpStatus,
+  BadRequestException,
+  NotFoundException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -29,12 +31,31 @@ import {
   ConnectionDetailsResponseDto,
 } from "./dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { promises as fs } from "fs";
+import { join } from "path";
+import axios from "axios";
 
 @ApiTags("assistants")
 @Controller("assistants")
 @UseGuards(ThrottlerGuard)
 export class AssistantController {
-  constructor(private readonly assistantService: AssistantService) {}
+  // 🔧 TOOLS: Config directory for storing tool configurations
+  private readonly configDir = join(process.cwd(), "assistant_configs");
+
+  constructor(private readonly assistantService: AssistantService) {
+    // Ensure config directory exists on startup
+    this.initConfigDirectory();
+  }
+
+  // 🔧 TOOLS: Initialize config directory
+  private async initConfigDirectory() {
+    try {
+      await fs.mkdir(this.configDir, { recursive: true });
+      console.log("✅ Assistant config directory ready:", this.configDir);
+    } catch (error) {
+      console.error("❌ Error creating config directory:", error);
+    }
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard)
@@ -108,7 +129,7 @@ export class AssistantController {
     description: "Unauthorized - invalid token",
   })
   async getConnectionDetails(
-    @Request() req,
+    @Request() req
   ): Promise<ConnectionDetailsResponseDto> {
     const response = await this.assistantService.getConnectionDetails();
 
@@ -157,7 +178,7 @@ export class AssistantController {
   })
   async findOne(
     @Param("id", ParseUUIDPipe) id: string,
-    @Request() req,
+    @Request() req
   ): Promise<AssistantResponseDto> {
     return this.assistantService.findOne(id, req.user.id);
   }
@@ -197,7 +218,7 @@ export class AssistantController {
   })
   async create(
     @Body() createAssistantDto: CreateAssistantDto,
-    @Request() req,
+    @Request() req
   ): Promise<AssistantResponseDto> {
     return this.assistantService.create(req.user.id, createAssistantDto);
   }
@@ -235,7 +256,7 @@ export class AssistantController {
   async update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() updateAssistantDto: UpdateAssistantDto,
-    @Request() req,
+    @Request() req
   ): Promise<AssistantResponseDto> {
     return this.assistantService.update(id, req.user.id, updateAssistantDto);
   }
@@ -272,7 +293,7 @@ export class AssistantController {
   })
   async remove(
     @Param("id", ParseUUIDPipe) id: string,
-    @Request() req,
+    @Request() req
   ): Promise<{ message: string }> {
     await this.assistantService.remove(id, req.user.id);
     return { message: "Assistant deleted successfully" };
@@ -340,11 +361,290 @@ export class AssistantController {
   })
   async createWithCustomName(
     @Body() createDefaultAssistantDto: CreateDefaultAssistantDto,
-    @Request() req,
+    @Request() req
   ): Promise<AssistantResponseDto> {
     return this.assistantService.createDefaultAssistant(
       req.user.id,
-      createDefaultAssistantDto.name,
+      createDefaultAssistantDto.name
     );
+  }
+
+  // ============================
+  // 🔧 TOOLS CONFIGURATION (MERGED)
+  // ============================
+
+  @Post("save-tool-config")
+  @ApiOperation({
+    summary: "Save tool configuration",
+    description:
+      "Save custom tool configuration for an assistant with file persistence",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        toolName: { type: "string", example: "function_tool" },
+        description: {
+          type: "string",
+          example: "Describe the tool in a few sentences",
+        },
+        assistantId: {
+          type: "string",
+          example: "123e4567-e89b-12d3-a456-426614174000",
+        },
+        webhookUrl: { type: "string", example: "https://api.example.com/function" },
+        timeout: { type: "number", example: 20 },
+        isAsync: { type: "boolean", example: true },
+        isStrict: { type: "boolean", example: true },
+        parameters: { type: "object", example: {} },
+        httpHeaders: { type: "object", example: {} },
+        messages: { type: "object", example: {} },
+        conditions: { type: "array", example: [] },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: "Tool configuration saved successfully",
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Bad request - validation failed",
+  })
+  async saveToolConfig(@Body() toolConfig: any): Promise<any> {
+    try {
+      const { assistantId, ...config } = toolConfig;
+
+      if (!assistantId) {
+        throw new BadRequestException("assistantId is required");
+      }
+
+      if (!config.webhookUrl) {
+        throw new BadRequestException("webhookUrl is required");
+      }
+
+      // Save to file
+      const filePath = join(this.configDir, `${assistantId}.json`);
+      await fs.writeFile(filePath, JSON.stringify(config, null, 2), "utf-8");
+
+      console.log("=============================================");
+      console.log("✅ Tool configuration saved successfully");
+      console.log("📋 Tool Name:", toolConfig.toolName);
+      console.log("🔗 Webhook URL:", toolConfig.webhookUrl);
+      console.log("🆔 Assistant ID:", assistantId);
+      console.log("📂 File path:", filePath);
+      console.log("=============================================");
+
+      return {
+        success: true,
+        message: "Tool configuration saved successfully",
+        data: {
+          toolName: toolConfig.toolName,
+          description: toolConfig.description,
+          assistantId: assistantId,
+          webhookUrl: toolConfig.webhookUrl,
+          timeout: toolConfig.timeout,
+          isAsync: toolConfig.isAsync,
+          isStrict: toolConfig.isStrict,
+          parametersCount: Object.keys(toolConfig.parameters || {}).length,
+          headersCount: Object.keys(toolConfig.httpHeaders || {}).length,
+          conditionsCount: (toolConfig.conditions || []).length,
+          savedAt: new Date().toISOString(),
+          filePath: filePath,
+        },
+      };
+    } catch (error) {
+      console.error("❌ Error saving tool config:", error);
+      throw error;
+    }
+  }
+
+  @Get("tool-config/:assistantId")
+  @ApiOperation({
+    summary: "Get tool configuration",
+    description: "Retrieve saved tool configuration for an assistant",
+  })
+  @ApiParam({
+    name: "assistantId",
+    description: "UUID of the assistant",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Configuration retrieved successfully",
+    schema: {
+      type: "object",
+      properties: {
+        success: { type: "boolean", example: true },
+        data: {
+          type: "object",
+          description: "Tool configuration object",
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Configuration not found",
+  })
+  async getToolConfig(@Param("assistantId") assistantId: string): Promise<any> {
+    try {
+      const filePath = join(this.configDir, `${assistantId}.json`);
+
+      // Check if file exists
+      try {
+        await fs.access(filePath);
+      } catch {
+        console.log(
+          `ℹ️ No configuration found for assistant: ${assistantId}`
+        );
+        return {
+          success: false,
+          message: `No tool configuration found for assistant ${assistantId}`,
+        };
+      }
+
+      // Read and parse config
+      const configData = await fs.readFile(filePath, "utf-8");
+      const config = JSON.parse(configData);
+
+      console.log("=============================================");
+      console.log("✅ Tool configuration loaded successfully");
+      console.log("🆔 Assistant ID:", assistantId);
+      console.log("📋 Tool Name:", config.toolName);
+      console.log("📂 File path:", filePath);
+      console.log("=============================================");
+
+      return {
+        success: true,
+        data: config,
+      };
+    } catch (error) {
+      console.error("❌ Error loading tool config:", error);
+      throw new NotFoundException(
+        `Failed to load configuration for assistant: ${assistantId}`
+      );
+    }
+  }
+
+  @Post("agent-webhook")
+  @ApiOperation({
+    summary: "Agent webhook endpoint",
+    description:
+      "Receives collected data from the agent and forwards to configured webhook",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        assistantId: {
+          type: "string",
+          example: "123e4567-e89b-12d3-a456-426614174000",
+        },
+        collectedData: {
+          type: "object",
+          example: {
+            name: "John Doe",
+            email: "john@example.com",
+            phone: "+1234567890",
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Data forwarded successfully",
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Missing required fields",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Configuration not found for assistant",
+  })
+  async agentWebhook(@Body() payload: any): Promise<any> {
+    try {
+      const { assistantId, collectedData } = payload;
+
+      if (!assistantId) {
+        throw new BadRequestException("assistantId is required");
+      }
+
+      if (!collectedData) {
+        throw new BadRequestException("collectedData is required");
+      }
+
+      // Read config file
+      const filePath = join(this.configDir, `${assistantId}.json`);
+
+      let configData: string;
+      try {
+        configData = await fs.readFile(filePath, "utf-8");
+      } catch (error) {
+        throw new NotFoundException(
+          `No configuration found for assistant: ${assistantId}`
+        );
+      }
+
+      const config = JSON.parse(configData);
+      const { webhookUrl } = config;
+
+      if (!webhookUrl) {
+        throw new BadRequestException(
+          "Webhook URL not defined in configuration"
+        );
+      }
+
+      console.log("=============================================");
+      console.log(`📤 Forwarding data to webhook`);
+      console.log(`🆔 Assistant ID: ${assistantId}`);
+      console.log(`🔗 Webhook URL: ${webhookUrl}`);
+      console.log(
+        `📊 Collected Data:`,
+        JSON.stringify(collectedData, null, 2)
+      );
+      console.log("=============================================");
+
+      // Forward to webhook
+      const webhookPayload = {
+        assistantId,
+        data: collectedData,
+        timestamp: new Date().toISOString(),
+      };
+
+      const response = await axios.post(webhookUrl, webhookPayload, {
+        headers: {
+          "Content-Type": "application/json",
+          ...config.httpHeaders, // Include any custom headers from config
+        },
+        timeout: (config.timeout || 20) * 1000, // Convert to milliseconds
+      });
+
+      console.log(
+        `✅ Data sent successfully to webhook (Status: ${response.status})`
+      );
+
+      return {
+        success: true,
+        message: "Data forwarded to webhook successfully",
+        webhookResponse: {
+          status: response.status,
+          statusText: response.statusText,
+        },
+      };
+    } catch (error) {
+      console.error("❌ Agent webhook forwarding error:", error.message);
+
+      if (error.response) {
+        console.error("Webhook response error:", {
+          status: error.response.status,
+          data: error.response.data,
+        });
+      }
+
+      throw error;
+    }
   }
 }

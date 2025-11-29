@@ -58,6 +58,18 @@ class CallRequest(BaseModel):
     stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
     tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
 
+    # ✅ TOOLS: Added assistant_id field
+    assistant_id: Optional[str] = Field(
+        None,
+        description="Assistant ID for webhook routing and tool configuration"
+    )
+
+    # ✅ TOOLS: Added webhook_url field
+    webhook_url: Optional[str] = Field(
+        None,
+        description="Backend webhook URL to send collected data"
+    )
+
     @validator("phone_number")
     def validate_e164_format(cls, v):
         """Validate that phone number follows E.164 format"""
@@ -73,8 +85,11 @@ class CallRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "phone_number": "+1234567890",
+                "outbound_trunk_id": "trunk1",
                 "instructions": "You are a friendly customer service agent",
                 "first_message": "Hello! How can I help you today?",
+                "assistant_id": "016208c6-99c1-4dba-935c-3e6256f60785",
+                "webhook_url": "https://webhook.site/your-unique-id"
             },
             "description": "Request body for initiating a phone call with custom agent behavior",
         }
@@ -253,7 +268,7 @@ async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
 
     try:
         logger.info(f"Creating dispatch for agent {agent_name} in room {room_name}")
-        logger.info(metadata)
+        logger.info(f"Metadata: {metadata}")
         dispatch = await lkapi.agent_dispatch.create_dispatch(
             api.CreateAgentDispatchRequest(
                 agent_name=agent_name, room=room_name, metadata=metadata
@@ -302,62 +317,13 @@ async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
         400: {
             "description": "Bad Request - Invalid phone number format or missing required fields",
             "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "missing_phone": {
-                            "summary": "Missing phone number",
-                            "value": {"detail": "Phone number is required"},
-                        },
-                        "invalid_format": {
-                            "summary": "Invalid E.164 format",
-                            "value": {
-                                "detail": "Phone number must be in E.164 format: + followed by country code and number (1-15 digits total). Examples: +1234567890, +441234567890. Learn more: https://www.twilio.com/docs/glossary/what-e164"
-                            },
-                        },
-                    }
-                }
-            },
         },
         500: {
             "description": "Internal Server Error - Failed to initiate call",
             "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Failed to initiate the call: Connection timeout"
-                    }
-                }
-            },
         },
     },
     summary="Initiate Outbound Phone Call",
-    description="""
-    Initiates an outbound phone call through LiveKit SIP integration.
-
-    **How to use:**
-    1. Send a POST request to `/make_call`
-    2. Include a JSON body with the phone number in E.164 format
-    3. The system will create a LiveKit room and connect the call
-    4. Use the `/hangup` endpoint with the returned room name to end the call
-
-    **Required Environment Variables:**
-    - `LIVEKIT_URL`: Your LiveKit server URL
-    - `LIVEKIT_API_KEY`: Your LiveKit API key
-    - `LIVEKIT_API_SECRET`: Your LiveKit API secret
-    - `SIP_OUTBOUND_TRUNK_ID`: Your SIP trunk identifier
-
-    **Phone Number Format (E.164):**
-    - Must start with '+' followed by country code and number
-    - Total length: 1-15 digits after the '+'
-    - No spaces, dashes, or other formatting characters
-    - Examples: +1234567890 (US), +441234567890 (UK), +8613912345678 (China)
-    - Learn more: https://www.twilio.com/docs/glossary/what-e164
-
-    **Call Management:**
-    - Save the returned `room_name` to hangup the call later
-    - Use POST `/hangup` with the room name to terminate the call
-    """,
 )
 async def make_call_endpoint(request: CallRequest):
     """Endpoint to initiate a call to the provided phone number"""
@@ -370,6 +336,9 @@ async def make_call_endpoint(request: CallRequest):
     tts_provider_name = request.tts_provider_name
     stt_config = request.stt_config
     tts_config = request.tts_config
+    # ✅ TOOLS: Extract new fields
+    assistant_id = request.assistant_id
+    webhook_url = request.webhook_url
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -395,7 +364,18 @@ async def make_call_endpoint(request: CallRequest):
             "tts_provider_name": tts_provider_name,
             "stt_config": stt_config,
             "tts_config": tts_config,
+            # ✅ TOOLS: Add these fields
+            "assistant_id": assistant_id,
+            "webhook_url": webhook_url,
         }
+
+        # Log the metadata for debugging
+        logger.info("=============================================")
+        logger.info(f"📞 Initiating call with metadata:")
+        logger.info(f"📱 Phone: {phone_number}")
+        logger.info(f"🆔 Assistant ID: {assistant_id}")
+        logger.info(f"🔗 Webhook URL: {webhook_url}")
+        logger.info("=============================================")
 
         # Generate unique room name
         room_name = f"sip-{str(uuid4().hex[:8])}"
@@ -410,7 +390,7 @@ async def make_call_endpoint(request: CallRequest):
         )
 
         logger.info(
-            f"Successfully initiated call to {phone_number} in room {room_name}"
+            f"✅ Successfully initiated call to {phone_number} in room {room_name}"
         )
 
         return {
@@ -430,61 +410,7 @@ async def make_call_endpoint(request: CallRequest):
         )
 
 
-@app.post(
-    "/hangup",
-    response_model=HangupResponse,
-    responses={
-        200: {"description": "Call successfully terminated", "model": HangupResponse},
-        404: {
-            "description": "No Active Call - No current call to hangup",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {"detail": "No active call found to hangup"}
-                }
-            },
-        },
-        400: {
-            "description": "Bad Request - Failed to delete room",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Failed to delete room: Room not found"}
-                }
-            },
-        },
-        500: {
-            "description": "Internal Server Error - Failed to delete room",
-            "model": ErrorResponse,
-            "content": {
-                "application/json": {
-                    "example": {"detail": "Failed to delete room: Connection timeout"}
-                }
-            },
-        },
-    },
-    summary="Hangup/End Phone Call",
-    description="""
-    Terminates the current active phone call by deleting the LiveKit room.
-
-    **How to use:**
-    1. Send a POST request to `/hangup` (no body required)
-    2. The system will automatically delete the current active room
-    3. This ends the current call without needing to specify room name
-
-    **Simple Usage:**
-    - No parameters needed - just call the endpoint
-    - Automatically finds and terminates the current active call
-    - Perfect for a simple "Hang Up" button in your UI
-
-    **What happens:**
-    - Deletes the current active LiveKit room
-    - Terminates all participants in the room
-    - Ends the SIP call connection
-    - Cleans up agent dispatch resources
-    - Clears the active room tracker
-    """,
-)
+@app.post("/hangup", response_model=HangupResponse)
 async def hangup_call():
     """Endpoint to hangup/terminate the current active call"""
     global current_active_room
@@ -532,11 +458,7 @@ async def hangup_call():
         raise HTTPException(status_code=500, detail=f"Failed to hangup call: {str(e)}")
 
 
-@app.get(
-    "/active_call",
-    summary="Get Active Call Status",
-    description="Check if there's currently an active call and get the room information",
-)
+@app.get("/active_call")
 async def get_active_call():
     """Get information about the current active call"""
     global current_active_room
@@ -551,67 +473,11 @@ async def get_active_call():
     }
 
 
-@app.get(
-    "/",
-    summary="API Information",
-    description="Get basic information about the Telephony Call Dispatcher API and available endpoints",
-)
+@app.get("/")
 async def root():
-    """Root endpoint with comprehensive API information and usage examples"""
+    """Root endpoint with API information"""
     return {
         "service": "Telephony Call Dispatcher",
         "version": "1.0.0",
         "description": "API for dispatching outbound phone calls through LiveKit SIP integration",
-        "endpoints": {
-            "make_call": {
-                "url": "/make_call",
-                "method": "POST",
-                "description": "Initiate an outbound phone call",
-                "example_request": {"phone_number": "+1234567890"},
-            },
-            "hangup": {
-                "url": "/hangup",
-                "method": "POST",
-                "description": "Hangup/terminate the current active call (no parameters needed)",
-                "example_request": "No body required - just POST to /hangup",
-            },
-            "health": {
-                "url": "/health",
-                "method": "GET",
-                "description": "Check service health status",
-            },
-            "docs": {
-                "url": "/docs",
-                "method": "GET",
-                "description": "Interactive API documentation (Swagger UI)",
-            },
-            "redoc": {
-                "url": "/redoc",
-                "method": "GET",
-                "description": "Alternative API documentation (ReDoc)",
-            },
-        },
-        "phone_format": {
-            "standard": "E.164",
-            "description": "International phone number format with + and country code",
-            "reference": "https://www.twilio.com/docs/glossary/what-e164",
-            "examples": {
-                "us_canada": "+1234567890",
-                "uk": "+441234567890",
-                "india": "+919876543210",
-                "china": "+8613912345678",
-            },
-        },
-        "usage_example": {
-            "make_call": {
-                "curl": "curl -X POST http://localhost:8000/make_call -H 'Content-Type: application/json' -d '{\"phone_number\": \"+1234567890\"}'",
-                "python": "import requests\\nresponse = requests.post('http://localhost:8000/make_call', json={'phone_number': '+1234567890'})",
-                "javascript": "fetch('http://localhost:8000/make_call', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({phone_number: '+1234567890'})})",
-            },
-            "hangup": {
-                "curl": "curl -X POST http://localhost:8000/hangup -H 'Content-Type: application/json' -d '{\"room_name\": \"sip-a1b2c3d4\"}'",
-                "python": "import requests\\nresponse = requests.post('http://localhost:8000/hangup', json={'room_name': 'sip-a1b2c3d4'})",
-                "javascript": "fetch('http://localhost:8000/hangup', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({room_name: 'sip-a1b2c3d4'})})",
-            },
-        },
     }
