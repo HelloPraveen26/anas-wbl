@@ -1,30 +1,81 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
-  User as UserIcon,
-  Zap,
-  ChevronRight,
-  TrendingUp,
-  Phone,
-  MessageSquare,
-  Mail,
-  PhoneCall,
-  Star,
-  BarChart3,
-  Calendar,
-  Clock,
-  Target,
-  Users
+  Star
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
+} from 'recharts';
 import { authManager } from '@/lib/auth';
 import { api, User } from '@/lib/api';
 
-// Mock data - replace with real API calls later
-const mockData = {
+/* -------------------------------------------------------------------------- */
+/*                               TYPE DEFINITIONS                              */
+/* -------------------------------------------------------------------------- */
+
+type RatingItem = { stars: number; calls: number };
+
+type EndCallReason = { reason: string; calls: number };
+
+type AnalyticsItem = { name: string; calls: number };
+
+type SentimentItem = { name: string; value: number; color: string };
+
+type PieChartEntry = {
+  name: string;
+  value?: number;
+  color?: string;
+};
+
+type PieChartProps = {
+  data: PieChartEntry[];
+  title: string;
+  valueKey?: string;
+  showCenter?: boolean;
+  centerValue?: string | number;
+};
+
+type CallVolumeItem = {
+  date: string;
+  inbound: number;
+  outbound: number;
+};
+
+type CallerTypes = {
+  total: number;
+  repeat: number;
+  unique: number;
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                   DATA                                      */
+/* -------------------------------------------------------------------------- */
+
+const mockData: {
+  phoneNumbers: AnalyticsItem[];
+  aiAgents: (AnalyticsItem & { icon: string })[];
+  widgets: AnalyticsItem[];
+  ratings: RatingItem[];
+  endCallReasons: EndCallReason[];
+  actions: AnalyticsItem[];
+  sentiments: SentimentItem[];
+  callStatus: SentimentItem[];
+  taskStatus: SentimentItem[];
+  callsVolume: CallVolumeItem[];
+  callerTypes: CallerTypes;
+} = {
   phoneNumbers: [
     { name: 'Customer Support', calls: 451 },
     { name: 'Sales', calls: 400 },
@@ -94,31 +145,31 @@ const mockData = {
   }
 };
 
-// Green and Gray color palette
 const COLORS = ['#10B981', '#059669', '#34D399', '#6EE7B7', '#A7F3D0'];
+
+/* -------------------------------------------------------------------------- */
+/*                                MAIN COMPONENT                               */
+/* -------------------------------------------------------------------------- */
 
 export default function DashboardOverview() {
   const [user, setUser] = useState<User | null>(null);
   const [timeFilter, setTimeFilter] = useState('Last 7 days');
-  const [assistantFilter, setAssistantFilter] = useState('All Assistants');
 
   useEffect(() => {
     const fetchUser = async () => {
       const token = authManager.getToken();
-      if (token) {
-        try {
-          const response = await api.getProfile(token);
-          if (response.success && response.data) {
-            setUser(response.data.user);
-          } else {
-            console.error('Failed to fetch user profile:', response.message);
-            setUser(null);
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
+
+      if (!token) return setUser(null);
+
+      try {
+        const response = await api.getProfile(token);
+        if (response.success && response.data) {
+          setUser(response.data.user);
+        } else {
           setUser(null);
         }
-      } else {
+      } catch (err) {
+        console.error(err);
         setUser(null);
       }
     };
@@ -126,17 +177,26 @@ export default function DashboardOverview() {
     fetchUser();
   }, []);
 
-  const renderStars = (rating) => {
+  /* ---------------------------- RENDER STARS UI ---------------------------- */
+  const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${i < rating ? 'text-green-500 fill-current' : 'text-gray-300'
-          }`}
+        className={`w-4 h-4 ${
+          i < rating ? 'text-green-500 fill-current' : 'text-gray-300'
+        }`}
       />
     ));
   };
 
-  const CustomPieChart = ({ data, title, valueKey = 'value', showCenter = false, centerValue = '' }) => (
+  /* ---------------------------- CUSTOM PIE CHART --------------------------- */
+  const CustomPieChart = ({
+    data,
+    title,
+    valueKey = 'value',
+    showCenter = false,
+    centerValue = ''
+  }: PieChartProps) => (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
       <div className="relative">
@@ -152,46 +212,61 @@ export default function DashboardOverview() {
               dataKey={valueKey}
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                <Cell
+                  key={index}
+                  fill={entry.color || COLORS[index % COLORS.length]}
+                />
               ))}
             </Pie>
           </PieChart>
         </ResponsiveContainer>
+
         {showCenter && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-800">{centerValue}</div>
+              <div className="text-2xl font-bold text-gray-800">
+                {centerValue}
+              </div>
               <div className="text-sm text-gray-600">Total calls</div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Legends */}
       <div className="space-y-2">
         {data.map((entry, index) => (
           <div key={index} className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div
                 className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: entry.color || COLORS[index % COLORS.length] }}
+                style={{
+                  backgroundColor: entry.color || COLORS[index % COLORS.length]
+                }}
               />
               <span className="text-sm text-gray-600">{entry.name}</span>
             </div>
-            <span className="text-sm font-medium text-gray-800">{entry[valueKey]}</span>
+            <span className="text-sm font-medium text-gray-800">
+              {entry[valueKey as keyof PieChartEntry]}
+            </span>
           </div>
         ))}
       </div>
     </div>
   );
 
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="space-y-6">
+
         {/* Welcome Header */}
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">
             <span className="text-gray-600">Welcome </span>
             {user?.firstName ? (
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-400 hover:from-emerald-600 hover:to-teal-600">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-400">
                 {user.firstName}!
               </span>
             ) : (
@@ -201,163 +276,109 @@ export default function DashboardOverview() {
           <p className="text-gray-700">Here's your dashboard overview and analytics</p>
         </div>
 
-
         {/* Analytics Section */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-700">Analytics</h2>
-            <div className="flex items-center space-x-4">
-              <select
-                className="bg-white border-gray-300 text-gray-700 text-sm rounded-lg px-3 py-2 shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                value={timeFilter}
-                onChange={(e) => setTimeFilter(e.target.value)}
-              >
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 90 days</option>
-              </select>
-            </div>
+
+            <select
+              className="bg-white border-gray-300 text-gray-700 text-sm rounded-lg px-3 py-2 shadow-sm"
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+            >
+              <option>Last 7 days</option>
+              <option>Last 30 days</option>
+              <option>Last 90 days</option>
+            </select>
           </div>
 
-          {/* Top Analytics Cards */}
+          {/* Cards Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="space-y-2">
-                  <p className="text-black text-xl font-medium">Total calls</p>
-                  <div className="text-4xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">53</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="space-y-2">
-                  <p className="text-black text-xl font-medium">Average Talk Time</p>
-                  <div className="text-4xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">3.02 min</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="space-y-2">
-                  <p className="text-black text-xl font-medium">Usage</p>
-                  <div className="text-4xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">112 min</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white shadow-lg border-gray-200 hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="space-y-2">
-                  <p className="text-black text-xl font-medium">Average usage</p>
-                  <div className="text-4xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">4 min</div>
-                </div>
-              </CardContent>
-            </Card>
+            {['Total calls', 'Average Talk Time', 'Usage', 'Average usage'].map(
+              (title, i) => (
+                <Card key={i} className="bg-white shadow-lg">
+                  <CardContent className="p-6">
+                    <p className="text-black text-xl font-medium">{title}</p>
+                    <div className="text-4xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">
+                      {i === 0 ? '53' : i === 1 ? '3.02 min' : i === 2 ? '112 min' : '4 min'}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            )}
           </div>
 
-          {/* First Row - Calls Volume and Caller Types */}
+          {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Calls Volume */}
-            <Card className="bg-white shadow-lg border-gray-200">
+
+            {/* Calls Volume Chart */}
+            <Card className="bg-white shadow-lg">
               <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Calls Success</h3>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-green-500" />
-                      <span className="text-gray-600">Inbound</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-gray-500" />
-                      <span className="text-gray-600">Outbound</span>
-                    </div>
-                  </div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={mockData.callsVolume}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis dataKey="date" stroke="#6B7280" />
-                      <YAxis stroke="#6B7280" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          border: '1px solid #E5E7EB',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="inbound"
-                        stackId="1"
-                        stroke="#00ff55ff"
-                        fill="#7700ffb0 "
-                        fillOpacity={0.3}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="outbound"
-                        stackId="1"
-                        stroke="#6B7280"
-                        fill="#6B7280"
-                        fillOpacity={0.3}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Calls Success</h3>
+
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={mockData.callsVolume}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area type="monotone" dataKey="inbound" stroke="#00ff55ff" fill="#7700ffb0" fillOpacity={0.3} />
+                    <Area type="monotone" dataKey="outbound" stroke="#6B7280" fill="#6B7280" fillOpacity={0.3} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
 
             {/* Caller Types */}
-            <Card className="bg-white shadow-lg border-gray-200">
+            <Card className="bg-white shadow-lg">
               <CardContent className="p-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Caller types</h3>
-                  <div className="relative">
-                    <ResponsiveContainer width="100%" height={200}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Total', value: mockData.callerTypes.total, color: '#7700ffff' },
-                            { name: 'Repeat', value: mockData.callerTypes.repeat, color: '#6B7280' }
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          <Cell fill="#7700ffff" />
-                          <Cell fill="#6B7280" />
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-800">38</div>
-                        <div className="text-sm text-gray-600">Overall</div>
-                      </div>
+                <h3 className="text-lg font-semibold text-gray-800">Caller Types</h3>
+
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Total', value: mockData.callerTypes.total, color: '#7700ffff' },
+                          { name: 'Repeat', value: mockData.callerTypes.repeat, color: '#6B7280' }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        dataKey="value"
+                      >
+                        <Cell fill="#7700ffff" />
+                        <Cell fill="#6B7280" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-800">{mockData.callerTypes.total}</div>
+                      <div className="text-sm text-gray-600">Overall</div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <div className="text-xl font-bold text-gray-800">{mockData.callerTypes.total}</div>
-                      <div className="text-sm text-gray-600">Total</div>
-                    </div>
-                    <div>
-                      <div className="text-xl font-bold text-gray-600">{mockData.callerTypes.repeat}</div>
-                      <div className="text-sm text-gray-600">Web Call</div>
-                    </div>
-                    <div>
-                      <div className="text-xl font-bold text-green-600">{mockData.callerTypes.unique}</div>
-                      <div className="text-sm text-gray-600">Phone call</div>
-                    </div>
+                </div>
+
+                <div className="grid grid-cols-3 text-center mt-4">
+                  <div>
+                    <div className="text-xl font-bold">{mockData.callerTypes.total}</div>
+                    <div className="text-sm text-gray-600">Total</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-gray-600">{mockData.callerTypes.repeat}</div>
+                    <div className="text-sm text-gray-600">Web Call</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-green-600">{mockData.callerTypes.unique}</div>
+                    <div className="text-sm text-gray-600">Phone Call</div>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
           </div>
         </div>
       </div>
