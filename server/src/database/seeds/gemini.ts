@@ -43,7 +43,36 @@ export class GeminiSeed {
 
     // Voice options for select type
     const voiceOptions = [
-      { displayName: "Zephyr(F)", value: "Zephyr" },
+      { displayName: "Zephyr (Bright)", value: "Zephyr" },
+      { displayName: "Puck (Upbeat)", value: "Puck" },
+      { displayName: "Charon (Informative)", value: "Charon" },
+      { displayName: "Kore (Firm)", value: "Kore" },
+      { displayName: "Fenrir (Excitable)", value: "Fenrir" },
+      { displayName: "Leda (Youthful)", value: "Leda" },
+      { displayName: "Orus (Firm)", value: "Orus" },
+      { displayName: "Aoede (Breezy)", value: "Aoede" },
+      { displayName: "Callirrhoe (Easy-going)", value: "Callirrhoe" },
+      { displayName: "Autonoe (Bright)", value: "Autonoe" },
+      { displayName: "Enceladus (Breathy)", value: "Enceladus" },
+      { displayName: "Iapetus (Clear)", value: "Iapetus" },
+      { displayName: "Umbriel (Easy-going)", value: "Umbriel" },
+      { displayName: "Algieba (Smooth)", value: "Algieba" },
+      { displayName: "Despina (Smooth)", value: "Despina" },
+      { displayName: "Erinome (Clear)", value: "Erinome" },
+      { displayName: "Algenib (Gravelly)", value: "Algenib" },
+      { displayName: "Rasalgethi (Informative)", value: "Rasalgethi" },
+      { displayName: "Laomedeia (Upbeat)", value: "Laomedeia" },
+      { displayName: "Achernar (Soft)", value: "Achernar" },
+      { displayName: "Alnilam (Firm)", value: "Alnilam" },
+      { displayName: "Schedar (Even)", value: "Schedar" },
+      { displayName: "Gacrux (Mature)", value: "Gacrux" },
+      { displayName: "Pulcherrima (Forward)", value: "Pulcherrima" },
+      { displayName: "Achird (Friendly)", value: "Achird" },
+      { displayName: "Zubenelgenubi (Casual)", value: "Zubenelgenubi" },
+      { displayName: "Vindemiatrix (Gentle)", value: "Vindemiatrix" },
+      { displayName: "Sadachbia (Lively)", value: "Sadachbia" },
+      { displayName: "Sadaltager (Knowledgeable)", value: "Sadaltager" },
+      { displayName: "Sulafat (Warm)", value: "Sulafat" },
     ];
 
     // Create Voice Name config
