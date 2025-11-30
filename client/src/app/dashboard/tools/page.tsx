@@ -1063,7 +1063,7 @@ const toolConfig = {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-[700px] max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Test Results</h3>
+              <h3 className="text-lg font-semibold text-green-700">Test Results</h3>
               <button 
                 onClick={() => setShowTestModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -1072,7 +1072,7 @@ const toolConfig = {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
-              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm font-mono whitespace-pre-wrap">
+              <pre className="bg-gray-200 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto">
                 {testResult}
               </pre>
             </div>
@@ -1080,13 +1080,13 @@ const toolConfig = {
               <button
                 onClick={handleTestTool}
                 disabled={isTestRunning}
-                className="px-4 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-10 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
               >
                 {isTestRunning ? 'Running...' : 'Run Again'}
               </button>
               <button
                 onClick={() => setShowTestModal(false)}
-                className="px-4 py-2 text-sm bg-gray-200 rounded hover:bg-gray-300"
+                className="px-4 py-2 text-sm text-gray-900 bg-gray-200 rounded hover:bg-gray-300"
               >
                 Close
               </button>
