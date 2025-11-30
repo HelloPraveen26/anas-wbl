@@ -72,7 +72,7 @@ export function CreateAssistantModal({
     >
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-green-900">
             Create New Assistant
           </h2>
           <p className="text-sm text-gray-600 mt-1">
@@ -85,7 +85,7 @@ export function CreateAssistantModal({
           <div className="mb-4">
             <Label
               htmlFor="name"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium text-gray-900 mb-2"
             >
               Name
             </Label>
@@ -112,7 +112,8 @@ export function CreateAssistantModal({
             <Button
               type="submit"
               disabled={!assistantName.trim() || isLoading}
-              className="bg-teal-600 hover:bg-teal-700"
+                           className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+
             >
               {isLoading ? "Creating..." : "Create Assistant"}
             </Button>

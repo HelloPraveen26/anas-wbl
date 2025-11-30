@@ -971,7 +971,7 @@ export default function AssistantEditPage() {
                           <option value="speak_first_generated">
                             Assistant speaks first (AI generated)
                           </option>
-                        </select>
+                        </select> 
                       </div> */}
 
                       <div className="space-y-2">
