@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "livekit-agents[cartesia,deepgram,elevenlabs,google,openai,sarvam,silero,turn-detector]~=1.2",
+    "livekit-agents[azure,cartesia,deepgram,elevenlabs,google,openai,sarvam,silero,turn-detector]~=1.2",
     "livekit-plugins-noise-cancellation~=0.2",
     "python-dotenv",
     "fastapi[all]",

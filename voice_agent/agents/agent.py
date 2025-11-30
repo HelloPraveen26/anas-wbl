@@ -20,6 +20,7 @@ from livekit.agents import (
 from livekit.agents.inference.tts import TTSEncoding
 from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
+    azure,
     deepgram,
     elevenlabs,
     google,
@@ -130,13 +131,27 @@ async def entrypoint(ctx: JobContext):
     logger.info("TTS Config: %s", tts_config)
     logger.info("---------------------------------------------")
 
+    # Read Azure credentials once if needed
+    azure_speech_key = os.getenv("AZURE_SPEECH_KEY")
+    azure_speech_region = os.getenv("AZURE_SPEECH_REGION")
+
     # Set up STT provider based on metadata
     stt = None
     if stt_provider_name == "Sarvam":
         language_code = (stt_config or {}).get("language") or "en_IN"
         logger.info("Language Code: %s", language_code)
         stt = sarvam.STT(language=language_code, model="saarika:v2.5")
-
+    elif stt_provider_name == "Azure":
+        if not azure_speech_key or not azure_speech_region:
+            logger.error(
+                "Azure STT requires AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables"
+            )
+            raise ValueError("Missing Azure Speech credentials")
+        logger.info("Azure STT Region: %s", azure_speech_region)
+        stt = azure.STT(
+            speech_key=azure_speech_key,
+            speech_region=azure_speech_region,
+        )
     else:
         stt = deepgram.STT(model="nova-3", language="multi")
 
@@ -161,6 +176,17 @@ async def entrypoint(ctx: JobContext):
             model="gemini-2.5-flash-preview-tts",
             voice_name=voice,
             instructions=instructions,
+        )
+    elif tts_provider_name == "Azure":
+        if not azure_speech_key or not azure_speech_region:
+            logger.error(
+                "Azure TTS requires AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables"
+            )
+            raise ValueError("Missing Azure Speech credentials")
+        logger.info("Azure TTS Region: %s", azure_speech_region)
+        tts = azure.TTS(
+            speech_key=azure_speech_key,
+            speech_region=azure_speech_region,
         )
     else:
         tts = deepgram.TTS()
