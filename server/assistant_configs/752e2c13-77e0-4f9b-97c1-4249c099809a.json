@@ -1,0 +1,41 @@
+{
+  "toolName": "car",
+  "description": "Describe the tool in a few sentences",
+  "webhookUrl": "https://app.zenxai.io/api/v1/webhooks/jocbOOBOgZ8rMxc9fxUcf",
+  "timeout": 20,
+  "isAsync": true,
+  "isStrict": true,
+  "parameters": {
+    "name": {
+      "type": "string",
+      "description": "collect user name ",
+      "required": true,
+      "enumValues": []
+    },
+    "email": {
+      "type": "string",
+      "description": "collect user email",
+      "required": true,
+      "enumValues": []
+    },
+    "phone number": {
+      "type": "string",
+      "description": "collect user phone number ",
+      "required": true,
+      "enumValues": []
+    }
+  },
+  "httpHeaders": {},
+  "messages": {
+    "requestStart": {
+      "option": "default"
+    },
+    "requestFailed": "",
+    "requestComplete": "",
+    "requestDelayed": {
+      "message": "",
+      "timing": 1000
+    }
+  },
+  "conditions": []
+}
