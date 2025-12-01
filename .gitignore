@@ -62,3 +62,4 @@ Thumbs.db
 *.wmv
 
 server/assistant_configs/
+voice_agent/agents/.venv/
