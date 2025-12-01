@@ -155,7 +155,7 @@ const CustomTool = ({
         console.log('🔄 Loading tool config for assistant:', selectedAssistant);
         
         const response = await fetch(
-          `http://localhost:8000/api/v1/assistants/tool-config/${selectedAssistant}`,
+          `${getApiBaseUrl()}/api/v1/assistants/tool-config/${selectedAssistant}`,
           {
             headers: {
               'Authorization': `Bearer ${authManager.getToken()}`,
@@ -294,7 +294,7 @@ const CustomTool = ({
 
       console.log('📤 Saving tool configuration:', payload);
 
-      const response = await fetch('http://localhost:8000/api/v1/assistants/save-tool-config', {
+      const response = await fetch(`${getApiBaseUrl()}/api/v1/assistants/tool-config/${selectedAssistant}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -1164,7 +1164,7 @@ export default function ToolsPage() {
         for (const assistant of assistantsList) {
           try {
             const configResponse = await fetch(
-              `http://localhost:8000/api/v1/assistants/tool-config/${assistant.id}`,
+              `${getApiBaseUrl()}/api/v1/assistants/tool-config/${assistant.id}`,
               {
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -1245,7 +1245,7 @@ export default function ToolsPage() {
         for (const assistant of assistantsList) {
           try {
             const configResponse = await fetch(
-              `http://localhost:8000/api/v1/assistants/tool-config/${assistant.id}`,
+              `${getApiBaseUrl()}/api/v1/assistants/tool-config/${assistant.id}`,
               {
                 headers: {
                   'Authorization': `Bearer ${token}`,
