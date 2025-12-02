@@ -155,7 +155,7 @@ const CustomTool = ({
         console.log('🔄 Loading tool config for assistant:', selectedAssistant);
         
         const response = await fetch(
-          `${getApiBaseUrl()}/assistants/tool-config/${selectedAssistant}`,
+           `${getApiBaseUrl()}/assistants/tool-config/${selectedAssistant}`,
           {
             headers: {
               'Authorization': `Bearer ${authManager.getToken()}`,
