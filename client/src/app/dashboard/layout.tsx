@@ -26,6 +26,7 @@ import { User as UserType } from "@/lib/api";
 import Image from "next/image";
 import newlogo from "../../assets/newlogo.png";
 import logo1 from "../../assets/logo1.png";
+import cristy from "@/assets/cristmasCap.png";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -179,7 +180,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         {/* Header */}
 <div className="h-20 flex items-center justify-start pl-8 pr-2 border-b border-emerald-100 mr-12">
-          {!sidebarCollapsed ? (
+          {/* {!sidebarCollapsed ? (
             <div className="flex items-center gap-3">
               
               <Image
@@ -200,7 +201,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="object-contain"
               />
             </div>
-          )}
+          )} */}
+            <div className="mr-12">
+                  <img
+                    src={cristy.src}
+                    alt="Company Logo"
+                    className="w-[250px] max-w-none h-auto -ml-10"
+                  />
+                </div>
         </div>
 
         {/* Navigation */}
@@ -338,7 +346,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Collapse Toggle */}
-        <div className="p-4 border-t border-emerald-100">
+        {/* <div className="p-4 border-t border-emerald-100">
           <Button
             variant="ghost"
             size="sm"
@@ -354,7 +362,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </>
             )}
           </Button>
-        </div>
+        </div> */}
       </div>
 
       {/* Main Content */}

@@ -16,6 +16,7 @@ import favicon from "@/assets/favicon.png"; // ZenXai logo placeholder
 import newlogo from "@/assets/newlogo.png";
 import greeny from "@/assets/greeny.jpg";
 import wavewhite from "@/assets/Icons/wavewhite.jpeg";
+import cristy from "@/assets/cristmasCap.png";
 
 interface FormData {
   email: string;
@@ -167,9 +168,9 @@ export default function SignIn() {
                 {/* Company Logo */}
                 <div className="mr-12">
                   <img
-                    src={newlogo.src}
+                    src={cristy.src}
                     alt="Company Logo"
-                    className="max-w-[150px] w-full h-auto"
+                    className="max-w-[300px] w-full h-auto -ml-8"
                   />
                 </div>
 

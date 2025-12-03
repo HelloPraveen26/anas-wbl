@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { navigation } from "@/constants";
 import Button from "../atoms/button";
+import cristy from "@/assets/cristmasCap.png";
 
 type Props = {};
 
@@ -53,9 +54,13 @@ const Navbar = (props: Props) => {
     >
       <div className="flex items-center gap-2 lg:gap-4">
         {/* Logo / Brand */}
-        <h2 className="text-base sm:text-xl lg:text-3xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent whitespace-nowrap flex-shrink-0">
-          Zenvoice
-        </h2>
+        <div className="mr-12">
+                  <img
+                    src={cristy.src}
+                    alt="Company Logo"
+                    className="max-w-[300px] w-full h-auto -ml-6"
+                  />
+                </div>
 
         {/* Navigation Links - Always visible, scrollable on mobile */}
         <nav className="flex-1 overflow-x-auto scrollbar-hide min-w-0">

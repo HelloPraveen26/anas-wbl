@@ -1,11 +1,17 @@
 import './globals.css';
+
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Zenvoice',
   description: 'Manage your autonomous voice assistants',
   icons: {
-    icon: '/assets/logo1.png',
+    icon: [
+      { url: '/assets/cristcrop.png', sizes: '32x32', type: 'image/png' },
+      { url: '/assets/cristcrop.png', sizes: '64x64', type: 'image/png' },
+      { url: '/assets/cristcrop.png', sizes: '128x128', type: 'image/png' },
+      { url: '/assets/cristcrop.png', sizes: '256x256', type: 'image/png' },
+    ],
   },
 };
 
