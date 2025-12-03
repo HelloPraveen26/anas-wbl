@@ -6,12 +6,7 @@ export const metadata: Metadata = {
   title: 'Zenvoice',
   description: 'Manage your autonomous voice assistants',
   icons: {
-    icon: [
-      { url: '/assets/cristcrop.png', sizes: '32x32', type: 'image/png' },
-      { url: '/assets/cristcrop.png', sizes: '64x64', type: 'image/png' },
-      { url: '/assets/cristcrop.png', sizes: '128x128', type: 'image/png' },
-      { url: '/assets/cristcrop.png', sizes: '256x256', type: 'image/png' },
-    ],
+    icon: '/assets/cristcrop.png',
   },
 };
 
