@@ -951,7 +951,7 @@ export default function AssistantEditPage() {
                 {modelExpanded && (
                   <CardContent className="p-6 space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
+                      {/* <div className="space-y-2">
                         <Label className="text-sm font-semibold text-gray-700">
                           First Message Mode
                         </Label>
@@ -971,8 +971,8 @@ export default function AssistantEditPage() {
                           <option value="speak_first_generated">
                             Assistant speaks first (AI generated)
                           </option>
-                        </select>
-                      </div>
+                        </select> 
+                      </div> */}
 
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold text-gray-700">

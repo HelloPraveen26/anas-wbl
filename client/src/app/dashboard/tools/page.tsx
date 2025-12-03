@@ -1,8 +1,31 @@
-'use client';
+ Placeholder components
+const GoogleSheetsTool = () => (
+  <div className="p-6">
+    <h3 className="text-lg font-semibold mb-2">Google Sheets Tool</h3>
+    <p className="text-gray-600">Configure your Google Sheets integration here.</p>
+  </div>
+);
+
+const GoogleCalendarTool = ({ onSendMessage }: { onSendMessage: (msg: any) => void }) => (
+  <div className="p-6">
+    <h3 className="text-lg font-semibold mb-2">Google Calendar Tool</h3>
+    <p className="text-gray-600">Configure your Google Calendar integration here.</p>
+  </div>
+);
+
+const CustomTool = ({ 
+  onSave,
+  initialAssistantId 
+}: { 
+  onSave?: (name: string, desc: string) => void;
+  initialAssistantId?: string;
+}) => {
+  const [toolName, setToolName] = useState('function_tool');
+  const [description, 'use client';
 
 import React, { useState } from 'react';
-import { authManager } from '@/lib/auth';      // ✅ FIXED
-import { getApiBaseUrl } from '@/lib/api';     // ✅ FIXED
+import { authManager } from '@/lib/auth';      // âœ… FIXED
+import { getApiBaseUrl } from '@/lib/api';     // âœ… FIXED
 
 import {
   Settings,
@@ -46,30 +69,7 @@ interface Condition {
   value: string;
 }
 
-// Placeholder components
-const GoogleSheetsTool = () => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-2">Google Sheets Tool</h3>
-    <p className="text-gray-600">Configure your Google Sheets integration here.</p>
-  </div>
-);
-
-const GoogleCalendarTool = ({ onSendMessage }: { onSendMessage: (msg: any) => void }) => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-2">Google Calendar Tool</h3>
-    <p className="text-gray-600">Configure your Google Calendar integration here.</p>
-  </div>
-);
-
-const CustomTool = ({ 
-  onSave,
-  initialAssistantId 
-}: { 
-  onSave?: (name: string, desc: string) => void;
-  initialAssistantId?: string;
-}) => {
-  const [toolName, setToolName] = useState('function_tool');
-  const [description, setDescription] = useState('Describe the tool in a few sentences');
+//setDescription] = useState('Describe the tool in a few sentences');
   const [isAsync, setIsAsync] = useState(true);
   const [isStrict, setIsStrict] = useState(true);
   const [webhook, setWebHookUrl] = useState('https://api.example.com/function');
@@ -152,7 +152,7 @@ const CustomTool = ({
       }
 
       try {
-        console.log('🔄 Loading tool config for assistant:', selectedAssistant);
+        console.log('ðŸ”„ Loading tool config for assistant:', selectedAssistant);
         
         const response = await fetch(
            `${getApiBaseUrl()}/assistants/tool-config/${selectedAssistant}`,
@@ -168,7 +168,7 @@ const CustomTool = ({
           
           if (result.success && result.data) {
             const config = result.data;
-            console.log('✅ Loaded config:', config);
+            console.log('âœ… Loaded config:', config);
             
             setToolName(config.toolName || 'function_tool');
             setDescription(config.description || 'Describe the tool in a few sentences');
@@ -223,12 +223,12 @@ const CustomTool = ({
               setConditions([]);
             }
             
-            setSaveResult('✅ Configuration loaded successfully!');
+            setSaveResult('âœ… Configuration loaded successfully!');
             setTimeout(() => setSaveResult(''), 2000);
           }
         }
       } catch (error) {
-        console.error('❌ Error loading tool config:', error);
+        console.error('âŒ Error loading tool config:', error);
       }
     };
 
@@ -240,12 +240,12 @@ const CustomTool = ({
     setShowAssistantDropdown(false);
   };
 
-  // ✅ FIXED: Added assistant validation
+  // âœ… FIXED: Added assistant validation
   const handleSaveConfig = async () => {
     try {
-      // ✅ CRITICAL FIX: Validate assistant selection
+      // âœ… CRITICAL FIX: Validate assistant selection
       if (!selectedAssistant) {
-        setSaveResult('❌ Please select an assistant first!');
+        setSaveResult('âŒ Please select an assistant first!');
         setTimeout(() => setSaveResult(''), 3000);
         return;
       }
@@ -292,7 +292,7 @@ const CustomTool = ({
         conditions: conditions
       };
 
-      console.log('📤 Saving tool configuration:', payload);
+      console.log('ðŸ“¤ Saving tool configuration:', payload);
 
       const response = await fetch(`${getApiBaseUrl()}/assistants/save-tool-config`, {
         method: 'POST',
@@ -303,11 +303,11 @@ const CustomTool = ({
         body: JSON.stringify(payload),
       });
 
-      // ✅ IMPROVED: Better error handling
+      // âœ… IMPROVED: Better error handling
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Backend error:', response.status, errorText);
-        setSaveResult(`❌ Save failed: ${response.status} - ${errorText}`);
+        console.error('âŒ Backend error:', response.status, errorText);
+        setSaveResult(`âŒ Save failed: ${response.status} - ${errorText}`);
         setTimeout(() => setSaveResult(''), 5000);
         return;
       }
@@ -315,19 +315,19 @@ const CustomTool = ({
       const data = await response.json();
       
       if (data.success) {
-        setSaveResult('✅ Configuration saved successfully!');
-        console.log('✅ Save response:', data);
+        setSaveResult('âœ… Configuration saved successfully!');
+        console.log('âœ… Save response:', data);
         if (onSave) {
           onSave(toolName, description);
         }
         setTimeout(() => setSaveResult(''), 3000);
       } else {
-        setSaveResult('❌ Save failed: ' + (data.message || JSON.stringify(data)));
+        setSaveResult('âŒ Save failed: ' + (data.message || JSON.stringify(data)));
         setTimeout(() => setSaveResult(''), 5000);
       }
     } catch (err: any) {
-      console.error('❌ Error saving configuration:', err);
-      setSaveResult('❌ Save failed: ' + err.message);
+      console.error('âŒ Error saving configuration:', err);
+      setSaveResult('âŒ Save failed: ' + err.message);
       setTimeout(() => setSaveResult(''), 5000);
     }
   };
@@ -607,12 +607,12 @@ const toolConfig = {
   const handleTestTool = () => {
     setIsTestRunning(true);
     setShowTestModal(true);
-    setTestResult('⏳ Running test...\n\n');
+    setTestResult('â³ Running test...\n\n');
     
     setTimeout(() => {
       const selectedAssistantData = assistants.find(a => a.id === selectedAssistant);
       
-      setTestResult(`✅ Test Successful!\n\nTool Name: ${toolName}\nDescription: ${description}\nAssistant: ${selectedAssistantData?.name || 'None'}\nWebhook: ${webhook}\nTimeout: ${timeout}s\nAsync: ${isAsync ? 'Yes' : 'No'}\nStrict: ${isStrict ? 'Yes' : 'No'}\n\nParameters: ${parameters.length}\n\n📝 Configuration is valid!`);
+      setTestResult(`âœ… Test Successful!\n\nTool Name: ${toolName}\nDescription: ${description}\nAssistant: ${selectedAssistantData?.name || 'None'}\nWebhook: ${webhook}\nTimeout: ${timeout}s\nAsync: ${isAsync ? 'Yes' : 'No'}\nStrict: ${isStrict ? 'Yes' : 'No'}\n\nParameters: ${parameters.length}\n\nðŸ“ Configuration is valid!`);
       setIsTestRunning(false);
     }, 1500);
   };
@@ -653,7 +653,7 @@ const toolConfig = {
               <Settings size={16} />
               {selectedAssistant 
                 ? assistants.find(a => a.id === selectedAssistant)?.name || 'Select Assistant'
-                : '⚠️ Select Assistant'}
+                : 'âš ï¸ Select Assistant'}
             </button>
             
             {showAssistantDropdown && (
@@ -703,7 +703,7 @@ const toolConfig = {
 
       {saveResult && (
         <div className={`mx-4 mt-2 p-3 rounded-lg text-sm font-medium ${
-          saveResult.includes('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          saveResult.includes('âœ…') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
           {saveResult}
         </div>
@@ -1042,7 +1042,7 @@ const toolConfig = {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(generateCode());
-                  alert('✅ Code copied to clipboard!');
+                  alert('âœ… Code copied to clipboard!');
                 }}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
               >
@@ -1217,7 +1217,7 @@ export default function ToolsPage() {
           return;
         }
 
-        console.log('🔄 Loading all assistants and their saved tools...');
+        console.log('ðŸ”„ Loading all assistants and their saved tools...');
 
         const assistantsResponse = await fetch(`${getApiBaseUrl()}/assistants`, {
           headers: {
@@ -1235,7 +1235,7 @@ export default function ToolsPage() {
         const assistantsList = Array.isArray(fetchedAssistants) ? fetchedAssistants : [];
 
         if (assistantsList.length === 0) {
-          console.log('ℹ️ No assistants found');
+          console.log('â„¹ï¸ No assistants found');
           setIsLoading(false);
           return;
         }
@@ -1269,16 +1269,16 @@ export default function ToolsPage() {
                 };
                 
                 savedToolsTemp.push(savedTool);
-                console.log(`✅ Loaded tool for ${assistant.name}:`, config.toolName);
+                console.log(`âœ… Loaded tool for ${assistant.name}:`, config.toolName);
               }
             }
           } catch (error) {
-            console.log(`ℹ️ No config for assistant ${assistant.name}`);
+            console.log(`â„¹ï¸ No config for assistant ${assistant.name}`);
           }
         }
 
         if (savedToolsTemp.length > 0) {
-          console.log(`✅ Found ${savedToolsTemp.length} saved tools`);
+          console.log(`âœ… Found ${savedToolsTemp.length} saved tools`);
           setCustomTools(savedToolsTemp);
           setSelectedTools(savedToolsTemp);
           
@@ -1286,10 +1286,10 @@ export default function ToolsPage() {
             setActiveTool(savedToolsTemp[0]);
           }
         } else {
-          console.log('ℹ️ No saved tools found');
+          console.log('â„¹ï¸ No saved tools found');
         }
       } catch (error) {
-        console.error('❌ Error loading saved tools:', error);
+        console.error('âŒ Error loading saved tools:', error);
       } finally {
         setIsLoading(false);
       }

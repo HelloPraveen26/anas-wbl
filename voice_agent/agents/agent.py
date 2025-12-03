@@ -55,7 +55,7 @@ class DynamicToolHandler:
         try:
             backend_url = f"http://127.0.0.1:8000/api/v1/assistants/tool-config/{self.assistant_id}"
 
-            logger.info(f"🔄 Loading tool config from: {backend_url}")
+            logger.info(f"ðŸ”„ Loading tool config from: {backend_url}")
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(backend_url) as resp:
@@ -64,35 +64,35 @@ class DynamicToolHandler:
                         if result.get("success") and result.get("data"):
                             self.tool_config = result["data"]
                             logger.info(
-                                f"✅ Loaded tool config: {self.tool_config.get('toolName')}"
+                                f"âœ… Loaded tool config: {self.tool_config.get('toolName')}"
                             )
                             logger.info(
-                                f"📋 Parameters: {list(self.tool_config.get('parameters', {}).keys())}"
+                                f"ðŸ“‹ Parameters: {list(self.tool_config.get('parameters', {}).keys())}"
                             )
                             return True
                         else:
                             logger.warning(
-                                f"⚠️ No tool config found for assistant: {self.assistant_id}"
+                                f"âš ï¸ No tool config found for assistant: {self.assistant_id}"
                             )
                             return False
                     else:
                         logger.warning(
-                            f"⚠️ Failed to load config, status: {resp.status}"
+                            f"âš ï¸ Failed to load config, status: {resp.status}"
                         )
                         return False
         except Exception as e:
-            logger.error(f"❌ Error loading tool config: {e}")
+            logger.error(f"âŒ Error loading tool config: {e}")
             return False
 
     async def collect_data(self, key: str, value: str):
         """Store user-provided information"""
         self.collected_data[key] = value
-        logger.info(f"✅ [TOOL STORED] {key}: {value}")
-        logger.info(f"📊 Current data: {json.dumps(self.collected_data, indent=2)}")
+        logger.info(f"âœ… [TOOL STORED] {key}: {value}")
+        logger.info(f"ðŸ“Š Current data: {json.dumps(self.collected_data, indent=2)}")
 
         # When all required parameters are collected, forward to backend.
         if self.all_required_collected():
-            logger.info("✅ All required parameters collected! Auto-sending to webhook...")
+            logger.info("âœ… All required parameters collected! Auto-sending to webhook...")
             await self.send_to_webhook()
 
     def get_missing_parameters(self):
@@ -121,7 +121,7 @@ class DynamicToolHandler:
         for param_name, param_config in params.items():
             if param_config.get("required", False):
                 if param_name not in self.collected_data:
-                    logger.info(f"⏳ Still missing required parameter: {param_name}")
+                    logger.info(f"â³ Still missing required parameter: {param_name}")
                     return False
 
         return True
@@ -136,25 +136,25 @@ class DynamicToolHandler:
             }
 
             logger.info("=============================================")
-            logger.info(f"📤 Sending collected data to backend")
-            logger.info(f"🆔 Assistant ID: {self.assistant_id}")
-            logger.info(f"📊 Data: {json.dumps(self.collected_data, indent=2)}")
+            logger.info(f"ðŸ“¤ Sending collected data to backend")
+            logger.info(f"ðŸ†” Assistant ID: {self.assistant_id}")
+            logger.info(f"ðŸ“Š Data: {json.dumps(self.collected_data, indent=2)}")
             logger.info("=============================================")
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(backend_url, json=payload) as resp:
                     text = await resp.text()
                     if resp.status == 200:
-                        logger.info(f"✅ Data sent successfully to backend (200)")
-                        logger.info(f"🔁 Backend response: {text}")
+                        logger.info(f"âœ… Data sent successfully to backend (200)")
+                        logger.info(f"ðŸ” Backend response: {text}")
                         return True
                     else:
                         logger.error(
-                            f"❌ Backend returned status: {resp.status}, response: {text}"
+                            f"âŒ Backend returned status: {resp.status}, response: {text}"
                         )
                         return False
         except Exception as e:
-            logger.error(f"❌ Failed to send to backend webhook: {e}")
+            logger.error(f"âŒ Failed to send to backend webhook: {e}")
             return False
 
     def get_tool_instructions(self):
@@ -180,24 +180,24 @@ class DynamicToolHandler:
                 optional_params.append(f"{param_name} ({param_type}): {param_desc}")
 
         instruction = "\n\n" + "="*50 + "\n"
-        instruction += "🔧 DATA COLLECTION TOOL ACTIVATED\n"
+        instruction += "ðŸ”§ DATA COLLECTION TOOL ACTIVATED\n"
         instruction += "="*50 + "\n\n"
         
         instruction += "YOUR PRIMARY MISSION: Collect the following information during this conversation.\n\n"
 
         if required_params:
-            instruction += "✅ REQUIRED INFORMATION (must collect all):\n"
+            instruction += "âœ… REQUIRED INFORMATION (must collect all):\n"
             for i, param in enumerate(required_params, 1):
                 instruction += f"   {i}. {param}\n"
             instruction += "\n"
         
         if optional_params:
-            instruction += "📋 OPTIONAL INFORMATION (collect if mentioned):\n"
+            instruction += "ðŸ“‹ OPTIONAL INFORMATION (collect if mentioned):\n"
             for i, param in enumerate(optional_params, 1):
                 instruction += f"   {i}. {param}\n"
             instruction += "\n"
 
-        instruction += "🎯 CRITICAL RULES:\n"
+        instruction += "ðŸŽ¯ CRITICAL RULES:\n"
         instruction += "1. When user provides ANY piece of information above, IMMEDIATELY call collect_user_data(key, value)\n"
         instruction += "2. Extract information naturally from conversation - don't make it feel like an interrogation\n"
         instruction += "3. Ask follow-up questions conversationally to get missing required information\n"
@@ -205,15 +205,15 @@ class DynamicToolHandler:
         instruction += "5. The system will automatically send data to webhook once all required fields are collected\n"
         instruction += "6. Continue your main conversation purpose while collecting this data\n\n"
 
-        instruction += "💡 EXAMPLES:\n"
+        instruction += "ðŸ’¡ EXAMPLES:\n"
         instruction += "User: 'Hi, I'm John Smith from ABC Corp'\n"
-        instruction += "→ Call collect_user_data('name', 'John Smith')\n"
-        instruction += "→ Call collect_user_data('company', 'ABC Corp')\n"
-        instruction += "→ Then respond naturally: 'Great to meet you John! What can I help you with today?'\n\n"
+        instruction += "â†’ Call collect_user_data('name', 'John Smith')\n"
+        instruction += "â†’ Call collect_user_data('company', 'ABC Corp')\n"
+        instruction += "â†’ Then respond naturally: 'Great to meet you John! What can I help you with today?'\n\n"
         
         instruction += "User: 'My email is john@example.com'\n"
-        instruction += "→ Call collect_user_data('email', 'john@example.com')\n"
-        instruction += "→ Then continue conversation\n\n"
+        instruction += "â†’ Call collect_user_data('email', 'john@example.com')\n"
+        instruction += "â†’ Then continue conversation\n\n"
 
         instruction += "="*50 + "\n"
 
@@ -240,7 +240,7 @@ def setup_langfuse(
     host = host or os.getenv("LANGFUSE_HOST")
 
     if not public_key or not secret_key or not host:
-        logger.info("ℹ️ Langfuse not configured; skipping telemetry setup")
+        logger.info("â„¹ï¸ Langfuse not configured; skipping telemetry setup")
         return
 
     langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
@@ -254,7 +254,7 @@ def setup_langfuse(
     trace_provider = TracerProvider()
     trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
     set_tracer_provider(trace_provider)
-    logger.info("✅ Langfuse telemetry configured")
+    logger.info("âœ… Langfuse telemetry configured")
 
 
 async def entrypoint(ctx: JobContext):
@@ -300,22 +300,22 @@ async def entrypoint(ctx: JobContext):
     logger.info("---------------------------------------------")
     logger.info("Custom instructions: %s", custom_instructions)
     logger.info("Custom first message: %s", custom_first_message)
-    logger.info("🆔 Assistant ID: %s", assistant_id)
-    logger.info("🔗 Webhook URL: %s", webhook_url)
+    logger.info("ðŸ†” Assistant ID: %s", assistant_id)
+    logger.info("ðŸ”— Webhook URL: %s", webhook_url)
     logger.info("---------------------------------------------")
 
     # Initialize tool handler BEFORE setting up STT/TTS
     tool_handler = None
     if assistant_id and webhook_url:
-        logger.info("🔧 Initializing tool handler...")
+        logger.info("ðŸ”§ Initializing tool handler...")
         tool_handler = DynamicToolHandler(webhook_url, assistant_id)
         config_loaded = await tool_handler.load_tool_config()
 
         if config_loaded:
-            logger.info("✅ Tool configuration loaded successfully")
-            logger.info(f"📋 Tool will collect: {list(tool_handler.tool_config.get('parameters', {}).keys())}")
+            logger.info("âœ… Tool configuration loaded successfully")
+            logger.info(f"ðŸ“‹ Tool will collect: {list(tool_handler.tool_config.get('parameters', {}).keys())}")
         else:
-            logger.warning("⚠️ No tool configuration found - agent will work without data collection")
+            logger.warning("âš ï¸ No tool configuration found - agent will work without data collection")
             tool_handler = None
 
     # STT / TTS selection
@@ -342,10 +342,10 @@ async def entrypoint(ctx: JobContext):
         tool_instructions = tool_handler.get_tool_instructions()
         if tool_instructions:
             final_instructions += tool_instructions
-            logger.info("✅ Added data collection instructions to system prompt")
+            logger.info("âœ… Added data collection instructions to system prompt")
 
     logger.info("=============================================")
-    logger.info("📋 Final Agent Instructions (first 500 chars):\n%s", (final_instructions[:500] + "...") if len(final_instructions) > 500 else final_instructions)
+    logger.info("ðŸ“‹ Final Agent Instructions (first 500 chars):\n%s", (final_instructions[:500] + "...") if len(final_instructions) > 500 else final_instructions)
     logger.info("=============================================")
 
     # --- CRITICAL FIX: Create tool function and pass it to Agent (not LLM) ---
@@ -372,18 +372,18 @@ async def entrypoint(ctx: JobContext):
                 key: The parameter name (e.g., 'name', 'email', 'phone')
                 value: The value provided by the user
             """
-            logger.info(f"🔧 [TOOL CALLED] collect_user_data(key='{key}', value='{value}')")
+            logger.info(f"ðŸ”§ [TOOL CALLED] collect_user_data(key='{key}', value='{value}')")
             if tool_handler:
                 await tool_handler.collect_data(key, value)
                 missing = tool_handler.get_missing_parameters()
                 if missing:
-                    return f"✅ Stored {key}. Still need: {', '.join(missing)}"
+                    return f"âœ… Stored {key}. Still need: {', '.join(missing)}"
                 else:
-                    return f"✅ Stored {key}. All required information collected!"
-            return f"✅ Stored {key}"
+                    return f"âœ… Stored {key}. All required information collected!"
+            return f"âœ… Stored {key}"
 
         tool_functions.append(collect_user_data)
-        logger.info("✅ Registered collect_user_data tool function")
+        logger.info("âœ… Registered collect_user_data tool function")
 
     # Create OpenAI LLM without tools (tools go to Agent, not LLM)
     llm_instance = openai.LLM(model="gpt-4o-mini")
@@ -419,12 +419,12 @@ async def entrypoint(ctx: JobContext):
     if tool_functions:
         agent = Agent(
             instructions=final_instructions,
-            tools=tool_functions  # ← Pass tools here to Agent
+            tools=tool_functions  # â† Pass tools here to Agent
         )
-        logger.info(f"✅ Created Agent with {len(tool_functions)} tool(s)")
+        logger.info(f"âœ… Created Agent with {len(tool_functions)} tool(s)")
     else:
         agent = Agent(instructions=final_instructions)
-        logger.info("ℹ️ Created Agent without tools")
+        logger.info("â„¹ï¸ Created Agent without tools")
 
     # Start session with the agent that has tools
     await session.start(
@@ -433,12 +433,12 @@ async def entrypoint(ctx: JobContext):
         room_input_options=RoomInputOptions()
     )
 
-    logger.info("✅ Voice session started successfully with tools enabled")
+    logger.info("âœ… Voice session started successfully with tools enabled")
 
     # Kick off conversation
     await session.generate_reply(instructions=f"Start the conversation by saying: '{custom_first_message}'")
 
-    logger.info("✅ Voice session active; waiting for events")
+    logger.info("âœ… Voice session active; waiting for events")
 
 
 if __name__ == "__main__":
