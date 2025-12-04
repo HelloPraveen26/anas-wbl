@@ -1,12 +1,12 @@
 # agent.py  (FIXED VERSION - Tools properly passed to Agent)
+import asyncio
 import base64
 import json
 import logging
 import os
-import aiohttp
-import asyncio
-from dotenv import load_dotenv
 
+import aiohttp
+from dotenv import load_dotenv
 from livekit.agents import (
     NOT_GIVEN,
     Agent,
@@ -19,11 +19,14 @@ from livekit.agents import (
     WorkerOptions,
     cli,
     metrics,
+)
+from livekit.agents import (
     llm as agent_llm,
 )
 from livekit.agents.inference.tts import TTSEncoding
 from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
+    azure,
     deepgram,
     elevenlabs,
     google,
@@ -92,7 +95,9 @@ class DynamicToolHandler:
 
         # When all required parameters are collected, forward to backend.
         if self.all_required_collected():
-            logger.info("âœ… All required parameters collected! Auto-sending to webhook...")
+            logger.info(
+                "âœ… All required parameters collected! Auto-sending to webhook..."
+            )
             await self.send_to_webhook()
 
     def get_missing_parameters(self):
@@ -169,20 +174,20 @@ class DynamicToolHandler:
         # Get required and optional parameters with descriptions
         required_params = []
         optional_params = []
-        
+
         for param_name, param_config in params.items():
             param_desc = param_config.get("description", param_name)
             param_type = param_config.get("type", "string")
-            
+
             if param_config.get("required", False):
                 required_params.append(f"{param_name} ({param_type}): {param_desc}")
             else:
                 optional_params.append(f"{param_name} ({param_type}): {param_desc}")
 
-        instruction = "\n\n" + "="*50 + "\n"
+        instruction = "\n\n" + "=" * 50 + "\n"
         instruction += "ðŸ”§ DATA COLLECTION TOOL ACTIVATED\n"
-        instruction += "="*50 + "\n\n"
-        
+        instruction += "=" * 50 + "\n\n"
+
         instruction += "YOUR PRIMARY MISSION: Collect the following information during this conversation.\n\n"
 
         if required_params:
@@ -190,7 +195,7 @@ class DynamicToolHandler:
             for i, param in enumerate(required_params, 1):
                 instruction += f"   {i}. {param}\n"
             instruction += "\n"
-        
+
         if optional_params:
             instruction += "ðŸ“‹ OPTIONAL INFORMATION (collect if mentioned):\n"
             for i, param in enumerate(optional_params, 1):
@@ -203,19 +208,21 @@ class DynamicToolHandler:
         instruction += "3. Ask follow-up questions conversationally to get missing required information\n"
         instruction += "4. If user provides multiple pieces at once, call collect_user_data separately for each\n"
         instruction += "5. The system will automatically send data to webhook once all required fields are collected\n"
-        instruction += "6. Continue your main conversation purpose while collecting this data\n\n"
+        instruction += (
+            "6. Continue your main conversation purpose while collecting this data\n\n"
+        )
 
         instruction += "ðŸ’¡ EXAMPLES:\n"
         instruction += "User: 'Hi, I'm John Smith from ABC Corp'\n"
         instruction += "â†’ Call collect_user_data('name', 'John Smith')\n"
         instruction += "â†’ Call collect_user_data('company', 'ABC Corp')\n"
         instruction += "â†’ Then respond naturally: 'Great to meet you John! What can I help you with today?'\n\n"
-        
+
         instruction += "User: 'My email is john@example.com'\n"
         instruction += "â†’ Call collect_user_data('email', 'john@example.com')\n"
         instruction += "â†’ Then continue conversation\n\n"
 
-        instruction += "="*50 + "\n"
+        instruction += "=" * 50 + "\n"
 
         return instruction
 
@@ -244,12 +251,8 @@ def setup_langfuse(
         return
 
     langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
-    os.environ[
-        "OTEL_EXPORTER_OTLP_ENDPOINT"
-    ] = f"{host.rstrip('/')}/api/public/otel"
-    os.environ[
-        "OTEL_EXPORTER_OTLP_HEADERS"
-    ] = f"Authorization=Basic {langfuse_auth}"
+    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{host.rstrip('/')}/api/public/otel"
+    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
 
     trace_provider = TracerProvider()
     trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
@@ -289,7 +292,9 @@ async def entrypoint(ctx: JobContext):
             metadata = {}
 
     custom_instructions = metadata.get("instructions")
-    custom_first_message = metadata.get("first_message", "Hello! How can I help you today?")
+    custom_first_message = metadata.get(
+        "first_message", "Hello! How can I help you today?"
+    )
     stt_provider_name = metadata.get("stt_provider_name")
     tts_provider_name = metadata.get("tts_provider_name")
     stt_config = metadata.get("stt_config")
@@ -313,9 +318,13 @@ async def entrypoint(ctx: JobContext):
 
         if config_loaded:
             logger.info("âœ… Tool configuration loaded successfully")
-            logger.info(f"ðŸ“‹ Tool will collect: {list(tool_handler.tool_config.get('parameters', {}).keys())}")
+            logger.info(
+                f"ðŸ“‹ Tool will collect: {list(tool_handler.tool_config.get('parameters', {}).keys())}"
+            )
         else:
-            logger.warning("âš ï¸ No tool configuration found - agent will work without data collection")
+            logger.warning(
+                "âš ï¸ No tool configuration found - agent will work without data collection"
+            )
             tool_handler = None
 
     # STT / TTS selection
@@ -328,11 +337,19 @@ async def entrypoint(ctx: JobContext):
     if tts_provider_name == "Sarvam":
         speaker = (tts_config or {}).get("speaker") or "anushka"
         language_code = (stt_config or {}).get("language") or "en_IN"
-        tts = sarvam.TTS(target_language_code=language_code, model="bulbul:v2", speaker=speaker)
+        tts = sarvam.TTS(
+            target_language_code=language_code, model="bulbul:v2", speaker=speaker
+        )
     elif tts_provider_name == "Gemini":
         voice = (tts_config or {}).get("voice_name") or "Zephyr"
-        instructions = (tts_config or {}).get("instructions") or "Speak in a friendly and engaging tone."
-        tts = google.beta.GeminiTTS(model="gemini-2.5-flash-preview-tts", voice_name=voice, instructions=instructions)
+        instructions = (tts_config or {}).get(
+            "instructions"
+        ) or "Speak in a friendly and engaging tone."
+        tts = google.beta.GeminiTTS(
+            model="gemini-2.5-flash-preview-tts",
+            voice_name=voice,
+            instructions=instructions,
+        )
     else:
         tts = deepgram.TTS()
 
@@ -345,12 +362,17 @@ async def entrypoint(ctx: JobContext):
             logger.info("âœ… Added data collection instructions to system prompt")
 
     logger.info("=============================================")
-    logger.info("ðŸ“‹ Final Agent Instructions (first 500 chars):\n%s", (final_instructions[:500] + "...") if len(final_instructions) > 500 else final_instructions)
+    logger.info(
+        "ðŸ“‹ Final Agent Instructions (first 500 chars):\n%s",
+        (final_instructions[:500] + "...")
+        if len(final_instructions) > 500
+        else final_instructions,
+    )
     logger.info("=============================================")
 
     # --- CRITICAL FIX: Create tool function and pass it to Agent (not LLM) ---
     tool_functions = []
-    
+
     if tool_handler and tool_handler.tool_config:
         params = tool_handler.tool_config.get("parameters", {})
         param_list = list(params.keys())
@@ -363,16 +385,20 @@ async def entrypoint(ctx: JobContext):
         )
 
         # Create the tool function with proper decorator
-        @agent_llm.function_tool(name="collect_user_data", description=collect_description)
+        @agent_llm.function_tool(
+            name="collect_user_data", description=collect_description
+        )
         async def collect_user_data(key: str, value: str):
             """
             Store user-provided information.
-            
+
             Args:
                 key: The parameter name (e.g., 'name', 'email', 'phone')
                 value: The value provided by the user
             """
-            logger.info(f"ðŸ”§ [TOOL CALLED] collect_user_data(key='{key}', value='{value}')")
+            logger.info(
+                f"ðŸ”§ [TOOL CALLED] collect_user_data(key='{key}', value='{value}')"
+            )
             if tool_handler:
                 await tool_handler.collect_data(key, value)
                 missing = tool_handler.get_missing_parameters()
@@ -387,7 +413,7 @@ async def entrypoint(ctx: JobContext):
 
     # Create OpenAI LLM without tools (tools go to Agent, not LLM)
     llm_instance = openai.LLM(model="gpt-4o-mini")
-    
+
     # Create session with the configured LLM
     session = AgentSession(
         llm=llm_instance,
@@ -419,7 +445,7 @@ async def entrypoint(ctx: JobContext):
     if tool_functions:
         agent = Agent(
             instructions=final_instructions,
-            tools=tool_functions  # â† Pass tools here to Agent
+            tools=tool_functions,  # â† Pass tools here to Agent
         )
         logger.info(f"âœ… Created Agent with {len(tool_functions)} tool(s)")
     else:
@@ -428,15 +454,15 @@ async def entrypoint(ctx: JobContext):
 
     # Start session with the agent that has tools
     await session.start(
-        agent=agent, 
-        room=ctx.room, 
-        room_input_options=RoomInputOptions()
+        agent=agent, room=ctx.room, room_input_options=RoomInputOptions()
     )
 
     logger.info("âœ… Voice session started successfully with tools enabled")
 
     # Kick off conversation
-    await session.generate_reply(instructions=f"Start the conversation by saying: '{custom_first_message}'")
+    await session.generate_reply(
+        instructions=f"Start the conversation by saying: '{custom_first_message}'"
+    )
 
     logger.info("âœ… Voice session active; waiting for events")
 
