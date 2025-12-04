@@ -14,6 +14,8 @@ import { api, ApiError, SignUpRequest } from "@/lib/api"; // Ensure this path is
 
 import newlogo from "@/assets/newlogo.png";
 import wavewhite from "@/assets/Icons/wavewhite.jpeg";
+import cristy from "@/assets/cristmasCap.png";
+
 
 interface FormData {
   firstName: string;
@@ -183,9 +185,9 @@ export default function SignUp() {
               <div className="space-y-4">
                 <div className="mr-12">
                   <img
-                    src={newlogo.src}
+                    src={cristy.src}
                     alt="Company Logo"
-                    className="max-w-[150px] w-full h-auto"
+                    className="max-w-[300px] w-full h-auto -ml-10"
                   />
                 </div>
                 <h1 className="text-4xl font-extrabold text-gray-900 leading-snug">

@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useState, useEffect, useCallback } from "react";
+// Changed: Using direct path instead of import for GIF
 import Section from "../../layout/section";
 import { cn } from "@/lib/utils";
 import { BackgroundCircles, Gradient } from "../../design/hero";
@@ -12,6 +13,9 @@ import {
   BsVolumeUpFill,
 } from "react-icons/bs";
 import Button from "../../atoms/button";
+
+// Import the GIF with explicit typing
+
 
 const Hero = () => {
   const parallaxRef = useRef(null);
@@ -171,9 +175,56 @@ const Hero = () => {
 
       {/* Hero content */}
       <div className="relative z-10 container" ref={parallaxRef}>
+        {/* Christmas GIF - with error handling */}
+        <style jsx>{`
+  @keyframes moveFade {
+    0% {
+      transform: translateX(100vw);
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(-100vw);
+      opacity: 0;
+    }
+  }
+  .move-fade {
+    position: absolute;
+    top: -60px;
+    left: 0;
+    animation: moveFade 30s linear infinite;
+    will-change: transform, opacity;
+    z-index: 5;
+    pointer-events: none;
+  }
+  @media (min-width: 768px) {
+    .move-fade {
+      top: -80px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .move-fade {
+      top: -100px;
+    }
+  }
+`}</style>
+
         {/* Heading */}
-        <div className="relative z-1 mx-auto mb-16 max-w-[62rem] text-center md:mb-20 lg:-mt-8">
-          <h1 className="h1 mb-6">
+        <div className="relative z-1 mx-auto mb-16 max-w-[62rem] text-center md:mb-26 lg:-mt-26 " >
+          {/* Christmas GIF positioned above heading */}
+          <img
+            src="/assets/hero/crist.gif"
+            alt="Christmas decoration"
+            className="move-fade w-auto h-20 md:h-32 lg:h-40  object-contain drop-shadow-lg -mt-8"
+            loading="eager"
+            onError={(e) => {
+              console.error("Failed to load Christmas GIF");
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          <h1 className="h1 mb-6 mt-12">
             Our Zenvoice AI agents makes{" "}
             <span className="relative inline-block text-green-500 overflow-hidden h-[2em] min-w-[350px] text-center flex items-center justify-center lg:-mt-4">
               <div
@@ -197,25 +248,25 @@ const Hero = () => {
           </p>
 
           <Button
-  href="https://moanalisha.fillout.com/11-with-monalisha"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="relative overflow-hidden rounded-lg px-6 py-3 font-semibold text-white bg-gradient-to-r to-emerald-600 shadow-md transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg mt-22"
->
-  <span className="relative z-10">Talk to Sales</span>
-  <span className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 opacity-0 transition-opacity duration-500 ease-in-out hover:opacity-20" />
-</Button>
-
+            href="https://moanalisha.fillout.com/11-with-monalisha"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative overflow-hidden rounded-lg px-6 py-3 font-semibold text-white bg-gradient-to-r to-emerald-600 shadow-md transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg -mb-18"
+          >
+            <span className="relative z-10">Talk to Sales</span>
+            <span className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 opacity-0 transition-opacity duration-500 ease-in-out hover:opacity-20" />
+          </Button>
         </div>
-
+      
         {/* Video Section */}
         <div
-          className="relative max-w-[90vw] mx-auto md:max-w-5xl xl:mb-24"
+          className="relative max-w-[90vw] mx-auto md:max-w-5xl xl:mb-24 -mt-3"
           style={{ transform: `scale(${zoomLevel})`, transition: "transform 0.2s ease-out" }}
         >
           <div className="relative z-1 rounded-2xl p-0.5 bg-conic-gradient">
             <div className="relative bg-n-8 rounded-[1rem]">
-              <div className="h-[1.4rem] bg-n-10 rounded-t-[0.9rem]" />
+              {/* decorative top strip */}
+              <div className="h-[1.4rem] md:h-[3.2rem] rounded-t-[0.9rem] bg-n-10" />
               <div className="aspect-[16/9] rounded-b-[0.9rem] overflow-hidden md:aspect-[688/490] lg:aspect-[1024/490]">
                 <video
                   ref={videoRef}
@@ -226,7 +277,7 @@ const Hero = () => {
                   playsInline
                   preload="auto"
                 >
-<source src="/videos/team-video-v2.mp4" type="video/mp4" />
+                  <source src="/videos/team-video-v2.mp4" type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
 

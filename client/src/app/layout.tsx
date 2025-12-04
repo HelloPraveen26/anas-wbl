@@ -1,11 +1,12 @@
 import './globals.css';
+
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Zenvoice',
   description: 'Manage your autonomous voice assistants',
   icons: {
-    icon: '/assets/logo1.png',
+    icon: '/assets/cristcrop.png',
   },
 };
 
