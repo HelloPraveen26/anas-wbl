@@ -1,31 +1,8 @@
- Placeholder components
-const GoogleSheetsTool = () => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-2">Google Sheets Tool</h3>
-    <p className="text-gray-600">Configure your Google Sheets integration here.</p>
-  </div>
-);
-
-const GoogleCalendarTool = ({ onSendMessage }: { onSendMessage: (msg: any) => void }) => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-2">Google Calendar Tool</h3>
-    <p className="text-gray-600">Configure your Google Calendar integration here.</p>
-  </div>
-);
-
-const CustomTool = ({ 
-  onSave,
-  initialAssistantId 
-}: { 
-  onSave?: (name: string, desc: string) => void;
-  initialAssistantId?: string;
-}) => {
-  const [toolName, setToolName] = useState('function_tool');
-  const [description, 'use client';
+'use client';
 
 import React, { useState } from 'react';
-import { authManager } from '@/lib/auth';      // âœ… FIXED
-import { getApiBaseUrl } from '@/lib/api';     // âœ… FIXED
+import { authManager } from '@/lib/auth';      // ✅ FIXED
+import { getApiBaseUrl } from '@/lib/api';     // ✅ FIXED
 
 import {
   Settings,
@@ -69,7 +46,30 @@ interface Condition {
   value: string;
 }
 
-//setDescription] = useState('Describe the tool in a few sentences');
+// Placeholder components
+const GoogleSheetsTool = () => (
+  <div className="p-6">
+    <h3 className="text-lg font-semibold mb-2">Google Sheets Tool</h3>
+    <p className="text-gray-600">Configure your Google Sheets integration here.</p>
+  </div>
+);
+
+const GoogleCalendarTool = ({ onSendMessage }: { onSendMessage: (msg: any) => void }) => (
+  <div className="p-6">
+    <h3 className="text-lg font-semibold mb-2">Google Calendar Tool</h3>
+    <p className="text-gray-600">Configure your Google Calendar integration here.</p>
+  </div>
+);
+
+const CustomTool = ({ 
+  onSave,
+  initialAssistantId 
+}: { 
+  onSave?: (name: string, desc: string) => void;
+  initialAssistantId?: string;
+}) => {
+  const [toolName, setToolName] = useState('function_tool');
+  const [description, setDescription] = useState('Describe the tool in a few sentences');
   const [isAsync, setIsAsync] = useState(true);
   const [isStrict, setIsStrict] = useState(true);
   const [webhook, setWebHookUrl] = useState('https://api.example.com/function');
@@ -152,7 +152,7 @@ interface Condition {
       }
 
       try {
-        console.log('ðŸ”„ Loading tool config for assistant:', selectedAssistant);
+        console.log('🔄 Loading tool config for assistant:', selectedAssistant);
         
         const response = await fetch(
            `${getApiBaseUrl()}/assistants/tool-config/${selectedAssistant}`,
@@ -168,7 +168,7 @@ interface Condition {
           
           if (result.success && result.data) {
             const config = result.data;
-            console.log('âœ… Loaded config:', config);
+            console.log('✅ Loaded config:', config);
             
             setToolName(config.toolName || 'function_tool');
             setDescription(config.description || 'Describe the tool in a few sentences');
@@ -223,12 +223,12 @@ interface Condition {
               setConditions([]);
             }
             
-            setSaveResult('âœ… Configuration loaded successfully!');
+            setSaveResult('✅ Configuration loaded successfully!');
             setTimeout(() => setSaveResult(''), 2000);
           }
         }
       } catch (error) {
-        console.error('âŒ Error loading tool config:', error);
+        console.error('❌ Error loading tool config:', error);
       }
     };
 
@@ -240,12 +240,12 @@ interface Condition {
     setShowAssistantDropdown(false);
   };
 
-  // âœ… FIXED: Added assistant validation
+  // ✅ FIXED: Added assistant validation
   const handleSaveConfig = async () => {
     try {
-      // âœ… CRITICAL FIX: Validate assistant selection
+      // ✅ CRITICAL FIX: Validate assistant selection
       if (!selectedAssistant) {
-        setSaveResult('âŒ Please select an assistant first!');
+        setSaveResult('❌ Please select an assistant first!');
         setTimeout(() => setSaveResult(''), 3000);
         return;
       }
@@ -292,7 +292,7 @@ interface Condition {
         conditions: conditions
       };
 
-      console.log('ðŸ“¤ Saving tool configuration:', payload);
+      console.log('📤 Saving tool configuration:', payload);
 
       const response = await fetch(`${getApiBaseUrl()}/assistants/save-tool-config`, {
         method: 'POST',
@@ -303,11 +303,11 @@ interface Condition {
         body: JSON.stringify(payload),
       });
 
-      // âœ… IMPROVED: Better error handling
+      // ✅ IMPROVED: Better error handling
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('âŒ Backend error:', response.status, errorText);
-        setSaveResult(`âŒ Save failed: ${response.status} - ${errorText}`);
+        console.error('❌ Backend error:', response.status, errorText);
+        setSaveResult(`❌ Save failed: ${response.status} - ${errorText}`);
         setTimeout(() => setSaveResult(''), 5000);
         return;
       }
@@ -315,19 +315,19 @@ interface Condition {
       const data = await response.json();
       
       if (data.success) {
-        setSaveResult('âœ… Configuration saved successfully!');
-        console.log('âœ… Save response:', data);
+        setSaveResult('✅ Configuration saved successfully!');
+        console.log('✅ Save response:', data);
         if (onSave) {
           onSave(toolName, description);
         }
         setTimeout(() => setSaveResult(''), 3000);
       } else {
-        setSaveResult('âŒ Save failed: ' + (data.message || JSON.stringify(data)));
+        setSaveResult('❌ Save failed: ' + (data.message || JSON.stringify(data)));
         setTimeout(() => setSaveResult(''), 5000);
       }
     } catch (err: any) {
-      console.error('âŒ Error saving configuration:', err);
-      setSaveResult('âŒ Save failed: ' + err.message);
+      console.error('❌ Error saving configuration:', err);
+      setSaveResult('❌ Save failed: ' + err.message);
       setTimeout(() => setSaveResult(''), 5000);
     }
   };
@@ -607,12 +607,12 @@ const toolConfig = {
   const handleTestTool = () => {
     setIsTestRunning(true);
     setShowTestModal(true);
-    setTestResult('â³ Running test...\n\n');
+    setTestResult('⏳ Running test...\n\n');
     
     setTimeout(() => {
       const selectedAssistantData = assistants.find(a => a.id === selectedAssistant);
       
-      setTestResult(`âœ… Test Successful!\n\nTool Name: ${toolName}\nDescription: ${description}\nAssistant: ${selectedAssistantData?.name || 'None'}\nWebhook: ${webhook}\nTimeout: ${timeout}s\nAsync: ${isAsync ? 'Yes' : 'No'}\nStrict: ${isStrict ? 'Yes' : 'No'}\n\nParameters: ${parameters.length}\n\nðŸ“ Configuration is valid!`);
+      setTestResult(`✅ Test Successful!\n\nTool Name: ${toolName}\nDescription: ${description}\nAssistant: ${selectedAssistantData?.name || 'None'}\nWebhook: ${webhook}\nTimeout: ${timeout}s\nAsync: ${isAsync ? 'Yes' : 'No'}\nStrict: ${isStrict ? 'Yes' : 'No'}\n\nParameters: ${parameters.length}\n\n📝 Configuration is valid!`);
       setIsTestRunning(false);
     }, 1500);
   };
@@ -653,7 +653,7 @@ const toolConfig = {
               <Settings size={16} />
               {selectedAssistant 
                 ? assistants.find(a => a.id === selectedAssistant)?.name || 'Select Assistant'
-                : 'âš ï¸ Select Assistant'}
+                : '⚠️ Select Assistant'}
             </button>
             
             {showAssistantDropdown && (
@@ -696,14 +696,14 @@ const toolConfig = {
             onClick={handleTestTool}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-500"
           >
-            <Play size={16} /> Test
+            Test
           </button>
         </div>
       </div>
 
       {saveResult && (
         <div className={`mx-4 mt-2 p-3 rounded-lg text-sm font-medium ${
-          saveResult.includes('âœ…') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          saveResult.includes('✅') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
           {saveResult}
         </div>
@@ -1028,13 +1028,13 @@ const toolConfig = {
               <h3 className="text-lg font-semibold text-green-600">Generated Code</h3>
               <button 
                 onClick={() => setShowCodeModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-700 hover:text-gray-600"
               >
-                <X size={20} />
+                <X size={20} />   
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
-              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm font-mono overflow-x-auto">
+              <pre className="bg-gray-200 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto">
                 {generateCode()}
               </pre>
             </div>
@@ -1042,9 +1042,9 @@ const toolConfig = {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(generateCode());
-                  alert('âœ… Code copied to clipboard!');
+                  alert('✅ Code copied to clipboard!');
                 }}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-10 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
               >
                 Copy Code
               </button>
@@ -1072,7 +1072,7 @@ const toolConfig = {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
-              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm font-mono whitespace-pre-wrap">
+              <pre className="bg-gray-200 text-gray-800 p-4 rounded-lg text-sm font-mono overflow-x-auto">
                 {testResult}
               </pre>
             </div>
@@ -1217,7 +1217,7 @@ export default function ToolsPage() {
           return;
         }
 
-        console.log('ðŸ”„ Loading all assistants and their saved tools...');
+        console.log('🔄 Loading all assistants and their saved tools...');
 
         const assistantsResponse = await fetch(`${getApiBaseUrl()}/assistants`, {
           headers: {
@@ -1235,7 +1235,7 @@ export default function ToolsPage() {
         const assistantsList = Array.isArray(fetchedAssistants) ? fetchedAssistants : [];
 
         if (assistantsList.length === 0) {
-          console.log('â„¹ï¸ No assistants found');
+          console.log('ℹ️ No assistants found');
           setIsLoading(false);
           return;
         }
@@ -1269,16 +1269,16 @@ export default function ToolsPage() {
                 };
                 
                 savedToolsTemp.push(savedTool);
-                console.log(`âœ… Loaded tool for ${assistant.name}:`, config.toolName);
+                console.log(`✅ Loaded tool for ${assistant.name}:`, config.toolName);
               }
             }
           } catch (error) {
-            console.log(`â„¹ï¸ No config for assistant ${assistant.name}`);
+            console.log(`ℹ️ No config for assistant ${assistant.name}`);
           }
         }
 
         if (savedToolsTemp.length > 0) {
-          console.log(`âœ… Found ${savedToolsTemp.length} saved tools`);
+          console.log(`✅ Found ${savedToolsTemp.length} saved tools`);
           setCustomTools(savedToolsTemp);
           setSelectedTools(savedToolsTemp);
           
@@ -1286,10 +1286,10 @@ export default function ToolsPage() {
             setActiveTool(savedToolsTemp[0]);
           }
         } else {
-          console.log('â„¹ï¸ No saved tools found');
+          console.log('ℹ️ No saved tools found');
         }
       } catch (error) {
-        console.error('âŒ Error loading saved tools:', error);
+        console.error('❌ Error loading saved tools:', error);
       } finally {
         setIsLoading(false);
       }
@@ -1307,8 +1307,8 @@ export default function ToolsPage() {
       color: '#007bff', 
       content: <CustomTool onSave={handleSaveCustomTool} /> 
     },
-    { name: 'Google sheet', description: '', icon: 'FileSpreadsheet', color: '#00ff95ff', content: <GoogleSheetsTool /> },
-    { name: 'Google Calendar', description: '', icon: 'Calendar', color: '#4285f4', content: <GoogleCalendarTool onSendMessage={handleSendMessage} /> },
+    // { name: 'Google sheet', description: '', icon: 'FileSpreadsheet', color: '#00ff95ff', content: <GoogleSheetsTool /> },
+    //{ name: 'Google Calendar', description: '', icon: 'Calendar', color: '#4285f4', content: <GoogleCalendarTool onSendMessage={handleSendMessage} /> },
   ];
 
   const filteredTools = toolsList.filter(tool =>
