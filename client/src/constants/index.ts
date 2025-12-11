@@ -172,6 +172,42 @@ MailChimp,
   twitter,
 } = images;
 
+// export const navigation = [
+//   {
+//     id: "0",
+//     title: "Home",
+//     url: "#home",
+//   },
+//   {
+//     id: "1",
+//     title: "Features",
+//     url: "#features",
+//   },
+//   {
+//     id: "2",
+//     title: "FAQ",
+//     url: "#how-to-use",
+//   },
+//   {
+//     id: "3",
+//     title: "Price",
+//     url: "#price",
+//   },
+//   {
+//     id: "4",
+//     title: "New account",
+//     url: "#signup",
+//     onlyMobile: true,
+//   },
+//   {
+//     id: "5",
+//     title: "Sign in",
+//     url: "#login",
+//     onlyMobile: true,
+//   },
+// ];
+
+
 export const navigation = [
   {
     id: "0",
@@ -185,11 +221,16 @@ export const navigation = [
   },
   {
     id: "2",
-    title: "FAQ",
+    title: "FAQ's",
     url: "#how-to-use",
   },
   {
     id: "3",
+    title: "Blog",
+    url: "/blogs",
+  },
+  {
+    id: "4",
     title: "Price",
     url: "#price",
   },

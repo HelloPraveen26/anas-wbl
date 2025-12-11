@@ -186,7 +186,7 @@ export default function AssistantsListingPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full h-11 pl-11 pr-4 bg-white rounded-xl text-sm 
                  text-gray-900 placeholder-gray-500 
-                 focus:outline-none focus:ring-1 focus:ring-emerald-300"
+                 focus:outline-none focus:ring-1 focus:ring-emerald-800"
                 />
               </div>
             </div>

@@ -91,12 +91,12 @@ const Navbar = (props: Props) => {
 
         {/* Action Buttons - Responsive */}
         <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 whitespace-nowrap flex-shrink-0">
-          <Link
+          {/* <Link
             href="/signup"
             className="hidden md:block text-gray-400 transition-colors hover:text-green-300 text-sm lg:text-base"
           >
             New account
-          </Link>
+          </Link> */}
           <Button
             href="/login"
             className="bg-gradient-to-r to-emerald-500 text-white font-semibold px-2 sm:px-3 lg:px-5 py-1 sm:py-1.5 lg:py-2 text-[10px] sm:text-xs lg:text-base rounded-full shadow-md hover:shadow-green-400/40 transition-shadow"

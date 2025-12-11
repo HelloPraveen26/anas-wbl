@@ -19,6 +19,7 @@ import {
   CreditCard,
   Zap,
   PhoneIncoming,
+  AudioWaveform            
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authManager } from "@/lib/auth";
@@ -102,6 +103,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       path: "/phone-numbers",
     },
     { id: "tools", label: "Tools", icon: Settings, path: "/tools" },
+    { id: "voices", label: "Voices", icon: AudioWaveform, path: "/voices" },
   ];
 
   const observeItems = [
