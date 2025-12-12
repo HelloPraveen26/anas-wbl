@@ -10,6 +10,7 @@ import {
 import { Exclude } from "class-transformer";
 import { RegisteredNumber } from "../../registered-numbers/entities/registered-number.entity";
 import { ContactNumber } from "../../contact-numbers/entities/contact-number.entity";
+import { CallLog } from "../../call-logs/entities/call-log.entity";
 
 export enum AuthProvider {
   LOCAL = "local",
@@ -91,6 +92,9 @@ export class User {
 
   @OneToMany(() => ContactNumber, (contactNumber) => contactNumber.user)
   contactNumbers: ContactNumber[];
+
+  @OneToMany(() => CallLog, (callLog) => callLog.user)
+  callLogs: CallLog[];
 
   // Virtual field for full name
   get fullName(): string {

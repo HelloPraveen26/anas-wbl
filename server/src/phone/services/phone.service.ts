@@ -7,6 +7,7 @@ import { MakeCallDto } from "../dto/make-call.dto";
 import { HangupDto } from "../dto/hangup.dto";
 import { AssistantService } from "../../assistant/assistant.service";
 import { RegisteredNumbersService } from "../../registered-numbers/registered-numbers.service";
+import { CallLogsService } from "../../call-logs/call-logs.service";
 
 @Injectable()
 export class PhoneService {
@@ -18,6 +19,7 @@ export class PhoneService {
     private readonly configService: ConfigService,
     private readonly assistantService: AssistantService,
     private readonly registeredNumbersService: RegisteredNumbersService,
+    private readonly callLogsService: CallLogsService,
   ) {
     this.baseUrl =
       this.configService.get<string>("PHONE_SERVICE_URL") ||
@@ -30,6 +32,8 @@ export class PhoneService {
    * @returns AxiosResponse<any> with { success: boolean, call_id?: string }
    */
   async makeCall(dto: MakeCallDto, userId: string): Promise<any> {
+    let callLogId: string | null = null;
+
     try {
       let systemPrompt = "";
       let firstMessage = "";
@@ -90,6 +94,18 @@ export class PhoneService {
 
       // Get livekitOutboundTrunkId from registered number using fromPhoneNumber
       const fromPhoneNumber = dto.fromPhoneNumber || "+19282185402";
+
+      // Create initial call log entry
+      const initialCallLog = await this.callLogsService.create({
+        assistantId: dto.selectedAssistant || null,
+        userId: userId,
+        assistantPhone: fromPhoneNumber,
+        customerPhone: dto.phoneNumber,
+        type: "outbound",
+        callStatus: null,
+        startTime: new Date(),
+      });
+      callLogId = initialCallLog.id;
       const registeredNumbers =
         await this.registeredNumbersService.findAllByUser(userId);
       const registeredNumber = registeredNumbers.find(
@@ -131,12 +147,34 @@ export class PhoneService {
         `Call initiated successfully. Response: ${JSON.stringify(data)}`,
       );
 
+      // Update call log with session ID if available
+      if (data.room_name && callLogId) {
+        await this.callLogsService.update(callLogId, {
+          sessionId: data.room_name,
+        });
+      }
+
       return data;
     } catch (error) {
       this.logger.error(
         "makeCall failed",
         error instanceof Error ? error.stack : error,
       );
+
+      // Update call log with failure status
+      if (callLogId) {
+        try {
+          await this.callLogsService.update(callLogId, {
+            callStatus: "fail",
+          });
+        } catch (logError) {
+          this.logger.error(
+            "Failed to update call log with failure status",
+            logError,
+          );
+        }
+      }
+
       throw new HttpException(
         "Failed to initiate call",
         HttpStatus.INTERNAL_SERVER_ERROR,
