@@ -29,6 +29,8 @@ from livekit.plugins import (
     sarvam,
     silero,
 )
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.util.types import AttributeValue
 
 logger = logging.getLogger("agent")
 
@@ -54,10 +56,12 @@ def prewarm(proc: JobProcess):
 
 
 def setup_langfuse(
+    metadata: dict[str, AttributeValue] | None = None,
+    *,
     host: str | None = None,
     public_key: str | None = None,
     secret_key: str | None = None,
-):
+) -> TracerProvider:
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -77,13 +81,13 @@ def setup_langfuse(
 
     trace_provider = TracerProvider()
     trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-    set_tracer_provider(trace_provider)
+    set_tracer_provider(trace_provider, metadata=metadata)
+    return trace_provider
 
 
 async def entrypoint(ctx: JobContext):
     # Logging setup
     # Add any other context you want in all log entries here
-    setup_langfuse()
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
@@ -113,6 +117,9 @@ async def entrypoint(ctx: JobContext):
             metadata = {}
 
     # Get dynamic parameters from metadata
+    user_id = metadata.get("user_id")
+    phone_number = metadata.get("phone_number")
+    outbound_trunk_id = metadata.get("outbound_trunk_id")
     custom_instructions = metadata.get("instructions")
     custom_first_message = metadata.get(
         "first_message", "Hello! How can I help you today?"
@@ -122,13 +129,54 @@ async def entrypoint(ctx: JobContext):
     stt_config = metadata.get("stt_config")
     tts_config = metadata.get("tts_config")
 
+    # Setup langfuse with metadata for tracing
+    langfuse_metadata = {
+        "langfuse.session.id": ctx.room.name,
+        "langfuse.trace.name": f"Voice Agent Session - {ctx.room.name}",
+    }
+
+    # Add user_id to langfuse metadata if available
+    if user_id:
+        langfuse_metadata["langfuse.user.id"] = user_id
+
+    # Add additional trace metadata for better observability
+    if outbound_trunk_id:
+        langfuse_metadata["langfuse.trace.metadata.outbound_trunk_id"] = outbound_trunk_id
+    if phone_number:
+        langfuse_metadata["langfuse.trace.metadata.phone_number"] = phone_number
+    if stt_provider_name:
+        langfuse_metadata["langfuse.trace.metadata.stt_provider"] = stt_provider_name
+    if tts_provider_name:
+        langfuse_metadata["langfuse.trace.metadata.tts_provider"] = tts_provider_name
+
+    # Add environment if available
+    environment = os.getenv("ENVIRONMENT", "production")
+    langfuse_metadata["langfuse.environment"] = environment
+
+    # Add version if available
+    app_version = os.getenv("APP_VERSION", "1.0.0")
+    langfuse_metadata["langfuse.version"] = app_version
+
+    # Setup langfuse tracer with metadata
+    trace_provider = setup_langfuse(metadata=langfuse_metadata)
+
+    # Add a shutdown callback to flush the trace before process exit
+    async def flush_trace():
+        trace_provider.force_flush()
+
+    ctx.add_shutdown_callback(flush_trace)
+
     logger.info("---------------------------------------------")
+    logger.info("User Id: %s", user_id)
+    logger.info("Outbound Trunk ID: %s", outbound_trunk_id)
+    logger.info("Phone Number: %s", phone_number)
     logger.info("Custom instructions: %s", custom_instructions)
     logger.info("Custom first message: %s", custom_first_message)
     logger.info("STT Provider Name: %s", stt_provider_name)
     logger.info("TTS Provider Name: %s", tts_provider_name)
     logger.info("STT Config: %s", stt_config)
     logger.info("TTS Config: %s", tts_config)
+    logger.info("Langfuse metadata: %s", langfuse_metadata)
     logger.info("---------------------------------------------")
 
     # Read Azure credentials once if needed

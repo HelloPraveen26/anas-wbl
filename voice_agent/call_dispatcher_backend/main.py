@@ -27,6 +27,7 @@ app = FastAPI(
 
 
 class CallRequest(BaseModel):
+    user_id: Optional[str] = Field(None, description="user_id")
     phone_number: str = Field(
         ...,
         description="Phone number in E.164 format (+ followed by country code and number, up to 15 digits total). "
@@ -57,6 +58,7 @@ class CallRequest(BaseModel):
     tts_provider_name: Optional[str] = Field(None, description="tts_provider_name")
     stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
     tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
+    
 
     @validator("phone_number")
     def validate_e164_format(cls, v):
@@ -370,6 +372,7 @@ async def make_call_endpoint(request: CallRequest):
     tts_provider_name = request.tts_provider_name
     stt_config = request.stt_config
     tts_config = request.tts_config
+    user_id = request.user_id
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -386,6 +389,7 @@ async def make_call_endpoint(request: CallRequest):
     try:
         # Create metadata for the call including dynamic parameters
         metadata = {
+            "outbound_trunk_id": outbound_trunk_id,
             "phone_number": phone_number,
             "call_type": "outbound",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -395,6 +399,7 @@ async def make_call_endpoint(request: CallRequest):
             "tts_provider_name": tts_provider_name,
             "stt_config": stt_config,
             "tts_config": tts_config,
+            "user_id": user_id
         }
 
         # Generate unique room name

@@ -107,6 +107,7 @@ export class PhoneService {
       }
 
       const payload = {
+        user_id: userId,
         phone_number: dto.phoneNumber,
         from_phone_number: fromPhoneNumber,
         outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
