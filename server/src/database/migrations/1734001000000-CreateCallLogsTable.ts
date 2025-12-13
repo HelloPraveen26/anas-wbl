@@ -17,7 +17,7 @@ export class CreateCallLogsTable1734001000000 implements MigrationInterface {
         "success_evaluation" character varying,
         "start_time" TIMESTAMP,
         "duration" integer DEFAULT 0,
-        "cost" numeric(10,2) DEFAULT 0,
+        "cost" numeric(15,8) DEFAULT 0,
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "PK_call_logs" PRIMARY KEY ("id")

@@ -57,8 +57,8 @@ export class CallLog {
 
   @Column({
     type: "decimal",
-    precision: 10,
-    scale: 2,
+    precision: 15,
+    scale: 8,
     nullable: true,
     default: 0,
   })

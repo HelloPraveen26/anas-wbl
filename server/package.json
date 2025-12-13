@@ -25,7 +25,8 @@
     "db:test": "ts-node src/scripts/test-db-connection.ts",
     "db:reset": "ts-node src/scripts/reset-database.ts",
     "db:fresh": "npm run db:reset && npm run migration:run && npm run seed",
-    "seed": "ts-node src/scripts/run-seeds.ts"
+    "seed": "ts-node src/scripts/run-seeds.ts",
+    "job:langfuse:start": "ts-node src/jobs/langfuse-sync.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
