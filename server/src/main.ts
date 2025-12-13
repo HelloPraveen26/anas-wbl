@@ -165,6 +165,10 @@ async function bootstrap() {
       "registered-numbers",
       "Registered phone numbers - Manage user's registered phone numbers for voice calls",
     )
+    .addTag(
+      "call-logs",
+      "Call logs management - Retrieve call history with pagination and filtering",
+    )
     .addServer("http://localhost:8000", "Development server")
     .addServer("https://voice.zenxai.io/", "Production server")
     .setContact("API Support", "https://zenxai.io/", "support@zenxai.io")
