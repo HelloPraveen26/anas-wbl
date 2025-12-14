@@ -1,85 +1,126 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
-import { CallLogsService } from './call-logs.service';
-import { CallLog } from './entities/call-log.entity';
+import {
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+  Request,
+  HttpStatus,
+  UseInterceptors,
+  ClassSerializerInterceptor,
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from "@nestjs/swagger";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import { CallLogsService } from "./call-logs.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import {
+  CallLogsQueryDto,
+  PaginatedCallLogsResponseDto,
+  CallLogResponseDto,
+} from "./dto";
 
-@Controller('call-logs')
+@ApiTags("call-logs")
+@Controller("call-logs")
+@UseGuards(ThrottlerGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 export class CallLogsController {
-  constructor(private readonly callLogsService: CallLogsService) { }
+  constructor(private readonly callLogsService: CallLogsService) {}
 
-  // ---- FRONTEND ----
   @Get()
-  async findAll(): Promise<CallLog[]> {
-    return this.callLogsService.findAll();
-  }
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Get user call logs with pagination",
+    description:
+      "Retrieve call logs for the authenticated user with pagination support. Maximum 50 records per page.",
+  })
+  @ApiQuery({
+    name: "page",
+    required: false,
+    type: Number,
+    description: "Page number (1-based)",
+    example: 1,
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: "Number of records per page (max 50)",
+    example: 50,
+  })
+  @ApiQuery({
+    name: "type",
+    required: false,
+    enum: ["inbound", "outbound"],
+    description: "Filter by call type",
+  })
+  @ApiQuery({
+    name: "callStatus",
+    required: false,
+    enum: ["completed", "failed", "missed", "in-progress"],
+    description: "Filter by call status",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Call logs retrieved successfully",
+    type: PaginatedCallLogsResponseDto,
+    example: {
+      data: [
+        {
+          id: "cd08aaba-abd7-4afc-b352-1cb22e74d97d",
+          sessionId: "sip-115b47b4",
+          assistantId: "ef088031-ffdc-4638-9f0c-bb7d5635b6ba",
+          assistantName: "Customer Support Assistant",
+          assistantPhone: "+16282824655",
+          customerPhone: "+919499001032",
+          type: "outbound",
+          callStatus: "completed",
+          successEvaluation: "successful",
+          startTime: "2025-12-13T13:29:41.876Z",
+          duration: "02:45",
+          cost: 0.0030724,
+          createdAt: "2025-12-13T13:29:41.876Z",
+        },
+      ],
+      pagination: {
+        currentPage: 1,
+        itemsPerPage: 50,
+        totalItems: 125,
+        totalPages: 3,
+        hasNextPage: true,
+        hasPreviousPage: false,
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "Unauthorized - invalid token",
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Bad request - invalid query parameters",
+  })
+  async getCallLogs(
+    @Query() query: CallLogsQueryDto,
+    @Request() req,
+  ): Promise<PaginatedCallLogsResponseDto> {
+    const { data, total } = await this.callLogsService.findByUserWithPagination(
+      req.user.id,
+      query,
+    );
 
-  @Get(':id')
-  async findOne(@Param('id') id: string): Promise<CallLog> {
-    return this.callLogsService.findOne(id);
-  }
+    const callLogsDto = data.map((callLog) => new CallLogResponseDto(callLog));
 
-  // ---- DEMO SEED ----
-  @Post('demo')
-  async createDemoLog(): Promise<CallLog> {
-    const demoLog: Partial<CallLog> = {
-      id: 'CALL_DEMO_123',
-      assistantId: 'some-uuid', // Replace with actual assistant ID
-      assistantPhone: '+15550001111',
-      customerPhone: '+15558889999',
-      type: 'inbound',
-      callStatus: 'completed',
-      successEvaluation: '✅',
-      startTime: new Date(),
-      duration: 180,
-      cost: 0.32,
-    };
-
-    return this.callLogsService.create(demoLog);
-  }
-
-  // ---- WEBHOOK: Twilio ----
-  @Post('twilio-webhook')
-  async handleTwilioWebhook(@Body() body: any) {
-    const log: Partial<CallLog> = {
-      id: body.CallSid,
-      assistantId: 'some-uuid', // ⚠️ map properly from body or context
-      assistantPhone: body.To,
-      customerPhone: body.From,
-      type: body.Direction,
-      callStatus: body.CallStatus,
-      startTime: new Date(),
-      duration: parseInt(body.CallDuration || '0', 10),
-      cost: body.Price ? Math.abs(parseFloat(body.Price)) : 0,
-    };
-
-    const existing = await this.callLogsService.findOne(log.id);
-    if (existing) {
-      return this.callLogsService.update(log.id, log);
-    }
-    return this.callLogsService.create(log);
-  }
-
-  // ---- WEBHOOK: Vapi ----
-  @Post('vapi-webhook')
-  async handleVapiWebhook(@Body() body: any) {
-    const call = body.call || {};
-
-    const log: Partial<CallLog> = {
-      id: call.id,
-      assistantId: call.assistant?.id || 'some-uuid', // Assuming call.assistant has id
-      assistantPhone: call.assistantPhone,
-      customerPhone: call.customerPhone,
-      type: call.type,
-      callStatus: call.status,
-      successEvaluation: call.successEvaluation,
-      startTime: call.startTime ? new Date(call.startTime) : new Date(),
-      duration: call.duration,
-      cost: call.cost,
-    };
-
-    const existing = await this.callLogsService.findOne(log.id);
-    if (existing) {
-      return this.callLogsService.update(log.id, log);
-    }
-    return this.callLogsService.create(log);
+    return new PaginatedCallLogsResponseDto(
+      callLogsDto,
+      query.page || 1,
+      query.limit || 50,
+      total,
+    );
   }
 }

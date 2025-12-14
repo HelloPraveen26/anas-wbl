@@ -1,39 +1,72 @@
-import { Entity, Column, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Assistant } from '../../assistant/entities/assistant.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
+} from "typeorm";
+import { Assistant } from "../../assistant/entities/assistant.entity";
+import { User } from "../../users/entities/user.entity";
 
-@Entity('call_logs')
+@Entity("call_logs")
 export class CallLog {
-  @PrimaryColumn()
-  id: string; // external call ID (Twilio CallSid / Vapi callId)
+  @PrimaryGeneratedColumn("uuid")
+  id: string;
 
-  @Column({ name: 'assistant_id' })
+  @Column({ name: "session_id", nullable: true, unique: true })
+  @Index({ unique: true, where: "session_id IS NOT NULL" })
+  sessionId: string;
+
+  @Column({ name: "assistant_id", type: "uuid" })
   assistantId: string;
 
   @ManyToOne(() => Assistant)
-  @JoinColumn({ name: 'assistant_id' })
+  @JoinColumn({ name: "assistant_id" })
   assistant: Assistant;
 
-  @Column()
+  @Column({ name: "user_id", type: "uuid" })
+  userId: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "user_id" })
+  user: User;
+
+  @Column({ name: "assistant_phone" })
   assistantPhone: string;
 
-  @Column()
+  @Column({ name: "customer_phone" })
   customerPhone: string;
 
   @Column()
   type: string; // inbound | outbound
 
-  @Column()
+  @Column({ name: "call_status", nullable: true })
   callStatus: string; // completed | failed | missed
 
-  @Column({ nullable: true })
+  @Column({ name: "success_evaluation", nullable: true })
   successEvaluation: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ name: "start_time", type: "timestamp", nullable: true })
   startTime: Date;
 
-  @Column({ type: 'int' })
+  @Column({ type: "int", nullable: true, default: 0 })
   duration: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({
+    type: "decimal",
+    precision: 15,
+    scale: 8,
+    nullable: true,
+    default: 0,
+  })
   cost: number;
+
+  @CreateDateColumn({ name: "created_at" })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt: Date;
 }

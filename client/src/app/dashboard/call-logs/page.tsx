@@ -22,27 +22,43 @@ interface Assistant {
 
 interface CallLog {
   id: string;
+  sessionId?: string;
   assistantId: string;
-  assistant: Assistant;
+  assistantName?: string;
   assistantPhone: string;
   customerPhone: string;
   type: string;
   callStatus: string;
   successEvaluation?: string;
   startTime: string;
-  duration: number;
+  duration: string; // Duration in milliseconds from API
   cost: number;
+  createdAt: string;
+}
+
+interface PaginationMeta {
+  currentPage: number;
+  itemsPerPage: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+interface CallLogsResponse {
+  data: CallLog[];
+  pagination: PaginationMeta;
 }
 
 export default function CallLogsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [evaluationFilter, setEvaluationFilter] = useState("");
-  const [allCalls, setAllCalls] = useState<CallLog[]>([]);
-  const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 50;
 
   // Helper function to get authenticated headers
   const getAuthHeaders = () => {
@@ -53,109 +69,75 @@ export default function CallLogsPage() {
     };
   };
 
-  // Fetch assistants from backend
-  const fetchAssistants = async () => {
+  // Fetch call logs from backend
+  const fetchCallLogs = async (
+    page: number = 1,
+    filters: { type?: string; callStatus?: string } = {},
+  ) => {
     try {
       const token = authManager.getToken();
       if (!token) {
         console.error("No authentication token found");
-        setAssistants([]);
+        setError("Authentication token not found. Please log in again.");
         return;
       }
 
-      const response = await fetch(`${getApiBaseUrl()}/assistants`, {
-        headers: getAuthHeaders(),
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString(),
       });
+
+      if (filters.type) {
+        params.append("type", filters.type);
+      }
+      if (filters.callStatus) {
+        params.append("callStatus", filters.callStatus);
+      }
+
+      const response = await fetch(
+        `${getApiBaseUrl()}/call-logs?${params.toString()}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setAssistants(data);
-      } else {
-        console.error("API returned non-array data:", data);
-        setAssistants([]);
-      }
+      const data: CallLogsResponse = await response.json();
+      setCallLogs(data.data);
+      setPagination(data.pagination);
+      setError(null);
     } catch (error) {
-      console.error("Error fetching assistants:", error);
-      setAssistants([]);
+      console.error("Error fetching call logs:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to fetch call logs",
+      );
+      setCallLogs([]);
+      setPagination(null);
     }
   };
 
-  // Generate dummy call logs using real assistant data
-  const generateDummyCallLogs = (assistants: Assistant[]) => {
-    if (assistants.length === 0) return [];
-
-    const callStatuses = ["completed", "failed", "missed", "in-progress"];
-    const callTypes = ["inbound", "outbound"];
-    const successEvaluations = ["✅ Pass", "❌ Fail", "⏱️ Timeout", "N/A"];
-    const dummyCustomerPhones = [
-      "+15558889999",
-      "+15551234567",
-      "+15559876543",
-      "+15555551234",
-      "+15552468135",
-    ];
-
-    const dummyAssistantPhones = [
-      "+15550001111",
-      "+15550002222",
-      "+15550003333",
-      "+15550004444",
-    ];
-
-    return assistants.map((assistant, index) => {
-      const randomStatus =
-        callStatuses[Math.floor(Math.random() * callStatuses.length)];
-      const randomType =
-        callTypes[Math.floor(Math.random() * callTypes.length)];
-      const randomEvaluation =
-        successEvaluations[
-          Math.floor(Math.random() * successEvaluations.length)
-        ];
-      const randomCustomerPhone =
-        dummyCustomerPhones[
-          Math.floor(Math.random() * dummyCustomerPhones.length)
-        ];
-      const randomAssistantPhone =
-        dummyAssistantPhones[
-          Math.floor(Math.random() * dummyAssistantPhones.length)
-        ];
-      const randomDuration = Math.floor(Math.random() * 300) + 30; // 30-330 seconds
-      const randomCost = parseFloat((Math.random() * 2 + 0.1).toFixed(2)); // $0.10-$2.10
-
-      // Generate start time (random time in the last 7 days)
-      const now = new Date();
-      const randomTime = new Date(
-        now.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000,
-      );
-
-      return {
-        id: assistant.id, // Use assistant ID as call ID
-        assistantId: assistant.id,
-        assistant: assistant,
-        assistantPhone: randomAssistantPhone,
-        customerPhone: randomCustomerPhone,
-        type: randomType,
-        callStatus: randomStatus,
-        successEvaluation: randomEvaluation,
-        startTime: randomTime.toISOString(),
-        duration: randomDuration,
-        cost: randomCost,
-      };
-    });
+  // Helper function to get current filters
+  const getCurrentFilters = () => {
+    const filters: { type?: string; callStatus?: string } = {};
+    if (statusFilter) {
+      filters.callStatus = statusFilter;
+    }
+    // Note: We're not using evaluationFilter for API calls as it's not a direct filter
+    // The evaluation filter will be applied client-side for now
+    return filters;
   };
 
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
       try {
-        // First fetch assistants
-        await fetchAssistants();
+        await fetchCallLogs(1, getCurrentFilters());
       } catch (err) {
-        setError((err as Error).message);
+        setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -164,17 +146,23 @@ export default function CallLogsPage() {
     initializeData();
   }, []);
 
-  // Generate dummy calls when assistants are loaded
+  // Fetch data when filters change
   useEffect(() => {
-    if (assistants.length > 0) {
-      const dummyCalls = generateDummyCallLogs(assistants);
-      setAllCalls(dummyCalls);
+    if (!loading) {
+      setCurrentPage(1);
+      fetchCallLogs(1, getCurrentFilters());
     }
-  }, [assistants]);
+  }, [statusFilter]);
 
-  // Filter the calls based on selected filters
-  const filteredCalls = allCalls.filter((call) => {
-    const statusMatch = !statusFilter || call.callStatus === statusFilter;
+  // Handle page changes
+  useEffect(() => {
+    if (currentPage > 1) {
+      fetchCallLogs(currentPage, getCurrentFilters());
+    }
+  }, [currentPage]);
+
+  // Filter calls client-side by evaluation (since this isn't a server filter)
+  const filteredCalls = callLogs.filter((call) => {
     const evaluationMatch =
       !evaluationFilter ||
       (call.successEvaluation
@@ -182,26 +170,29 @@ export default function CallLogsPage() {
             .toLowerCase()
             .includes(evaluationFilter.toLowerCase())
         : false);
-    return statusMatch && evaluationMatch;
+    return evaluationMatch;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredCalls.length / itemsPerPage);
-  const paginatedCalls = filteredCalls.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Use pagination from API response
+  const totalPages = pagination?.totalPages || 1;
+  const paginatedCalls = filteredCalls;
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter, evaluationFilter]);
 
-  const formatDuration = (seconds: number) => {
-    if (seconds === 0) return "0s";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  const formatDuration = (duration: string) => {
+    if (!duration) return "00:00";
+
+    const milliseconds = parseInt(duration);
+    if (isNaN(milliseconds)) return "00:00";
+
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const formatStartTime = (isoString: string) => {
@@ -211,6 +202,11 @@ export default function CallLogsPage() {
       " " +
       date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     );
+  };
+
+  const formatCost = (cost: any) => {
+    const numericCost = parseFloat(cost);
+    return isNaN(numericCost) ? "0.00" : numericCost.toFixed(5);
   };
 
   const getStatusColor = (status: string) => {
@@ -253,14 +249,14 @@ export default function CallLogsPage() {
       ...filteredCalls.map((call) =>
         [
           `"${call.id}"`,
-          `"${call.assistant?.name ?? ""}"`,
+          `"${call.assistantName ?? ""}"`,
           `"${call.assistantPhone}"`,
           `"${call.customerPhone}"`,
           `"${call.type}"`,
           `"${call.callStatus}"`,
           `"${call.successEvaluation ? call.successEvaluation.replace(/"/g, '""') : ""}"`,
           `"${call.startTime}"`,
-          call.duration,
+          `"${call.duration}"`,
           call.cost,
         ].join(","),
       ),
@@ -319,8 +315,7 @@ export default function CallLogsPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Call Logs</h2>
             <p className="text-sm text-gray-600">
-              View and manage call logs for your assistants ({assistants.length}{" "}
-              assistants loaded).
+              View and manage call logs for your assistants.
             </p>
           </div>
         </div>
@@ -344,9 +339,10 @@ export default function CallLogsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+            disabled={loading}
           >
-            <option value="">All Status</option>
+            <option value="">All Statuses</option>
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
             <option value="missed">Missed</option>
@@ -381,7 +377,7 @@ export default function CallLogsPage() {
                 <input type="checkbox" className="rounded" />
               </th>
               <th className="px-4 py-3 text-left border-b font-medium">
-                Call ID (Assistant ID)
+                Assistant ID
               </th>
               <th className="px-4 py-3 text-left border-b font-medium">
                 Assistant
@@ -415,9 +411,7 @@ export default function CallLogsPage() {
                   colSpan={11}
                   className="px-4 py-8 text-center text-gray-500"
                 >
-                  {assistants.length === 0
-                    ? "No assistants found. Create an assistant first."
-                    : "No call logs match the selected filters."}
+                  No call logs match the selected filters.
                 </td>
               </tr>
             ) : (
@@ -431,14 +425,14 @@ export default function CallLogsPage() {
                   </td>
                   <td
                     className="px-4 py-3 border-b font-mono text-xs"
-                    title={call.id}
+                    title={call.assistantId}
                   >
-                    {call.id.length > 20
-                      ? `${call.id.substring(0, 20)}...`
-                      : call.id}
+                    {call.assistantId.length > 20
+                      ? `${call.assistantId.substring(0, 20)}...`
+                      : call.assistantId}
                   </td>
                   <td className="px-4 py-3 border-b font-medium">
-                    {call.assistant?.name ?? "Unknown Assistant"}
+                    {call.assistantName ?? "Unknown Assistant"}
                   </td>
                   <td className="px-4 py-3 border-b font-mono text-xs">
                     {call.assistantPhone}
@@ -466,11 +460,11 @@ export default function CallLogsPage() {
                   <td className="px-4 py-3 border-b text-xs">
                     {formatStartTime(call.startTime)}
                   </td>
-                  <td className="px-4 py-3 border-b">
-                    {formatDuration(call.duration)}
+                  <td className="px-4 py-3 border-b text-xs">
+                    {call.duration}
                   </td>
                   <td className="px-4 py-3 border-b font-medium">
-                    ${call.cost.toFixed(2)}
+                    ${formatCost(call.cost)}
                   </td>
                 </tr>
               ))
@@ -482,18 +476,21 @@ export default function CallLogsPage() {
       {/* Footer */}
       <div className="flex justify-between items-center text-sm text-gray-500">
         <span>
-          Showing {paginatedCalls.length} of {filteredCalls.length} calls (Page {currentPage} of {totalPages})
+          Showing {paginatedCalls.length} of {filteredCalls.length} calls (Page{" "}
+          {currentPage} of {totalPages})
         </span>
         <div className="flex gap-2">
           <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
             className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
           <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages}
             className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >

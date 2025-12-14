@@ -7,6 +7,7 @@ import { MakeCallDto } from "../dto/make-call.dto";
 import { HangupDto } from "../dto/hangup.dto";
 import { AssistantService } from "../../assistant/assistant.service";
 import { RegisteredNumbersService } from "../../registered-numbers/registered-numbers.service";
+import { CallLogsService } from "../../call-logs/call-logs.service";
 
 @Injectable()
 export class PhoneService {
@@ -19,6 +20,7 @@ export class PhoneService {
     private readonly configService: ConfigService,
     private readonly assistantService: AssistantService,
     private readonly registeredNumbersService: RegisteredNumbersService,
+    private readonly callLogsService: CallLogsService,
   ) {
     this.baseUrl =
       this.configService.get<string>("PHONE_SERVICE_URL") ||
@@ -34,16 +36,16 @@ export class PhoneService {
   async getToolConfig(assistantId: string): Promise<any> {
     try {
       this.logger.log(`🔄 Fetching tool config for assistant: ${assistantId}`);
-      
+
       const response = await firstValueFrom(
         this.httpService.get(
-          `${this.agentServiceUrl}/api/v1/assistants/tool-config/${assistantId}`
+          `${this.agentServiceUrl}/api/v1/assistants/tool-config/${assistantId}`,
         ),
       );
 
       if (response.data?.success && response.data?.data) {
         this.logger.log(
-          `✅ Tool config loaded: ${response.data.data.toolName}`
+          `✅ Tool config loaded: ${response.data.data.toolName}`,
         );
         return response.data.data;
       }
@@ -62,6 +64,8 @@ export class PhoneService {
    * Initiates a phone call with tool configuration support
    */
   async makeCall(dto: MakeCallDto, userId: string): Promise<any> {
+    let callLogId: string | null = null;
+
     try {
       let systemPrompt = "";
       let firstMessage = "";
@@ -108,10 +112,10 @@ export class PhoneService {
 
           // 🔧 NEW: Load tool configuration for this assistant
           toolConfig = await this.getToolConfig(dto.selectedAssistant);
-          
+
           if (toolConfig) {
             this.logger.log(
-              `🔧 Tool configured: ${toolConfig.toolName} with ${Object.keys(toolConfig.parameters || {}).length} parameters`
+              `🔧 Tool configured: ${toolConfig.toolName} with ${Object.keys(toolConfig.parameters || {}).length} parameters`,
             );
             webhookUrl = toolConfig.webhookUrl || webhookUrl;
           }
@@ -125,6 +129,18 @@ export class PhoneService {
 
       // Get livekitOutboundTrunkId from registered number
       const fromPhoneNumber = dto.fromPhoneNumber || "+19282185402";
+
+      // Create initial call log entry
+      const initialCallLog = await this.callLogsService.create({
+        assistantId: dto.selectedAssistant || null,
+        userId: userId,
+        assistantPhone: fromPhoneNumber,
+        customerPhone: dto.phoneNumber,
+        type: "outbound",
+        callStatus: null,
+        startTime: new Date(),
+      });
+      callLogId = initialCallLog.id;
       const registeredNumbers =
         await this.registeredNumbersService.findAllByUser(userId);
       const registeredNumber = registeredNumbers.find(
@@ -145,7 +161,7 @@ export class PhoneService {
       let instructions = systemPrompt;
       if (toolConfig) {
         const requiredFields = Object.keys(toolConfig.parameters || {})
-          .filter(k => toolConfig.parameters[k].required)
+          .filter((k) => toolConfig.parameters[k].required)
           .join(", ");
 
         const toolInstructions = `
@@ -158,10 +174,13 @@ When the user provides ANY of this information, IMMEDIATELY call the collect_use
 
 After collecting all required information, the system will automatically send the data to the webhook.`;
 
-        instructions = instructions ? instructions + toolInstructions : toolInstructions;
+        instructions = instructions
+          ? instructions + toolInstructions
+          : toolInstructions;
       }
 
       const payload = {
+        user_id: userId,
         phone_number: dto.phoneNumber,
         from_phone_number: fromPhoneNumber,
         outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
@@ -188,6 +207,11 @@ After collecting all required information, the system will automatically send th
         `✅ Call initiated successfully. Call ID: ${data.call_id || "N/A"}`,
       );
 
+      if (data.room_name && callLogId) {
+        await this.callLogsService.update(callLogId, {
+          sessionId: data.room_name,
+        });
+      }
       return {
         ...data,
         toolConfig, // Return tool config to frontend for UI display
@@ -197,6 +221,21 @@ After collecting all required information, the system will automatically send th
         "❌ makeCall failed",
         error instanceof Error ? error.stack : error,
       );
+
+      // Update call log with failure status
+      if (callLogId) {
+        try {
+          await this.callLogsService.update(callLogId, {
+            callStatus: "fail",
+          });
+        } catch (logError) {
+          this.logger.error(
+            "Failed to update call log with failure status",
+            logError,
+          );
+        }
+      }
+
       throw new HttpException(
         "Failed to initiate call",
         HttpStatus.INTERNAL_SERVER_ERROR,

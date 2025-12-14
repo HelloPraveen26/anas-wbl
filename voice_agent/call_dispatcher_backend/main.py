@@ -27,6 +27,7 @@ app = FastAPI(
 
 
 class CallRequest(BaseModel):
+    user_id: Optional[str] = Field(None, description="user_id")
     phone_number: str = Field(
         ...,
         description="Phone number in E.164 format (+ followed by country code and number, up to 15 digits total). "
@@ -60,14 +61,12 @@ class CallRequest(BaseModel):
 
     # ✅ TOOLS: Added assistant_id field
     assistant_id: Optional[str] = Field(
-        None,
-        description="Assistant ID for webhook routing and tool configuration"
+        None, description="Assistant ID for webhook routing and tool configuration"
     )
 
     # ✅ TOOLS: Added webhook_url field
     webhook_url: Optional[str] = Field(
-        None,
-        description="Backend webhook URL to send collected data"
+        None, description="Backend webhook URL to send collected data"
     )
 
     @validator("phone_number")
@@ -89,7 +88,7 @@ class CallRequest(BaseModel):
                 "instructions": "You are a friendly customer service agent",
                 "first_message": "Hello! How can I help you today?",
                 "assistant_id": "016208c6-99c1-4dba-935c-3e6256f60785",
-                "webhook_url": "https://webhook.site/your-unique-id"
+                "webhook_url": "https://webhook.site/your-unique-id",
             },
             "description": "Request body for initiating a phone call with custom agent behavior",
         }
@@ -339,6 +338,7 @@ async def make_call_endpoint(request: CallRequest):
     # ✅ TOOLS: Extract new fields
     assistant_id = request.assistant_id
     webhook_url = request.webhook_url
+    user_id = request.user_id
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -355,6 +355,7 @@ async def make_call_endpoint(request: CallRequest):
     try:
         # Create metadata for the call including dynamic parameters
         metadata = {
+            "outbound_trunk_id": outbound_trunk_id,
             "phone_number": phone_number,
             "call_type": "outbound",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -367,6 +368,7 @@ async def make_call_endpoint(request: CallRequest):
             # ✅ TOOLS: Add these fields
             "assistant_id": assistant_id,
             "webhook_url": webhook_url,
+            "user_id": user_id,
         }
 
         # Log the metadata for debugging
