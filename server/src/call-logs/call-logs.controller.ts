@@ -5,6 +5,8 @@ import {
   UseGuards,
   Request,
   HttpStatus,
+  UseInterceptors,
+  ClassSerializerInterceptor,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -25,6 +27,7 @@ import {
 @ApiTags("call-logs")
 @Controller("call-logs")
 @UseGuards(ThrottlerGuard)
+@UseInterceptors(ClassSerializerInterceptor)
 export class CallLogsController {
   constructor(private readonly callLogsService: CallLogsService) {}
 

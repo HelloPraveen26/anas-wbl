@@ -377,7 +377,7 @@ export default function CallLogsPage() {
                 <input type="checkbox" className="rounded" />
               </th>
               <th className="px-4 py-3 text-left border-b font-medium">
-                Call ID (Assistant ID)
+                Assistant ID
               </th>
               <th className="px-4 py-3 text-left border-b font-medium">
                 Assistant
@@ -425,11 +425,11 @@ export default function CallLogsPage() {
                   </td>
                   <td
                     className="px-4 py-3 border-b font-mono text-xs"
-                    title={call.id}
+                    title={call.assistantId}
                   >
-                    {call.id.length > 20
-                      ? `${call.id.substring(0, 20)}...`
-                      : call.id}
+                    {call.assistantId.length > 20
+                      ? `${call.assistantId.substring(0, 20)}...`
+                      : call.assistantId}
                   </td>
                   <td className="px-4 py-3 border-b font-medium">
                     {call.assistantName ?? "Unknown Assistant"}
@@ -461,7 +461,7 @@ export default function CallLogsPage() {
                     {formatStartTime(call.startTime)}
                   </td>
                   <td className="px-4 py-3 border-b text-xs">
-                    {formatDuration(call.duration)}
+                    {call.duration}
                   </td>
                   <td className="px-4 py-3 border-b font-medium">
                     ${formatCost(call.cost)}

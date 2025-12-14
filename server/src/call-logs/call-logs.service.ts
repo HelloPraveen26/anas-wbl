@@ -13,7 +13,7 @@ export class CallLogsService {
 
   async findAll(): Promise<CallLog[]> {
     return this.callLogRepo.find({
-      relations: ["assistant", "user"],
+      relations: ["assistant"],
       order: { createdAt: "DESC" },
     });
   }
@@ -21,21 +21,21 @@ export class CallLogsService {
   async findOne(id: string): Promise<CallLog> {
     return this.callLogRepo.findOne({
       where: { id },
-      relations: ["assistant", "user"],
+      relations: ["assistant"],
     });
   }
 
   async findBySessionId(sessionId: string): Promise<CallLog> {
     return this.callLogRepo.findOne({
       where: { sessionId },
-      relations: ["assistant", "user"],
+      relations: ["assistant"],
     });
   }
 
   async findAllByUser(userId: string): Promise<CallLog[]> {
     return this.callLogRepo.find({
       where: { userId },
-      relations: ["assistant", "user"],
+      relations: ["assistant"],
       order: { createdAt: "DESC" },
     });
   }
@@ -50,7 +50,6 @@ export class CallLogsService {
     const queryBuilder = this.callLogRepo
       .createQueryBuilder("callLog")
       .leftJoinAndSelect("callLog.assistant", "assistant")
-      .leftJoinAndSelect("callLog.user", "user")
       .where("callLog.userId = :userId", { userId });
 
     // Apply filters
