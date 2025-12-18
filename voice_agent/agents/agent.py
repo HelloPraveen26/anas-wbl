@@ -30,6 +30,7 @@ from livekit.plugins import (
     deepgram,
     elevenlabs,
     google,
+    lmnt,
     openai,
     sarvam,
     silero,
@@ -361,7 +362,9 @@ async def entrypoint(ctx: JobContext):
     logger.info("TTS Config: %s", tts_config)
     logger.info("Langfuse metadata: %s", langfuse_metadata)
     logger.info("---------------------------------------------")
-
+    # Read Azure credentials once if needed
+    azure_speech_key = os.getenv("AZURE_SPEECH_KEY")
+    azure_speech_region = os.getenv("AZURE_SPEECH_REGION")
     # Initialize tool handler BEFORE setting up STT/TTS
     tool_handler = None
     if assistant_id and webhook_url:
@@ -384,6 +387,17 @@ async def entrypoint(ctx: JobContext):
     if stt_provider_name == "Sarvam":
         language_code = (stt_config or {}).get("language") or "en_IN"
         stt = sarvam.STT(language=language_code, model="saarika:v2.5")
+    elif stt_provider_name == "Azure":
+        if not azure_speech_key or not azure_speech_region:
+            logger.error(
+                "Azure STT requires AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables"
+            )
+            raise ValueError("Missing Azure Speech credentials")
+        logger.info("Azure STT Region: %s", azure_speech_region)
+        stt = azure.STT(
+            speech_key=azure_speech_key,
+            speech_region=azure_speech_region,
+        )
     else:
         stt = deepgram.STT(model="nova-3", language="multi")
 
@@ -402,6 +416,32 @@ async def entrypoint(ctx: JobContext):
             model="gemini-2.5-flash-preview-tts",
             voice_name=voice,
             instructions=instructions,
+        )
+    elif tts_provider_name == "Azure":
+        if not azure_speech_key or not azure_speech_region:
+            logger.error(
+                "Azure TTS requires AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables"
+            )
+            raise ValueError("Missing Azure Speech credentials")
+        logger.info("Azure TTS Region: %s", azure_speech_region)
+        tts = azure.TTS(
+            speech_key=azure_speech_key,
+            speech_region=azure_speech_region,
+        )
+    elif tts_provider_name == "lmnt":
+        model = (tts_config or {}).get("model") or "blizzard"
+        logger.info("Model: %s", model)
+        voice = (tts_config or {}).get("voice") or "leah"
+        logger.info("Voice: %s", voice)
+        language = (tts_config or {}).get("language") or "en"
+        logger.info("Language: %s", language)
+        temperature = (tts_config or {}).get("temperature") or 0.3
+        logger.info("Temperature: %s", temperature)
+        tts = lmnt.TTS(
+            model=model,
+            language=language,
+            temperature=temperature,
+            voice=voice,
         )
     else:
         tts = deepgram.TTS()
