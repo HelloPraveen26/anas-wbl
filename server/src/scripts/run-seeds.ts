@@ -7,6 +7,7 @@ import { RegisteredNumbersSeed } from "../database/seeds/registered-numbers-seed
 import { ContactNumbersSeed } from "../database/seeds/contact-numbers-seed";
 import { TtsConfigSeed } from "../database/seeds/sarvam-tts-config-seed";
 import { GeminiSeed } from "../database/seeds/gemini";
+import { LmntSeed } from "../database/seeds/lmnt";
 
 async function runSeeds() {
   try {
@@ -37,6 +38,10 @@ async function runSeeds() {
     console.log("Running Gemini seed...");
     const geminiSeed = new GeminiSeed();
     await geminiSeed.run(AppDataSource);
+
+    console.log("Running LMNT seed...");
+    const lmntSeed = new LmntSeed();
+    await lmntSeed.run(AppDataSource);
 
     console.log("Running Registered Numbers seed...");
     const registeredNumbersSeed = new RegisteredNumbersSeed();

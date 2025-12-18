@@ -50,7 +50,7 @@ export class SttConfigSeed {
       key: "language",
       type: ConfigFieldType.SELECT,
       list: languageOptions,
-      defaultValue: "en-US",
+      defaultValue: "en-IN",
       active: true,
       transcriberProvider: provider,
     });

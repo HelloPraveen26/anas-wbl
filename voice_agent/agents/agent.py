@@ -27,6 +27,7 @@ from livekit.plugins import (
     noise_cancellation,
     openai,
     sarvam,
+    lmnt,
     silero,
 )
 from opentelemetry.sdk.trace import TracerProvider
@@ -235,6 +236,21 @@ async def entrypoint(ctx: JobContext):
         tts = azure.TTS(
             speech_key=azure_speech_key,
             speech_region=azure_speech_region,
+        )
+    elif tts_provider_name == "lmnt":
+        model = (tts_config or {}).get("model") or "blizzard"
+        logger.info("Model: %s", model)
+        voice = (tts_config or {}).get("voice") or "leah"
+        logger.info("Voice: %s", voice)
+        language = (tts_config or {}).get("language") or "en"
+        logger.info("Language: %s", language)
+        temperature = (tts_config or {}).get("temperature") or 0.3
+        logger.info("Temperature: %s", temperature)
+        tts =lmnt.TTS(
+            model=model,
+            language=language,
+            temperature=temperature,
+            voice=voice,
         )
     else:
         tts = deepgram.TTS()
