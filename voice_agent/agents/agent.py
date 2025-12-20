@@ -30,7 +30,9 @@ from livekit.plugins import (
     deepgram,
     elevenlabs,
     google,
+    groq,
     lmnt,
+    noise_cancellation,
     openai,
     sarvam,
     silero,
@@ -302,8 +304,10 @@ async def entrypoint(ctx: JobContext):
     custom_first_message = metadata.get(
         "first_message", "Hello! How can I help you today?"
     )
+    llm_provider_name = metadata.get("llm_provider_name")
     stt_provider_name = metadata.get("stt_provider_name")
     tts_provider_name = metadata.get("tts_provider_name")
+    llm_config = metadata.get("llm_config")
     stt_config = metadata.get("stt_config")
     tts_config = metadata.get("tts_config")
     assistant_id = metadata.get("assistant_id")
@@ -358,6 +362,7 @@ async def entrypoint(ctx: JobContext):
     logger.info("Webhook URL: %s", webhook_url)
     logger.info("STT Provider Name: %s", stt_provider_name)
     logger.info("TTS Provider Name: %s", tts_provider_name)
+    logger.info("LLM Config: %s", llm_config)
     logger.info("STT Config: %s", stt_config)
     logger.info("TTS Config: %s", tts_config)
     logger.info("Langfuse metadata: %s", langfuse_metadata)
@@ -384,9 +389,20 @@ async def entrypoint(ctx: JobContext):
             tool_handler = None
 
     # STT / TTS selection
+    llm = None
+    if llm_provider_name == "Groq":
+        llm = groq.LLM(model="llama3-8b-8192")
+    else:
+        llm = openai.LLM(model="gpt-4.1-mini")
+    # Set up STT provider based on metadata
+    stt = None
     if stt_provider_name == "Sarvam":
         language_code = (stt_config or {}).get("language") or "en_IN"
         stt = sarvam.STT(language=language_code, model="saarika:v2.5")
+    elif stt_provider_name == "Groq":
+        language = (stt_config or {}).get("language") or "en"
+        logger.info("Language: %s", language)
+        stt = groq.STT(model="whisper-large-v3-turbo", language=language)
     elif stt_provider_name == "Azure":
         if not azure_speech_key or not azure_speech_region:
             logger.error(
@@ -401,9 +417,13 @@ async def entrypoint(ctx: JobContext):
     else:
         stt = deepgram.STT(model="nova-3", language="multi")
 
+    tts = None
+
     if tts_provider_name == "Sarvam":
         speaker = (tts_config or {}).get("speaker") or "anushka"
-        language_code = (stt_config or {}).get("language") or "en_IN"
+        logger.info("Speaker: %s", speaker)
+        language_code = (tts_config or {}).get("target_language_code") or "en_IN"
+        logger.info("Language Code: %s", language_code)
         tts = sarvam.TTS(
             target_language_code=language_code, model="bulbul:v2", speaker=speaker
         )
@@ -416,6 +436,13 @@ async def entrypoint(ctx: JobContext):
             model="gemini-2.5-flash-preview-tts",
             voice_name=voice,
             instructions=instructions,
+        )
+    elif tts_provider_name == "Groq":
+        voice = (tts_config or {}).get("voice") or "Arista-PlayAI"
+        logger.info("Voice Name: %s", voice)
+        tts = groq.TTS(
+            model="playai-tts",
+            voice=voice,
         )
     elif tts_provider_name == "Azure":
         if not azure_speech_key or not azure_speech_region:
@@ -504,12 +531,8 @@ async def entrypoint(ctx: JobContext):
         tool_functions.append(collect_user_data)
         logger.info("âœ… Registered collect_user_data tool function")
 
-    # Create OpenAI LLM without tools (tools go to Agent, not LLM)
-    llm_instance = openai.LLM(model="gpt-4o-mini")
-
-    # Create session with the configured LLM
     session = AgentSession(
-        llm=llm_instance,
+        llm=llm,
         stt=stt,
         tts=tts,
         vad=ctx.proc.userdata.get("vad"),

@@ -53,9 +53,10 @@ class CallRequest(BaseModel):
     first_message: Optional[str] = Field(
         None, description="Custom first message the agent should say"
     )
-
+    llm_provider_name: Optional[str] = Field(None, description="llm_provider_name")
     stt_provider_name: Optional[str] = Field(None, description="stt_provider_name")
     tts_provider_name: Optional[str] = Field(None, description="tts_provider_name")
+    llm_config: Optional[Dict[str, Any]] = Field(None, description="llm_config")
     stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
     tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
 
@@ -331,8 +332,10 @@ async def make_call_endpoint(request: CallRequest):
     phone_number = request.phone_number
     instructions = request.instructions
     first_message = request.first_message
+    llm_provider_name = request.llm_provider_name
     stt_provider_name = request.stt_provider_name
     tts_provider_name = request.tts_provider_name
+    llm_config = request.llm_config
     stt_config = request.stt_config
     tts_config = request.tts_config
     # ✅ TOOLS: Extract new fields
@@ -361,8 +364,10 @@ async def make_call_endpoint(request: CallRequest):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "instructions": instructions,
             "first_message": first_message,
+            "llm_provider_name": llm_provider_name,
             "stt_provider_name": stt_provider_name,
             "tts_provider_name": tts_provider_name,
+            "llm_config": llm_config,
             "stt_config": stt_config,
             "tts_config": tts_config,
             # ✅ TOOLS: Add these fields

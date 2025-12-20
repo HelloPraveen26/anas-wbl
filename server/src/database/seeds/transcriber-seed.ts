@@ -53,13 +53,6 @@ export class TranscriberSeed {
     });
     await transcriberProviderRepository.save(assemblyAiProvider);
 
-    // Create Deepgram provider
-    const deepgramProvider = transcriberProviderRepository.create({
-      name: "Deepgram",
-      isActive: true,
-    });
-    await transcriberProviderRepository.save(deepgramProvider);
-
     const sarvamProvider = transcriberProviderRepository.create({
       name: "Sarvam",
       isActive: true,
@@ -157,18 +150,6 @@ export class TranscriberSeed {
       await transcriberModelRepository.save(model);
     }
 
-    // Create Deepgram models
-    const deepgramModels = ["nova-2", "nova", "enhanced", "base", "whisper"];
-
-    for (const modelName of deepgramModels) {
-      const model = transcriberModelRepository.create({
-        name: modelName,
-        transcriberProvider: deepgramProvider,
-        isActive: true,
-      });
-      await transcriberModelRepository.save(model);
-    }
-
     console.log(
       "Transcriber providers and models have been seeded successfully!",
     );
@@ -177,6 +158,5 @@ export class TranscriberSeed {
     console.log(`Created ${awsModels.length} AWS models`);
     console.log(`Created ${azureModels.length} Azure models`);
     console.log(`Created ${assemblyAiModels.length} AssemblyAI models`);
-    console.log(`Created ${deepgramModels.length} Deepgram models`);
   }
 }

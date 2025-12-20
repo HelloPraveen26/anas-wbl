@@ -44,6 +44,33 @@ export class TtsConfigSeed {
     });
     await ttsConfigRepository.save(speakerConfig);
 
+    const languageOptions = [
+      { displayName: "English (India)", value: "en-IN" },
+      { displayName: "Hindi", value: "hi-IN" },
+      { displayName: "Bengali", value: "bn-IN" },
+      { displayName: "Tamil", value: "ta-IN" },
+      { displayName: "Telugu", value: "te-IN" },
+      { displayName: "Gujarati", value: "gu-IN" },
+      { displayName: "Kannada", value: "kn-IN" },
+      { displayName: "Malayalam", value: "ml-IN" },
+      { displayName: "Marathi", value: "mr-IN" },
+      { displayName: "Punjabi", value: "pb-IN" },
+      { displayName: "Odia", value: "od-IN" },
+      { displayName: "Auto-detect", value: "unknown" },
+    ];
+
+    // Create language config for each provider
+    const languageConfig = ttsConfigRepository.create({
+      label: "Language",
+      key: "target_language_code",
+      type: ConfigFieldType.SELECT,
+      list: languageOptions,
+      defaultValue: "en-IN",
+      active: true,
+      synthesizerProvider: provider,
+    });
+    await ttsConfigRepository.save(languageConfig);
+
     console.log("TTS configs have been seeded successfully!");
   }
 }
