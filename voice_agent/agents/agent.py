@@ -203,11 +203,8 @@ async def entrypoint(ctx: JobContext):
         stt = sarvam.STT(language=language_code, model="saarika:v2.5")
     elif stt_provider_name == "Groq":
         language = (stt_config or {}).get("language") or "en"
-        logger.info("Language: %s", language)    
-        stt = groq.STT(
-            model="whisper-large-v3-turbo",
-            language=language
-        )
+        logger.info("Language: %s", language)
+        stt = groq.STT(model="whisper-large-v3-turbo", language=language)
     elif stt_provider_name == "Azure":
         if not azure_speech_key or not azure_speech_region:
             logger.error(
@@ -222,8 +219,8 @@ async def entrypoint(ctx: JobContext):
     else:
         stt = deepgram.STT(model="nova-3", language="multi")
 
-    # Set up TTS provider based on metadata
     tts = None
+
     if tts_provider_name == "Sarvam":
         speaker = (tts_config or {}).get("speaker") or "anushka"
         logger.info("Speaker: %s", speaker)
@@ -249,7 +246,7 @@ async def entrypoint(ctx: JobContext):
         logger.info("Voice Name: %s", voice)
         tts = groq.TTS(
             model="playai-tts",
-            voice="Arista-PlayAI",
+            voice=voice,
         )
     elif tts_provider_name == "Azure":
         if not azure_speech_key or not azure_speech_region:
@@ -280,9 +277,9 @@ async def entrypoint(ctx: JobContext):
     else:
         tts = deepgram.TTS()
 
-    # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
+    # Set up a voice AI pipeline using the configured providers
     session = AgentSession(
-        llm=openai.LLM(model="gpt-4.1-mini"),
+        llm=llm,
         stt=stt,
         tts=tts,
         vad=ctx.proc.userdata["vad"],
