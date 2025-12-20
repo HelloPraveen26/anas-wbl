@@ -224,7 +224,7 @@ async def entrypoint(ctx: JobContext):
     if tts_provider_name == "Sarvam":
         speaker = (tts_config or {}).get("speaker") or "anushka"
         logger.info("Speaker: %s", speaker)
-        language_code = (stt_config or {}).get("language") or "en_IN"
+        language_code = (tts_config or {}).get("target_language_code") or "en_IN"
         logger.info("Language Code: %s", language_code)
         tts = sarvam.TTS(
             target_language_code=language_code, model="bulbul:v2", speaker=speaker
