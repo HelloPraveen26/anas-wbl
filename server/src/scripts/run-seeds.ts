@@ -8,6 +8,8 @@ import { ContactNumbersSeed } from "../database/seeds/contact-numbers-seed";
 import { TtsConfigSeed } from "../database/seeds/sarvam-tts-config-seed";
 import { GeminiSeed } from "../database/seeds/gemini";
 import { LmntSeed } from "../database/seeds/lmnt";
+import { DeepgramSeed } from "../database/seeds/deepgram";
+import { GroqSeed } from "../database/seeds/groq";
 
 async function runSeeds() {
   try {
@@ -42,6 +44,14 @@ async function runSeeds() {
     console.log("Running LMNT seed...");
     const lmntSeed = new LmntSeed();
     await lmntSeed.run(AppDataSource);
+
+    console.log("Running Deepgram seed...");
+    const deepgramSeed = new DeepgramSeed();
+    await deepgramSeed.run(AppDataSource);
+
+    console.log("Running Groq seed...");
+    const groqSeed = new GroqSeed();
+    await groqSeed.run(AppDataSource);
 
     console.log("Running Registered Numbers seed...");
     const registeredNumbersSeed = new RegisteredNumbersSeed();

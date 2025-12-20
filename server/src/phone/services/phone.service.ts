@@ -39,8 +39,10 @@ export class PhoneService {
       let firstMessage = "";
 
       // Get systemPrompt, firstMessage, and model configs from assistant if selectedAssistant is provided
+      let llmProviderName: string | undefined;
       let sttProviderName: string | undefined;
       let ttsProviderName: string | undefined;
+      let llmConfig: Record<string, any> | undefined;
       let sttConfig: Record<string, any> | undefined;
       let ttsConfig: Record<string, any> | undefined;
 
@@ -58,6 +60,13 @@ export class PhoneService {
           );
           systemPrompt = assistant.systemPrompt;
           firstMessage = assistant.firstMessage;
+
+          if (assistant.llmModel?.llmProvider) {
+            llmProviderName =
+              assistant.llmModel?.llmProvider?.name;
+            llmConfig = {"model_name": assistant.llmModel?.name};
+            this.logger.log(`LLM Provider Name: ${llmProviderName}`);
+          }
 
           // Extract STT provider name from transcriber model
           if (assistant.transcriberModel?.transcriberProvider) {

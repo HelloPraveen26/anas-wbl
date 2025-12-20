@@ -24,10 +24,11 @@ from livekit.plugins import (
     deepgram,
     elevenlabs,
     google,
+    groq,
+    lmnt,
     noise_cancellation,
     openai,
     sarvam,
-    lmnt,
     silero,
 )
 from opentelemetry.sdk.trace import TracerProvider
@@ -125,8 +126,10 @@ async def entrypoint(ctx: JobContext):
     custom_first_message = metadata.get(
         "first_message", "Hello! How can I help you today?"
     )
+    llm_provider_name = metadata.get("llm_provider_name")
     stt_provider_name = metadata.get("stt_provider_name")
     tts_provider_name = metadata.get("tts_provider_name")
+    llm_config = metadata.get("llm_config")
     stt_config = metadata.get("stt_config")
     tts_config = metadata.get("tts_config")
 
@@ -142,7 +145,9 @@ async def entrypoint(ctx: JobContext):
 
     # Add additional trace metadata for better observability
     if outbound_trunk_id:
-        langfuse_metadata["langfuse.trace.metadata.outbound_trunk_id"] = outbound_trunk_id
+        langfuse_metadata["langfuse.trace.metadata.outbound_trunk_id"] = (
+            outbound_trunk_id
+        )
     if phone_number:
         langfuse_metadata["langfuse.trace.metadata.phone_number"] = phone_number
     if stt_provider_name:
@@ -175,6 +180,7 @@ async def entrypoint(ctx: JobContext):
     logger.info("Custom first message: %s", custom_first_message)
     logger.info("STT Provider Name: %s", stt_provider_name)
     logger.info("TTS Provider Name: %s", tts_provider_name)
+    logger.info("LLM Config: %s", llm_config)
     logger.info("STT Config: %s", stt_config)
     logger.info("TTS Config: %s", tts_config)
     logger.info("Langfuse metadata: %s", langfuse_metadata)
@@ -184,12 +190,24 @@ async def entrypoint(ctx: JobContext):
     azure_speech_key = os.getenv("AZURE_SPEECH_KEY")
     azure_speech_region = os.getenv("AZURE_SPEECH_REGION")
 
+    llm = None
+    if llm_provider_name == "Groq":
+        llm = groq.LLM(model="llama3-8b-8192")
+    else:
+        llm = openai.LLM(model="gpt-4.1-mini")
     # Set up STT provider based on metadata
     stt = None
     if stt_provider_name == "Sarvam":
         language_code = (stt_config or {}).get("language") or "en_IN"
         logger.info("Language Code: %s", language_code)
         stt = sarvam.STT(language=language_code, model="saarika:v2.5")
+    elif stt_provider_name == "Groq":
+        language = (stt_config or {}).get("language") or "en"
+        logger.info("Language: %s", language)    
+        stt = groq.STT(
+            model="whisper-large-v3-turbo",
+            language=language
+        )
     elif stt_provider_name == "Azure":
         if not azure_speech_key or not azure_speech_region:
             logger.error(
@@ -226,6 +244,13 @@ async def entrypoint(ctx: JobContext):
             voice_name=voice,
             instructions=instructions,
         )
+    elif tts_provider_name == "Groq":
+        voice = (tts_config or {}).get("voice") or "Arista-PlayAI"
+        logger.info("Voice Name: %s", voice)
+        tts = groq.TTS(
+            model="playai-tts",
+            voice="Arista-PlayAI",
+        )
     elif tts_provider_name == "Azure":
         if not azure_speech_key or not azure_speech_region:
             logger.error(
@@ -246,7 +271,7 @@ async def entrypoint(ctx: JobContext):
         logger.info("Language: %s", language)
         temperature = (tts_config or {}).get("temperature") or 0.3
         logger.info("Temperature: %s", temperature)
-        tts =lmnt.TTS(
+        tts = lmnt.TTS(
             model=model,
             language=language,
             temperature=temperature,
