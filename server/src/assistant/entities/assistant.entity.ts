@@ -31,11 +31,22 @@ export class Assistant {
   @Column({ name: "synthesizer_model_id", type: "uuid" })
   synthesizerModelId: string;
 
+  @Column({ name: "realtime_model_id", type: "uuid", nullable: true })
+  realtimeModelId: string;
+
   @Column({ name: "stt_config", type: "json", nullable: true, default: {} })
   sttConfig: Record<string, any>;
 
   @Column({ name: "tts_config", type: "json", nullable: true, default: {} })
   ttsConfig: Record<string, any>;
+
+  @Column({
+    name: "realtime_config",
+    type: "json",
+    nullable: true,
+    default: {},
+  })
+  realtimeConfig: Record<string, any>;
 
   @Column({ name: "is_active", default: true })
   isActive: boolean;
@@ -56,6 +67,10 @@ export class Assistant {
   @ManyToOne("SynthesizerModel")
   @JoinColumn({ name: "synthesizer_model_id" })
   synthesizerModel: any;
+
+  @ManyToOne("RealtimeModel")
+  @JoinColumn({ name: "realtime_model_id" })
+  realtimeModel: any;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

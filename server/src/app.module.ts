@@ -11,6 +11,7 @@ import { HealthModule } from "./health/health.module";
 import { LlmModule } from "./llm/llm.module";
 import { TranscriberModule } from "./transcriber/transcriber.module";
 import { SynthesizerModule } from "./synthesizer/synthesizer.module";
+import { RealtimeModule } from "./realtime/realtime.module";
 import { AssistantModule } from "./assistant/assistant.module";
 import { PromptModule } from "./prompt/prompt.module";
 import { PhoneModule } from "./phone/phone.module";
@@ -59,6 +60,7 @@ import { throttlerConfig } from "./config/throttler.config";
     LlmModule,
     TranscriberModule,
     SynthesizerModule,
+    RealtimeModule,
     AssistantModule,
     PromptModule,
     PhoneModule,

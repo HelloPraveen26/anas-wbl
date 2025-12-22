@@ -78,6 +78,23 @@ export class CreateAssistantDto {
   ttsConfig?: Record<string, any>;
 
   @ApiPropertyOptional({
+    description: "UUID of the realtime model to use",
+    example: "123e4567-e89b-12d3-a456-426614174003",
+  })
+  @IsOptional()
+  @IsUUID()
+  realtimeModelId?: string;
+
+  @ApiPropertyOptional({
+    description: "Realtime configuration for realtime model",
+    example: { temperature: 0.7, voice: "alloy" },
+    type: "object",
+  })
+  @IsOptional()
+  @IsObject()
+  realtimeConfig?: Record<string, any>;
+
+  @ApiPropertyOptional({
     description: "Whether the assistant is active",
     default: true,
   })

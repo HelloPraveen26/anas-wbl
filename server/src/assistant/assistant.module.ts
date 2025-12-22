@@ -6,6 +6,7 @@ import { AssistantService } from "./assistant.service";
 import { LlmModule } from "../llm/llm.module";
 import { TranscriberModule } from "../transcriber/transcriber.module";
 import { SynthesizerModule } from "../synthesizer/synthesizer.module";
+import { RealtimeModule } from "../realtime/realtime.module";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { SynthesizerModule } from "../synthesizer/synthesizer.module";
     LlmModule,
     TranscriberModule,
     SynthesizerModule,
+    RealtimeModule,
   ],
   providers: [AssistantService],
   controllers: [AssistantController],
