@@ -39,10 +39,12 @@ export class PhoneService {
       let firstMessage = "";
 
       // Get systemPrompt, firstMessage, and model configs from assistant if selectedAssistant is provided
+      let realtimeProviderName: string | undefined;
       let llmProviderName: string | undefined;
       let sttProviderName: string | undefined;
       let ttsProviderName: string | undefined;
       let llmConfig: Record<string, any> | undefined;
+      let realtimeModelConfig: Record<string, any> | undefined;
       let sttConfig: Record<string, any> | undefined;
       let ttsConfig: Record<string, any> | undefined;
 
@@ -60,6 +62,13 @@ export class PhoneService {
           );
           systemPrompt = assistant.systemPrompt;
           firstMessage = assistant.firstMessage;
+
+          if (assistant.realtimeModel?.realtimeProvider) {
+            realtimeProviderName =
+              assistant.realtimeModel?.realtimeProvider?.name;
+            realtimeModelConfig = assistant.realtimeConfig;  
+            this.logger.log(`Realtime Provider Name: ${realtimeProviderName}`);
+          }
 
           if (assistant.llmModel?.llmProvider) {
             llmProviderName =
@@ -138,8 +147,10 @@ export class PhoneService {
         outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
         ...(systemPrompt && { instructions: systemPrompt }),
         ...(firstMessage && { first_message: firstMessage }),
+        ...(realtimeProviderName && { realtime_provider_name: realtimeProviderName }),
         ...(sttProviderName && { stt_provider_name: sttProviderName }),
         ...(ttsProviderName && { tts_provider_name: ttsProviderName }),
+        ...(realtimeModelConfig && { realtime_model_config: realtimeModelConfig }),
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
       };
