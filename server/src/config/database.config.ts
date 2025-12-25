@@ -12,6 +12,11 @@ import {
   SynthesizerModel,
   TtsConfig,
 } from "../synthesizer/entities";
+import {
+  RealtimeProvider,
+  RealtimeModel,
+  RealtimeConfig,
+} from "../realtime/entities";
 import { Assistant } from "../assistant/entities";
 import { RegisteredNumber } from "../registered-numbers/entities/registered-number.entity";
 import { ContactNumber } from "../contact-numbers/entities/contact-number.entity";
@@ -36,6 +41,9 @@ export const databaseConfig = (
     SynthesizerProvider,
     SynthesizerModel,
     TtsConfig,
+    RealtimeProvider,
+    RealtimeModel,
+    RealtimeConfig,
     Assistant,
     RegisteredNumber,
     ContactNumber,

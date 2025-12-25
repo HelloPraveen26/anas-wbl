@@ -304,10 +304,12 @@ async def entrypoint(ctx: JobContext):
     custom_first_message = metadata.get(
         "first_message", "Hello! How can I help you today?"
     )
+    realtime_provider_name = metadata.get("realtime_provider_name")
     llm_provider_name = metadata.get("llm_provider_name")
     stt_provider_name = metadata.get("stt_provider_name")
     tts_provider_name = metadata.get("tts_provider_name")
     llm_config = metadata.get("llm_config")
+    realtime_model_config = metadata.get("realtime_model_config")
     stt_config = metadata.get("stt_config")
     tts_config = metadata.get("tts_config")
     assistant_id = metadata.get("assistant_id")
@@ -360,9 +362,11 @@ async def entrypoint(ctx: JobContext):
     logger.info("Custom first message: %s", custom_first_message)
     logger.info("Assistant ID: %s", assistant_id)
     logger.info("Webhook URL: %s", webhook_url)
+    logger.info("Realtime Provider Name: %s", realtime_provider_name)
     logger.info("STT Provider Name: %s", stt_provider_name)
     logger.info("TTS Provider Name: %s", tts_provider_name)
     logger.info("LLM Config: %s", llm_config)
+    logger.info("Realtime Provider Config: %s", realtime_model_config)
     logger.info("STT Config: %s", stt_config)
     logger.info("TTS Config: %s", tts_config)
     logger.info("Langfuse metadata: %s", langfuse_metadata)
@@ -390,7 +394,16 @@ async def entrypoint(ctx: JobContext):
 
     # STT / TTS selection
     llm = None
-    if llm_provider_name == "Groq":
+    if realtime_provider_name == "Gemini Realtime":
+        voice = (realtime_model_config or {}).get("voice") or "Puck"
+        logger.info("Realtime Voice: %s", voice)
+        llm = google.realtime.RealtimeModel(
+            model="gemini-2.5-flash-native-audio-preview-09-2025",
+            voice=voice,
+            temperature=0.8,
+            instructions=custom_instructions,
+        )
+    elif llm_provider_name == "Groq":
         llm = groq.LLM(model="llama3-8b-8192")
     else:
         llm = openai.LLM(model="gpt-4.1-mini")
@@ -538,6 +551,18 @@ async def entrypoint(ctx: JobContext):
         vad=ctx.proc.userdata.get("vad"),
         preemptive_generation=True,
     )
+    # Set up a voice AI pipeline using the configured provider
+    session = None
+    if realtime_provider_name == None:
+        session = AgentSession(
+            llm=llm,
+            stt=stt,
+            tts=tts,
+            vad=ctx.proc.userdata["vad"],
+            preemptive_generation=True,
+        )
+    else:
+        session = AgentSession(llm=llm)
 
     @session.on("agent_false_interruption")
     def _on_agent_false_interruption(ev: AgentFalseInterruptionEvent):

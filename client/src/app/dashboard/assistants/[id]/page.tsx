@@ -29,6 +29,7 @@ import {
   Phone,
   PhoneOff,
   ArrowLeft,
+  Radio,
 } from "lucide-react";
 
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
@@ -47,8 +48,10 @@ interface Assistant {
   llmModelId: string;
   transcriberModelId: string;
   synthesizerModelId: string;
+  realtimeModelId?: string;
   sttConfig?: Record<string, any>;
   ttsConfig?: Record<string, any>;
+  realtimeConfig?: Record<string, any>;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +69,11 @@ interface Assistant {
     id: string;
     name: string;
     synthesizerProvider: { id: string; name: string };
+  };
+  realtimeModel?: {
+    id: string;
+    name: string;
+    realtimeProvider: { id: string; name: string };
   };
 }
 
@@ -143,6 +151,38 @@ interface SynthesizerConfig {
   };
 }
 
+interface RealtimeProvider {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+interface RealtimeModel {
+  id: string;
+  name: string;
+  isActive: boolean;
+  realtimeProvider: { id: string; name: string };
+}
+
+interface RealtimeConfigListOption {
+  value: string;
+  displayName: string;
+}
+
+interface RealtimeConfig {
+  id: string;
+  label: string;
+  key: string;
+  type: string;
+  list: RealtimeConfigListOption[] | null;
+  defaultValue: string;
+  active: boolean;
+  realtimeProvider: {
+    id: string;
+    name: string;
+  };
+}
+
 // -------------------- Component --------------------
 export default function AssistantEditPage() {
   const params = useParams();
@@ -151,7 +191,7 @@ export default function AssistantEditPage() {
 
   // UI + selection
   const [activeTab, setActiveTab] = useState<
-    "assistant" | "model" | "voice" | "transcriber"
+    "assistant" | "model" | "voice" | "transcriber" | "realtime"
   >("assistant");
   const [modelExpanded, setModelExpanded] = useState(true);
 
@@ -170,8 +210,7 @@ export default function AssistantEditPage() {
   >([]);
   const [selectedSynthesizerProvider, setSelectedSynthesizerProvider] =
     useState("");
-  const [selectedSynthesizerModel, setSelectedSynthesizerModel] =
-    useState("");
+  const [selectedSynthesizerModel, setSelectedSynthesizerModel] = useState("");
   const [selectedSynthesizerModelName, setSelectedSynthesizerModelName] =
     useState("");
 
@@ -197,6 +236,20 @@ export default function AssistantEditPage() {
     SynthesizerConfig[]
   >([]);
   const [synthesizerConfigValues, setSynthesizerConfigValues] = useState<{
+    [key: string]: any;
+  }>({});
+
+  // RealTime
+  const [realtimeProviders, setRealtimeProviders] = useState<
+    RealtimeProvider[]
+  >([]);
+  const [realtimeModels, setRealtimeModels] = useState<RealtimeModel[]>([]);
+  const [selectedRealtimeProvider, setSelectedRealtimeProvider] = useState("");
+  const [selectedRealtimeModel, setSelectedRealtimeModel] = useState("");
+
+  // RealTime Configs
+  const [realtimeConfigs, setRealtimeConfigs] = useState<RealtimeConfig[]>([]);
+  const [realtimeConfigValues, setRealtimeConfigValues] = useState<{
     [key: string]: any;
   }>({});
 
@@ -476,6 +529,63 @@ export default function AssistantEditPage() {
     }
   };
 
+  const fetchRealtimeProviders = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/realtime/providers`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setRealtimeProviders(d.filter((p: RealtimeProvider) => p.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchRealtimeModels = async () => {
+    try {
+      const r = await fetch(`${getApiBaseUrl()}/realtime/models`, {
+        headers: getAuthHeaders(),
+      });
+      const d = await r.json();
+      setRealtimeModels(d.filter((m: RealtimeModel) => m.isActive));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchRealtimeConfigs = async (providerId: string): Promise<void> => {
+    if (!providerId) {
+      setRealtimeConfigs([]);
+      setRealtimeConfigValues({});
+      return;
+    }
+
+    try {
+      const r = await fetch(
+        `${getApiBaseUrl()}/realtime/configs?providerId=${providerId}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
+      const d = await r.json();
+      const activeConfigs = d.filter((config: RealtimeConfig) => config.active);
+      setRealtimeConfigs(activeConfigs);
+
+      // Initialize config values with default values
+      const initialValues: { [key: string]: any } = {};
+      activeConfigs.forEach((config: RealtimeConfig) => {
+        if (config.type === "boolean") {
+          initialValues[config.key] = config.defaultValue === "true";
+        } else {
+          initialValues[config.key] = config.defaultValue;
+        }
+      });
+      setRealtimeConfigValues(initialValues);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchAssistants();
     fetchProviders();
@@ -484,6 +594,8 @@ export default function AssistantEditPage() {
     fetchSynthesizerModels();
     fetchTranscriberProviders();
     fetchTranscriberModels();
+    fetchRealtimeProviders();
+    fetchRealtimeModels();
   }, [fetchAssistants]);
 
   useEffect(() => {
@@ -532,6 +644,27 @@ export default function AssistantEditPage() {
           },
         );
       }
+      // Load RealTime data if exists
+      if (a.realtimeModelId) {
+        setSelectedRealtimeModel(a.realtimeModelId);
+        // Find the realtime model to get provider info
+        const realtimeModel = realtimeModels.find(
+          (m) => m.id === a.realtimeModelId,
+        );
+        if (realtimeModel) {
+          setSelectedRealtimeProvider(realtimeModel.realtimeProvider.id);
+          // Load RealTime configs if realtime provider exists
+          fetchRealtimeConfigs(realtimeModel.realtimeProvider.id).then(() => {
+            // Merge existing realtime config values with defaults
+            if (a.realtimeConfig) {
+              setRealtimeConfigValues((prevDefaults) => ({
+                ...prevDefaults,
+                ...a.realtimeConfig,
+              }));
+            }
+          });
+        }
+      }
       // Set firstMessageMode based on firstMessage
       if (a.firstMessage === "") {
         setFirstMessageMode("wait_for_user");
@@ -541,7 +674,7 @@ export default function AssistantEditPage() {
         setFirstMessageMode("speak_first");
       }
     }
-  }, [assistantId, assistants, router]);
+  }, [assistantId, assistants, router, realtimeModels]);
 
   const filteredModels = selectedProvider
     ? models.filter((m) => m.llmProvider.id === selectedProvider)
@@ -558,6 +691,12 @@ export default function AssistantEditPage() {
         (m) => m.transcriberProvider.id === selectedTranscriberProvider,
       )
     : transcriberModels;
+
+  const filteredRealtimeModels = selectedRealtimeProvider
+    ? realtimeModels.filter(
+        (m) => m.realtimeProvider.id === selectedRealtimeProvider,
+      )
+    : realtimeModels;
 
   // Update firstMessage based on mode
   useEffect(() => {
@@ -615,8 +754,10 @@ export default function AssistantEditPage() {
           llmModelId: selectedModel,
           transcriberModelId: selectedTranscriberModel,
           synthesizerModelId: selectedSynthesizerModel,
+          realtimeModelId: selectedRealtimeModel || null,
           sttConfig: sttConfigValues,
           ttsConfig: synthesizerConfigValues,
+          realtimeConfig: realtimeConfigValues,
           isActive: true,
         }),
       });
@@ -863,8 +1004,8 @@ export default function AssistantEditPage() {
                 {loading
                   ? "Saving..."
                   : assistants.some((a) => a.id === assistantId)
-                  ? "Update Assistant"
-                  : "Create Assistant"}
+                    ? "Update Assistant"
+                    : "Create Assistant"}
               </Button>
             </div>
           </div>
@@ -880,6 +1021,7 @@ export default function AssistantEditPage() {
               { id: "model", label: "Model", icon: Zap },
               { id: "voice", label: "Voice", icon: Mic },
               { id: "transcriber", label: "Transcriber", icon: MessageSquare },
+              { id: "realtime", label: "RealTime", icon: Radio },
             ].map((tab) => {
               const Icon = tab.icon as any;
               return (
@@ -971,7 +1113,7 @@ export default function AssistantEditPage() {
                           <option value="speak_first_generated">
                             Assistant speaks first (AI generated)
                           </option>
-                        </select> 
+                        </select>
                       </div> */}
 
                       <div className="space-y-2">
@@ -1098,8 +1240,8 @@ export default function AssistantEditPage() {
                   <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
                     <p className="text-sm text-emerald-800">
                       <span className="font-semibold">Selected:</span>{" "}
-                      {filteredModels.find((m) => m.id === selectedModel)?.name ||
-                        "Unknown"}
+                      {filteredModels.find((m) => m.id === selectedModel)
+                        ?.name || "Unknown"}
                     </p>
                   </div>
                 )}
@@ -1368,12 +1510,159 @@ export default function AssistantEditPage() {
                           {(config.type === "string" ||
                             config.type === "number") && (
                             <Input
-                              type={config.type === "number" ? "number" : "text"}
+                              type={
+                                config.type === "number" ? "number" : "text"
+                              }
                               value={
-                                sttConfigValues[config.key] || config.defaultValue
+                                sttConfigValues[config.key] ||
+                                config.defaultValue
                               }
                               onChange={(e) =>
                                 setSttConfigValues((prev) => ({
+                                  ...prev,
+                                  [config.key]:
+                                    config.type === "number"
+                                      ? Number(e.target.value)
+                                      : e.target.value,
+                                }))
+                              }
+                              placeholder={config.defaultValue}
+                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* RealTime Tab */}
+          {activeTab === "realtime" && (
+            <Card className="bg-white border-emerald-100 shadow-lg overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100 pb-4">
+                <CardTitle className="text-xl font-bold text-emerald-900">
+                  RealTime Configuration
+                </CardTitle>
+                <CardDescription className="text-emerald-700">
+                  Select the real-time communication service for your assistant
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <Radio className="w-4 h-4 text-emerald-600" />
+                      RealTime Provider
+                    </Label>
+                    <select
+                      value={selectedRealtimeProvider}
+                      onChange={(e) => {
+                        setSelectedRealtimeProvider(e.target.value);
+                        setSelectedRealtimeModel("");
+                        fetchRealtimeConfigs(e.target.value);
+                      }}
+                      className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                    >
+                      <option value="">Select a realtime provider</option>
+                      {realtimeProviders.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-emerald-600" />
+                      RealTime Model
+                    </Label>
+                    <select
+                      value={selectedRealtimeModel}
+                      onChange={(e) => setSelectedRealtimeModel(e.target.value)}
+                      disabled={!selectedRealtimeProvider}
+                      className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-3 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Select a realtime model</option>
+                      {filteredRealtimeModels.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.realtimeProvider.name})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* RealTime Configuration Fields */}
+                {realtimeConfigs.length > 0 && (
+                  <div className="space-y-4 pt-6 border-t border-gray-100">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      Additional Configuration
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {realtimeConfigs.map((config) => (
+                        <div key={config.id} className="space-y-2">
+                          <Label className="text-sm font-semibold text-gray-700">
+                            {config.label}
+                          </Label>
+
+                          {config.type === "select" && config.list && (
+                            <select
+                              value={
+                                realtimeConfigValues[config.key] ||
+                                config.defaultValue
+                              }
+                              onChange={(e) =>
+                                setRealtimeConfigValues((prev) => ({
+                                  ...prev,
+                                  [config.key]: e.target.value,
+                                }))
+                              }
+                              className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                            >
+                              {config.list.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.displayName}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
+                          {config.type === "boolean" && (
+                            <select
+                              value={
+                                realtimeConfigValues[config.key]
+                                  ? "true"
+                                  : "false"
+                              }
+                              onChange={(e) =>
+                                setRealtimeConfigValues((prev) => ({
+                                  ...prev,
+                                  [config.key]: e.target.value === "true",
+                                }))
+                              }
+                              className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                            >
+                              <option value="false">Disabled</option>
+                              <option value="true">Enabled</option>
+                            </select>
+                          )}
+
+                          {(config.type === "string" ||
+                            config.type === "number") && (
+                            <Input
+                              type={
+                                config.type === "number" ? "number" : "text"
+                              }
+                              value={
+                                realtimeConfigValues[config.key] ||
+                                config.defaultValue
+                              }
+                              onChange={(e) =>
+                                setRealtimeConfigValues((prev) => ({
                                   ...prev,
                                   [config.key]:
                                     config.type === "number"

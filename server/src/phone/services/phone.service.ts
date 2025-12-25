@@ -70,10 +70,12 @@ export class PhoneService {
       let systemPrompt = "";
       let firstMessage = "";
       // Get systemPrompt, firstMessage, and model configs from assistant if selectedAssistant is provided
+      let realtimeProviderName: string | undefined;
       let llmProviderName: string | undefined;
       let sttProviderName: string | undefined;
       let ttsProviderName: string | undefined;
       let llmConfig: Record<string, any> | undefined;
+      let realtimeModelConfig: Record<string, any> | undefined;
       let sttConfig: Record<string, any> | undefined;
       let ttsConfig: Record<string, any> | undefined;
       let toolConfig: any = null;
@@ -92,6 +94,13 @@ export class PhoneService {
           );
           systemPrompt = assistant.systemPrompt;
           firstMessage = assistant.firstMessage;
+
+          if (assistant.realtimeModel?.realtimeProvider) {
+            realtimeProviderName =
+              assistant.realtimeModel?.realtimeProvider?.name;
+            realtimeModelConfig = assistant.realtimeConfig;  
+            this.logger.log(`Realtime Provider Name: ${realtimeProviderName}`);
+          }
 
           if (assistant.llmModel?.llmProvider) {
             llmProviderName = assistant.llmModel?.llmProvider?.name;
@@ -196,8 +205,10 @@ After collecting all required information, the system will automatically send th
         outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
         ...(instructions && { instructions }),
         ...(firstMessage && { first_message: firstMessage }),
+        ...(realtimeProviderName && { realtime_provider_name: realtimeProviderName }),
         ...(sttProviderName && { stt_provider_name: sttProviderName }),
         ...(ttsProviderName && { tts_provider_name: ttsProviderName }),
+        ...(realtimeModelConfig && { realtime_model_config: realtimeModelConfig }),
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
         // 🔧 Add assistant ID and webhook for tool data forwarding

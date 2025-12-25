@@ -45,6 +45,12 @@ export class AssistantResponseDto {
   synthesizerModelId: string;
 
   @ApiPropertyOptional({
+    description: "UUID of the realtime model being used",
+    example: "123e4567-e89b-12d3-a456-426614174004",
+  })
+  realtimeModelId?: string;
+
+  @ApiPropertyOptional({
     description: "STT (Speech-to-Text) configuration for transcriber",
     example: { language: "hi-IN" },
     type: "object",
@@ -57,6 +63,13 @@ export class AssistantResponseDto {
     type: "object",
   })
   ttsConfig?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    description: "Realtime configuration for realtime model",
+    example: { temperature: 0.7, voice: "alloy" },
+    type: "object",
+  })
+  realtimeConfig?: Record<string, any>;
 
   @ApiProperty({
     description: "Whether the assistant is active",
@@ -140,6 +153,31 @@ export class AssistantResponseDto {
   };
 
   @ApiProperty({
+    description: "Realtime model details",
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      name: { type: "string" },
+      realtimeProvider: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+        },
+      },
+    },
+    required: false,
+  })
+  realtimeModel?: {
+    id: string;
+    name: string;
+    realtimeProvider: {
+      id: string;
+      name: string;
+    };
+  };
+
+  @ApiProperty({
     description: "Creation timestamp",
     example: "2024-01-01T00:00:00.000Z",
   })
@@ -159,8 +197,10 @@ export class AssistantResponseDto {
     this.llmModelId = assistant.llmModelId;
     this.transcriberModelId = assistant.transcriberModelId;
     this.synthesizerModelId = assistant.synthesizerModelId;
+    this.realtimeModelId = assistant.realtimeModelId;
     this.sttConfig = assistant.sttConfig;
     this.ttsConfig = assistant.ttsConfig;
+    this.realtimeConfig = assistant.realtimeConfig;
     this.isActive = assistant.isActive;
     this.createdAt = assistant.createdAt;
     this.updatedAt = assistant.updatedAt;
@@ -195,6 +235,17 @@ export class AssistantResponseDto {
         synthesizerProvider: {
           id: assistant.synthesizerModel.synthesizerProvider?.id,
           name: assistant.synthesizerModel.synthesizerProvider?.name,
+        },
+      };
+    }
+
+    if (assistant.realtimeModel) {
+      this.realtimeModel = {
+        id: assistant.realtimeModel.id,
+        name: assistant.realtimeModel.name,
+        realtimeProvider: {
+          id: assistant.realtimeModel.realtimeProvider?.id,
+          name: assistant.realtimeModel.realtimeProvider?.name,
         },
       };
     }

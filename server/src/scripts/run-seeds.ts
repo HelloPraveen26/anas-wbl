@@ -10,6 +10,7 @@ import { GeminiSeed } from "../database/seeds/gemini";
 import { LmntSeed } from "../database/seeds/lmnt";
 import { DeepgramSeed } from "../database/seeds/deepgram";
 import { GroqSeed } from "../database/seeds/groq";
+import { GeminiRealtimeSeed } from "../database/seeds/gemini-realtime";
 
 async function runSeeds() {
   try {
@@ -52,6 +53,10 @@ async function runSeeds() {
     console.log("Running Groq seed...");
     const groqSeed = new GroqSeed();
     await groqSeed.run(AppDataSource);
+
+    console.log("Running Gemini Realtime seed...");
+    const geminiRealtimeSeed = new GeminiRealtimeSeed();
+    await geminiRealtimeSeed.run(AppDataSource);
 
     console.log("Running Registered Numbers seed...");
     const registeredNumbersSeed = new RegisteredNumbersSeed();

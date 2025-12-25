@@ -17,6 +17,7 @@ import {
 import { LlmModel } from "../llm/entities/llm-model.entity";
 import { TranscriberModel } from "../transcriber/entities/transcriber-model.entity";
 import { SynthesizerModel } from "../synthesizer/entities/synthesizer-model.entity";
+import { RealtimeModel } from "../realtime/entities/realtime-model.entity";
 
 @Injectable()
 export class AssistantService {
@@ -29,6 +30,8 @@ export class AssistantService {
     private transcriberModelRepository: Repository<TranscriberModel>,
     @InjectRepository(SynthesizerModel)
     private synthesizerModelRepository: Repository<SynthesizerModel>,
+    @InjectRepository(RealtimeModel)
+    private realtimeModelRepository: Repository<RealtimeModel>,
     private configService: ConfigService,
   ) {}
 
@@ -42,6 +45,8 @@ export class AssistantService {
         "transcriberModel.transcriberProvider",
         "synthesizerModel",
         "synthesizerModel.synthesizerProvider",
+        "realtimeModel",
+        "realtimeModel.realtimeProvider",
       ],
       order: { createdAt: "DESC" },
     });
@@ -59,6 +64,8 @@ export class AssistantService {
         "transcriberModel.transcriberProvider",
         "synthesizerModel",
         "synthesizerModel.synthesizerProvider",
+        "realtimeModel",
+        "realtimeModel.realtimeProvider",
       ],
     });
 
@@ -105,7 +112,8 @@ export class AssistantService {
     if (
       updateAssistantDto.llmModelId ||
       updateAssistantDto.transcriberModelId ||
-      updateAssistantDto.synthesizerModelId
+      updateAssistantDto.synthesizerModelId ||
+      updateAssistantDto.realtimeModelId
     ) {
       const validationDto = {
         llmModelId: updateAssistantDto.llmModelId || assistant.llmModelId,
@@ -113,6 +121,8 @@ export class AssistantService {
           updateAssistantDto.transcriberModelId || assistant.transcriberModelId,
         synthesizerModelId:
           updateAssistantDto.synthesizerModelId || assistant.synthesizerModelId,
+        realtimeModelId:
+          updateAssistantDto.realtimeModelId || assistant.realtimeModelId,
       };
       await this.validateReferences(validationDto);
     }
@@ -181,6 +191,7 @@ export class AssistantService {
     llmModelId: string;
     transcriberModelId: string;
     synthesizerModelId: string;
+    realtimeModelId?: string;
   }): Promise<void> {
     // Validate LLM Model
     const llmModel = await this.llmModelRepository.findOne({
@@ -204,6 +215,16 @@ export class AssistantService {
     });
     if (!synthesizerModel) {
       throw new BadRequestException("Invalid synthesizer model ID");
+    }
+
+    // Validate Realtime Model (optional)
+    if (dto.realtimeModelId) {
+      const realtimeModel = await this.realtimeModelRepository.findOne({
+        where: { id: dto.realtimeModelId, isActive: true },
+      });
+      if (!realtimeModel) {
+        throw new BadRequestException("Invalid realtime model ID");
+      }
     }
   }
 
