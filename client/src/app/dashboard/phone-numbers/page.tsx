@@ -81,7 +81,7 @@ export default function PhoneNumbersPage() {
   const [showAllNumbersModal, setShowAllNumbersModal] = useState(false);
   const [showAllRegisteredNumbersModal, setShowAllRegisteredNumbersModal] =
     useState(false);
-  const [activeTab, setActiveTab] = useState<"twilio" | "exotel">("twilio");
+  const [activeTab, setActiveTab] = useState<"twilio" | "plivo">("twilio");
   const [loading, setLoading] = useState(false);
 
   // Data state
@@ -130,13 +130,13 @@ export default function PhoneNumbersPage() {
     authPassword: "",
   });
 
-  // Exotel form
-  const [exotelForm, setExotelForm] = useState({
-    apiKey: "",
-    apiToken: "",
+  // Plivo form
+  const [plivoForm, setPlivoForm] = useState({
     accountSid: "",
-    subdomain: "",
-    appId: "",
+    authToken: "",
+    address: "",
+    authUsername: "",
+    authPassword: "",
   });
 
   // WS refs
@@ -231,7 +231,11 @@ export default function PhoneNumbersPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setAssistants(Array.isArray(data) ? data : []);
-      if (Array.isArray(data) && data.length > 0 && !selectedAssistantRef.current) {
+      if (
+        Array.isArray(data) &&
+        data.length > 0 &&
+        !selectedAssistantRef.current
+      ) {
         selectAssistant(data[0].id);
       }
     } catch (err) {
@@ -304,7 +308,7 @@ export default function PhoneNumbersPage() {
     }
   };
 
-  const importExotelNumbers = async () => {
+  const importPlivoNumbers = async () => {
     try {
       setLoading(true);
       const token = authManager.getToken();
@@ -313,17 +317,17 @@ export default function PhoneNumbersPage() {
         return;
       }
       if (
-        !exotelForm.apiKey ||
-        !exotelForm.apiToken ||
-        !exotelForm.accountSid ||
-        !exotelForm.subdomain ||
-        !exotelForm.appId
+        !plivoForm.accountSid ||
+        !plivoForm.authToken ||
+        !plivoForm.address ||
+        !plivoForm.authUsername ||
+        !plivoForm.authPassword
       ) {
         alert("Please fill in all required fields");
         return;
       }
       const res = await fetch(
-        `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-exotel`,
+        `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-plivo`,
         {
           method: "POST",
           headers: {
@@ -331,11 +335,11 @@ export default function PhoneNumbersPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            apiKey: exotelForm.apiKey,
-            apiToken: exotelForm.apiToken,
-            accountSid: exotelForm.accountSid,
-            subdomain: exotelForm.subdomain,
-            appId: exotelForm.appId,
+            accountSid: plivoForm.accountSid,
+            authToken: plivoForm.authToken,
+            address: plivoForm.address,
+            authUsername: plivoForm.authUsername,
+            authPassword: plivoForm.authPassword,
           }),
         },
       );
@@ -345,21 +349,21 @@ export default function PhoneNumbersPage() {
       }
       const data = await res.json();
       alert(
-        `Successfully imported ${data.importedCount ?? 0} phone numbers from Exotel`,
+        `Successfully imported ${data.importedCount ?? 0} phone numbers from Plivo`,
       );
       setOpenModal(false);
-      setExotelForm({
-        apiKey: "",
-        apiToken: "",
+      setPlivoForm({
         accountSid: "",
-        subdomain: "",
-        appId: "",
+        authToken: "",
+        address: "",
+        authUsername: "",
+        authPassword: "",
       });
       await fetchRegisteredNumbers();
     } catch (err) {
-      console.error("importExotelNumbers error:", err);
+      console.error("importPlivoNumbers error:", err);
       alert(
-        `Error importing Exotel numbers: ${err instanceof Error ? err.message : "Unknown error"}`,
+        `Error importing Plivo numbers: ${err instanceof Error ? err.message : "Unknown error"}`,
       );
     } finally {
       setLoading(false);
@@ -569,7 +573,8 @@ export default function PhoneNumbersPage() {
               // Only auto-select the first assistant if nothing is currently selected.
               // Use the ref to check the live selection (avoid stale closure of selectedAssistant).
               if (
-                (!selectedAssistantRef.current || selectedAssistantRef.current === "") &&
+                (!selectedAssistantRef.current ||
+                  selectedAssistantRef.current === "") &&
                 Array.isArray(payload.data) &&
                 payload.data.length > 0
               ) {
@@ -640,7 +645,7 @@ export default function PhoneNumbersPage() {
     if (wsRef.current) {
       try {
         wsRef.current.close();
-      } catch (e) { }
+      } catch (e) {}
       wsRef.current = null;
     }
   };
@@ -743,7 +748,6 @@ export default function PhoneNumbersPage() {
               />
               <button
                 className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-full font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
-
                 //className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-sm"
                 title="Call"
               >
@@ -768,7 +772,7 @@ export default function PhoneNumbersPage() {
               onClick={() => setOpenModal(true)}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
 
-            //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
+              //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
             >
               Import Phone Number
             </button>
@@ -798,10 +802,11 @@ export default function PhoneNumbersPage() {
                   <div
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 bg-white"
-                      }`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
+                      selectedRegisteredNumber === num.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
+                    }`}
                   >
                     <div>
                       <p className="font-medium text-sm text-gray-900">
@@ -814,10 +819,11 @@ export default function PhoneNumbersPage() {
                     </div>
                     <div className="ml-4 text-right">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                          }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          num.active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
@@ -878,10 +884,11 @@ export default function PhoneNumbersPage() {
                     <div
                       key={a.id}
                       onClick={() => selectAssistant(a.id)}
-                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${selectedAssistant === a.id
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                        }`}
+                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${
+                        selectedAssistant === a.id
+                          ? "border-emerald-500 bg-emerald-50"
+                          : "border-gray-200 bg-white"
+                      }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
@@ -930,7 +937,6 @@ export default function PhoneNumbersPage() {
                   onClick={() => setShowAddContactModal(true)}
                   //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm font-medium flex items-center gap-2"
                   className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
-
                 >
                   Add New Contact
                 </button>
@@ -975,7 +981,7 @@ export default function PhoneNumbersPage() {
                             }
                             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
 
-                          //className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
+                            //className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
                           >
                             {isLoading ? "Calling..." : "Call"}
                           </button>
@@ -1037,7 +1043,7 @@ export default function PhoneNumbersPage() {
             </div>
 
             <div className="flex space-x-4 border-b pb-3 mb-4">
-              {(["twilio", "exotel"] as const).map((t) => (
+              {(["twilio", "plivo"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setActiveTab(t)}
@@ -1102,46 +1108,47 @@ export default function PhoneNumbersPage() {
                 <>
                   <div>
                     <InputField
-                      label="API Key"
-                      value={exotelForm.apiKey}
-                      onChange={(v) =>
-                        setExotelForm((p) => ({ ...p, apiKey: v }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <InputField
-                      label="API Token"
-                      value={exotelForm.apiToken}
-                      onChange={(v) =>
-                        setExotelForm((p) => ({ ...p, apiToken: v }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <InputField
                       label="Account SID"
-                      value={exotelForm.accountSid}
+                      value={plivoForm.accountSid}
                       onChange={(v) =>
-                        setExotelForm((p) => ({ ...p, accountSid: v }))
+                        setPlivoForm((p) => ({ ...p, accountSid: v }))
                       }
                     />
                   </div>
                   <div>
                     <InputField
-                      label="Subdomain"
-                      value={exotelForm.subdomain}
+                      label="API Secret"
+                      value={plivoForm.authToken}
                       onChange={(v) =>
-                        setExotelForm((p) => ({ ...p, subdomain: v }))
+                        setPlivoForm((p) => ({ ...p, authToken: v }))
                       }
                     />
                   </div>
                   <div className="md:col-span-2">
                     <InputField
-                      label="App ID"
-                      value={exotelForm.appId}
+                      label="Address"
+                      value={plivoForm.address}
                       onChange={(v) =>
-                        setExotelForm((p) => ({ ...p, appId: v }))
+                        setPlivoForm((p) => ({ ...p, address: v }))
+                      }
+                      placeholder="13128041375304087.zt.plivo.com"
+                    />
+                  </div>
+                  <div>
+                    <InputField
+                      label="Auth Username"
+                      value={plivoForm.authUsername}
+                      onChange={(v) =>
+                        setPlivoForm((p) => ({ ...p, authUsername: v }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <InputField
+                      label="Auth Password"
+                      value={plivoForm.authPassword}
+                      onChange={(v) =>
+                        setPlivoForm((p) => ({ ...p, authPassword: v }))
                       }
                     />
                   </div>
@@ -1160,7 +1167,7 @@ export default function PhoneNumbersPage() {
                 onClick={
                   activeTab === "twilio"
                     ? importTwilioNumbers
-                    : importExotelNumbers
+                    : importPlivoNumbers
                 }
                 disabled={
                   loading ||
@@ -1168,12 +1175,12 @@ export default function PhoneNumbersPage() {
                     (!twilioForm.accountSid ||
                       !twilioForm.authToken ||
                       !twilioForm.address)) ||
-                  (activeTab === "exotel" &&
-                    (!exotelForm.apiKey ||
-                      !exotelForm.apiToken ||
-                      !exotelForm.accountSid ||
-                      !exotelForm.subdomain ||
-                      !exotelForm.appId))
+                  (activeTab === "plivo" &&
+                    (!plivoForm.accountSid ||
+                      !plivoForm.authToken ||
+                      !plivoForm.address ||
+                      !plivoForm.authUsername ||
+                      !plivoForm.authPassword))
                 }
                 className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
@@ -1206,10 +1213,11 @@ export default function PhoneNumbersPage() {
                   <div
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 bg-white"
-                      }`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
+                      selectedRegisteredNumber === num.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
+                    }`}
                   >
                     <div>
                       <p className="font-medium text-sm text-gray-900">
@@ -1222,10 +1230,11 @@ export default function PhoneNumbersPage() {
                     </div>
                     <div className="ml-4 text-right">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                          }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          num.active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
@@ -1315,10 +1324,11 @@ export default function PhoneNumbersPage() {
               <button
                 onClick={handleAddContact}
                 disabled={loading}
-                className={`px-4 py-2 rounded-md text-white ${loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-emerald-600 hover:bg-emerald-700"
-                  }`}
+                className={`px-4 py-2 rounded-md text-white ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
               >
                 {loading ? "Saving..." : "Save"}
               </button>
@@ -1327,13 +1337,20 @@ export default function PhoneNumbersPage() {
         </div>
       )}
 
-     {/* SHOW ALL CONTACTS MODAL (now shows contacts) */}
+      {/* SHOW ALL CONTACTS MODAL (now shows contacts) */}
       {showAllNumbersModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">All Contact Numbers ({contactNumbers.length})</h3>
-              <button onClick={() => setShowAllNumbersModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <h3 className="text-lg font-semibold text-gray-800">
+                All Contact Numbers ({contactNumbers.length})
+              </h3>
+              <button
+                onClick={() => setShowAllNumbersModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="overflow-y-auto flex-1 pr-2">
@@ -1347,8 +1364,12 @@ export default function PhoneNumbersPage() {
                       className="p-4 border rounded-lg flex items-center justify-between bg-white"
                     >
                       <div>
-                        <p className="font-medium text-sm text-gray-900">{contact.name}</p>
-                        <p className="text-xs text-gray-600">{contact.phoneNo}</p>
+                        <p className="font-medium text-sm text-gray-900">
+                          {contact.name}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {contact.phoneNo}
+                        </p>
                       </div>
 
                       <div className="flex flex-col items-end gap-2">
@@ -1365,18 +1386,26 @@ export default function PhoneNumbersPage() {
                             onClick={() => {
                               // If required preconditions not met, show a message instead of attempting call
                               if (!selectedRegisteredNumber) {
-                                alert("Please select a registered number to make calls from.");
+                                alert(
+                                  "Please select a registered number to make calls from.",
+                                );
                                 return;
                               }
                               if (!selectedAssistant) {
-                                alert("Please select an assistant to handle the call.");
+                                alert(
+                                  "Please select an assistant to handle the call.",
+                                );
                                 return;
                               }
                               // call without closing modal
                               makeCall(contact);
                             }}
-                            disabled={!selectedRegisteredNumber || !selectedAssistant || isLoading}
-                             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-sm font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+                            disabled={
+                              !selectedRegisteredNumber ||
+                              !selectedAssistant ||
+                              isLoading
+                            }
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-sm font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
                           >
                             {isLoading ? "Calling..." : "Call"}
                           </button>
@@ -1399,7 +1428,7 @@ export default function PhoneNumbersPage() {
             <div className="mt-4 pt-4 border-t flex justify-end">
               <button
                 onClick={() => setShowAllNumbersModal(false)}
-                             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
               >
                 Done
               </button>

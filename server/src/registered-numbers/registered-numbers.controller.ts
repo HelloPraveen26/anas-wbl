@@ -25,6 +25,8 @@ import { UpdateRegisteredNumberDto } from "./dto/update-registered-number.dto";
 import { RegisteredNumberResponseDto } from "./dto/registered-number-response.dto";
 import { ImportTwilioNumbersDto } from "./dto/import-twilio-numbers.dto";
 import { ImportTwilioResponseDto } from "./dto/import-twilio-response.dto";
+import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
+import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @ApiTags("registered-numbers")
@@ -110,6 +112,47 @@ export class RegisteredNumbersController {
     return this.registeredNumbersService.importTwilioNumbers(
       req.user.id,
       importTwilioNumbersDto,
+    );
+  }
+
+  @Post("import-phone-numbers-plivo")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Import phone numbers from Plivo",
+    description:
+      "Import phone numbers from Plivo account and create LiveKit SIP trunk",
+  })
+  @ApiBody({ type: ImportPlivoNumbersDto })
+  @ApiResponse({
+    status: 201,
+    description: "Phone numbers imported successfully",
+    type: ImportPlivoResponseDto,
+    example: {
+      importedCount: 3,
+      livekitOutboundTrunkId: "ST_YTGYHbEZ8PWm",
+      importedNumbers: [
+        {
+          phoneNumber: "+918035316457",
+          friendlyName: "918035316457",
+          registeredNumberId: "uuid-here",
+        },
+      ],
+      message: "Successfully imported 3 phone numbers from Plivo",
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - validation failed or Plivo/LiveKit error",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized - invalid token" })
+  async importPlivoNumbers(
+    @Request() req,
+    @Body() importPlivoNumbersDto: ImportPlivoNumbersDto,
+  ): Promise<ImportPlivoResponseDto> {
+    return this.registeredNumbersService.importPlivoNumbers(
+      req.user.id,
+      importPlivoNumbersDto,
     );
   }
 

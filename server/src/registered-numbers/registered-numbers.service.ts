@@ -10,11 +10,14 @@ import { Repository } from "typeorm";
 import { SipClient } from "livekit-server-sdk";
 import { SIPTransport } from "@livekit/protocol";
 import * as twilio from "twilio";
+import * as plivo from "plivo";
 import { RegisteredNumber } from "./entities/registered-number.entity";
 import { CreateRegisteredNumberDto } from "./dto/create-registered-number.dto";
 import { UpdateRegisteredNumberDto } from "./dto/update-registered-number.dto";
 import { ImportTwilioNumbersDto } from "./dto/import-twilio-numbers.dto";
 import { ImportTwilioResponseDto } from "./dto/import-twilio-response.dto";
+import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
+import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
 
 @Injectable()
 export class RegisteredNumbersService {
@@ -192,6 +195,122 @@ export class RegisteredNumbersService {
 
       throw new BadRequestException(
         `Failed to import Twilio numbers: ${error.message}`,
+      );
+    }
+  }
+
+  async importPlivoNumbers(
+    userId: string,
+    importDto: ImportPlivoNumbersDto,
+  ): Promise<ImportPlivoResponseDto> {
+    this.logger.log(`Starting Plivo number import for user: ${userId}`);
+
+    const { accountSid, authToken, address, authUsername, authPassword } =
+      importDto;
+    const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+    const LIVEKIT_API_SECRET =
+      this.configService.get<string>("LIVEKIT_API_SECRET");
+    const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+    if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+      throw new BadRequestException("LiveKit configuration is missing");
+    }
+
+    try {
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      const client = new plivo.Client(accountSid, authToken);
+      const response = await client.numbers.list({ limit: 20 });
+      const numbers = response;
+
+      if (numbers.length === 0) {
+        this.logger.warn("No phone numbers found in Plivo account");
+        return {
+          importedCount: 0,
+          livekitOutboundTrunkId: "",
+          importedNumbers: [],
+          message: "No phone numbers found in Plivo account to import",
+        };
+      }
+
+      const importedNumbers = [];
+      const phoneNumbers = numbers.map((number) => `+${number.number}`);
+
+      // Create a single SIP trunk for all numbers
+      const trunkOptions = {
+        transport: SIPTransport.SIP_TRANSPORT_AUTO,
+        auth_username: authUsername,
+        auth_password: authPassword,
+      };
+
+      const trunk = await sipClient.createSipOutboundTrunk(
+        `Plivo Trunk ${new Date().toISOString()}`,
+        address,
+        phoneNumbers,
+        trunkOptions,
+      );
+
+      this.logger.log(
+        `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for ${phoneNumbers.length} numbers`,
+      );
+
+      // Import each number
+      for (const number of numbers) {
+        const phoneNumber = `+${number.number}`;
+        const friendlyName = number.number; // Use same number as friendlyName as specified
+
+        const registeredNumber = this.registeredNumberRepository.create({
+          providerName: "plivo",
+          friendlyName: friendlyName,
+          phoneNo: phoneNumber,
+          livekitOutboundTrunkId: trunk.sipTrunkId,
+          active: true,
+          userId,
+        });
+
+        const savedNumber =
+          await this.registeredNumberRepository.save(registeredNumber);
+
+        importedNumbers.push({
+          phoneNumber: phoneNumber,
+          friendlyName: friendlyName,
+          registeredNumberId: savedNumber.id,
+        });
+
+        this.logger.log(`Imported phone number: ${phoneNumber}`);
+      }
+
+      const plivoResponse: ImportPlivoResponseDto = {
+        importedCount: importedNumbers.length,
+        livekitOutboundTrunkId: trunk.sipTrunkId,
+        importedNumbers,
+        message: `Successfully imported ${importedNumbers.length} phone numbers from Plivo`,
+      };
+
+      this.logger.log(
+        `Plivo import completed successfully. Imported ${importedNumbers.length} numbers`,
+      );
+      return plivoResponse;
+    } catch (error) {
+      this.logger.error(
+        `Error importing Plivo numbers: ${error.message}`,
+        error.stack,
+      );
+
+      if (error.message.includes("Authentication failed")) {
+        throw new BadRequestException("Invalid Plivo credentials");
+      }
+
+      if (error.message.includes("LiveKit")) {
+        throw new BadRequestException(`LiveKit error: ${error.message}`);
+      }
+
+      throw new BadRequestException(
+        `Failed to import Plivo numbers: ${error.message}`,
       );
     }
   }
