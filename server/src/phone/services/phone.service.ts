@@ -8,6 +8,7 @@ import { HangupDto } from "../dto/hangup.dto";
 import { AssistantService } from "../../assistant/assistant.service";
 import { RegisteredNumbersService } from "../../registered-numbers/registered-numbers.service";
 import { CallLogsService } from "../../call-logs/call-logs.service";
+import { renderTemplate } from "../../common/utils/template.util";
 
 @Injectable()
 export class PhoneService {
@@ -61,19 +62,24 @@ export class PhoneService {
             userId,
           );
           systemPrompt = assistant.systemPrompt;
+
+          // Apply template rendering if metadata is present
+          if (dto.metadata && systemPrompt) {
+            systemPrompt = renderTemplate(systemPrompt, dto.metadata);
+          }
+
           firstMessage = assistant.firstMessage;
 
           if (assistant.realtimeModel?.realtimeProvider) {
             realtimeProviderName =
               assistant.realtimeModel?.realtimeProvider?.name;
-            realtimeModelConfig = assistant.realtimeConfig;  
+            realtimeModelConfig = assistant.realtimeConfig;
             this.logger.log(`Realtime Provider Name: ${realtimeProviderName}`);
           }
 
           if (assistant.llmModel?.llmProvider) {
-            llmProviderName =
-              assistant.llmModel?.llmProvider?.name;
-            llmConfig = {"model_name": assistant.llmModel?.name};
+            llmProviderName = assistant.llmModel?.llmProvider?.name;
+            llmConfig = { model_name: assistant.llmModel?.name };
             this.logger.log(`LLM Provider Name: ${llmProviderName}`);
           }
 
@@ -147,10 +153,14 @@ export class PhoneService {
         outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
         ...(systemPrompt && { instructions: systemPrompt }),
         ...(firstMessage && { first_message: firstMessage }),
-        ...(realtimeProviderName && { realtime_provider_name: realtimeProviderName }),
+        ...(realtimeProviderName && {
+          realtime_provider_name: realtimeProviderName,
+        }),
         ...(sttProviderName && { stt_provider_name: sttProviderName }),
         ...(ttsProviderName && { tts_provider_name: ttsProviderName }),
-        ...(realtimeModelConfig && { realtime_model_config: realtimeModelConfig }),
+        ...(realtimeModelConfig && {
+          realtime_model_config: realtimeModelConfig,
+        }),
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
       };

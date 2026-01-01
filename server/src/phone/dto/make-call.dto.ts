@@ -1,5 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, Matches } from "class-validator";
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  IsObject,
+} from "class-validator";
 
 export class MakeCallDto {
   @ApiProperty({
@@ -32,4 +38,14 @@ export class MakeCallDto {
   @IsOptional()
   @IsString()
   selectedAssistant?: string;
+
+  @ApiProperty({
+    description:
+      "Optional metadata object for template rendering in system prompts",
+    example: { name: "john", company: "acme" },
+    required: false,
+  })
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, any>;
 }
