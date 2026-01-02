@@ -12,6 +12,7 @@ from livekit.agents import (
     Agent,
     AgentFalseInterruptionEvent,
     AgentSession,
+    AutoSubscribe,
     JobContext,
     JobProcess,
     MetricsCollectedEvent,
@@ -599,6 +600,8 @@ async def entrypoint(ctx: JobContext):
     )
 
     logger.info("âœ… Voice session started successfully with tools enabled")
+    # Join the room and connect to the user
+    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
     # Kick off conversation
     await session.generate_reply(
