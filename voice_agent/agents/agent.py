@@ -9,6 +9,7 @@ from livekit.agents import (
     Agent,
     AgentFalseInterruptionEvent,
     AgentSession,
+    AutoSubscribe,
     JobContext,
     JobProcess,
     MetricsCollectedEvent,
@@ -202,7 +203,7 @@ async def entrypoint(ctx: JobContext):
             model="gemini-2.5-flash-native-audio-preview-09-2025",
             voice=voice,
             temperature=0.8,
-            instructions=custom_instructions
+            instructions=custom_instructions,
         )
     elif llm_provider_name == "Groq":
         llm = groq.LLM(model="llama3-8b-8192")
@@ -332,7 +333,7 @@ async def entrypoint(ctx: JobContext):
     )
 
     # Join the room and connect to the user
-    await ctx.connect()
+    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
     await session.generate_reply(
         instructions=f"Start the conversation by saying: '{custom_first_message}'"
