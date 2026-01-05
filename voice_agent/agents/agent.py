@@ -1,4 +1,4 @@
-# agent.py  (FIXED VERSION - Tools properly passed to Agent)
+# agent.py  (UPDATED - Auto-send to webhook on call end)
 import asyncio
 import base64
 import json
@@ -33,7 +33,6 @@ from livekit.plugins import (
     google,
     groq,
     lmnt,
-    noise_cancellation,
     openai,
     sarvam,
     silero,
@@ -64,7 +63,7 @@ class DynamicToolHandler:
         try:
             backend_url = f"http://127.0.0.1:8000/api/v1/assistants/tool-config/{self.assistant_id}"
 
-            logger.info(f"ðŸ”„ Loading tool config from: {backend_url}")
+            logger.info(f"📄 Loading tool config from: {backend_url}")
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(backend_url) as resp:
@@ -73,38 +72,38 @@ class DynamicToolHandler:
                         if result.get("success") and result.get("data"):
                             self.tool_config = result["data"]
                             logger.info(
-                                f"âœ… Loaded tool config: {self.tool_config.get('toolName')}"
+                                f"✅ Loaded tool config: {self.tool_config.get('toolName')}"
                             )
                             logger.info(
-                                f"ðŸ“‹ Parameters: {list(self.tool_config.get('parameters', {}).keys())}"
+                                f"📋 Parameters: {list(self.tool_config.get('parameters', {}).keys())}"
                             )
                             return True
                         else:
                             logger.warning(
-                                f"âš ï¸ No tool config found for assistant: {self.assistant_id}"
+                                f"⚠️ No tool config found for assistant: {self.assistant_id}"
                             )
                             return False
                     else:
                         logger.warning(
-                            f"âš ï¸ Failed to load config, status: {resp.status}"
+                            f"⚠️ Failed to load config, status: {resp.status}"
                         )
                         return False
         except Exception as e:
-            logger.error(f"âŒ Error loading tool config: {e}")
+            logger.error(f"❌ Error loading tool config: {e}")
             return False
 
     async def collect_data(self, key: str, value: str):
         """Store user-provided information"""
         self.collected_data[key] = value
-        logger.info(f"âœ… [TOOL STORED] {key}: {value}")
-        logger.info(f"ðŸ“Š Current data: {json.dumps(self.collected_data, indent=2)}")
-
-        # When all required parameters are collected, forward to backend.
-        if self.all_required_collected():
-            logger.info(
-                "âœ… All required parameters collected! Auto-sending to webhook..."
-            )
-            await self.send_to_webhook()
+        logger.info(f"✅ [TOOL STORED] {key}: {value}")
+        logger.info(f"📊 Current data: {json.dumps(self.collected_data, indent=2)}")
+        
+        # Don't send webhook here - will send at end of call
+        missing = self.get_missing_parameters()
+        if missing:
+            logger.info(f"⏳ Still need: {', '.join(missing)}")
+        else:
+            logger.info("✅ All required parameters collected!")
 
     def get_missing_parameters(self):
         """Get list of parameters that haven't been collected yet"""
@@ -132,7 +131,7 @@ class DynamicToolHandler:
         for param_name, param_config in params.items():
             if param_config.get("required", False):
                 if param_name not in self.collected_data:
-                    logger.info(f"â³ Still missing required parameter: {param_name}")
+                    logger.info(f"⏳ Still missing required parameter: {param_name}")
                     return False
 
         return True
@@ -140,32 +139,50 @@ class DynamicToolHandler:
     async def send_to_webhook(self):
         """Send collected data to backend, which forwards to the configured webhook"""
         try:
+            # Build complete payload with all parameters (collected + missing)
+            complete_data = {}
+            
+            if self.tool_config and self.tool_config.get("parameters"):
+                params = self.tool_config.get("parameters", {})
+                
+                # Add all defined parameters
+                for param_name in params.keys():
+                    if param_name in self.collected_data:
+                        # Use collected value
+                        complete_data[param_name] = self.collected_data[param_name]
+                    else:
+                        # Mark as not available
+                        complete_data[param_name] = "not available"
+            else:
+                # If no config, just send whatever was collected
+                complete_data = self.collected_data
+            
             backend_url = "http://127.0.0.1:8000/api/v1/assistants/agent-webhook"
             payload = {
                 "assistantId": self.assistant_id,
-                "collectedData": self.collected_data,
+                "collectedData": complete_data,
             }
 
             logger.info("=============================================")
-            logger.info(f"ðŸ“¤ Sending collected data to backend")
-            logger.info(f"ðŸ†” Assistant ID: {self.assistant_id}")
-            logger.info(f"ðŸ“Š Data: {json.dumps(self.collected_data, indent=2)}")
+            logger.info(f"📤 Sending collected data to backend")
+            logger.info(f"🆔 Assistant ID: {self.assistant_id}")
+            logger.info(f"📊 Complete Data (including missing): {json.dumps(complete_data, indent=2)}")
             logger.info("=============================================")
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(backend_url, json=payload) as resp:
                     text = await resp.text()
                     if resp.status == 200:
-                        logger.info(f"âœ… Data sent successfully to backend (200)")
-                        logger.info(f"ðŸ” Backend response: {text}")
+                        logger.info(f"✅ Data sent successfully to backend (200)")
+                        logger.info(f"📝 Backend response: {text}")
                         return True
                     else:
                         logger.error(
-                            f"âŒ Backend returned status: {resp.status}, response: {text}"
+                            f"❌ Backend returned status: {resp.status}, response: {text}"
                         )
                         return False
         except Exception as e:
-            logger.error(f"âŒ Failed to send to backend webhook: {e}")
+            logger.error(f"❌ Failed to send to backend webhook: {e}")
             return False
 
     def get_tool_instructions(self):
@@ -191,42 +208,42 @@ class DynamicToolHandler:
                 optional_params.append(f"{param_name} ({param_type}): {param_desc}")
 
         instruction = "\n\n" + "=" * 50 + "\n"
-        instruction += "ðŸ”§ DATA COLLECTION TOOL ACTIVATED\n"
+        instruction += "🔧 DATA COLLECTION TOOL ACTIVATED\n"
         instruction += "=" * 50 + "\n\n"
 
         instruction += "YOUR PRIMARY MISSION: Collect the following information during this conversation.\n\n"
 
         if required_params:
-            instruction += "âœ… REQUIRED INFORMATION (must collect all):\n"
+            instruction += "✅ REQUIRED INFORMATION (must collect all):\n"
             for i, param in enumerate(required_params, 1):
                 instruction += f"   {i}. {param}\n"
             instruction += "\n"
 
         if optional_params:
-            instruction += "ðŸ“‹ OPTIONAL INFORMATION (collect if mentioned):\n"
+            instruction += "📋 OPTIONAL INFORMATION (collect if mentioned):\n"
             for i, param in enumerate(optional_params, 1):
                 instruction += f"   {i}. {param}\n"
             instruction += "\n"
 
-        instruction += "ðŸŽ¯ CRITICAL RULES:\n"
+        instruction += "🎯 CRITICAL RULES:\n"
         instruction += "1. When user provides ANY piece of information above, IMMEDIATELY call collect_user_data(key, value)\n"
         instruction += "2. Extract information naturally from conversation - don't make it feel like an interrogation\n"
         instruction += "3. Ask follow-up questions conversationally to get missing required information\n"
         instruction += "4. If user provides multiple pieces at once, call collect_user_data separately for each\n"
-        instruction += "5. The system will automatically send data to webhook once all required fields are collected\n"
+        instruction += "5. Even if user doesn't provide all information, whatever is collected will be saved when call ends\n"
         instruction += (
             "6. Continue your main conversation purpose while collecting this data\n\n"
         )
 
-        instruction += "ðŸ’¡ EXAMPLES:\n"
+        instruction += "💡 EXAMPLES:\n"
         instruction += "User: 'Hi, I'm John Smith from ABC Corp'\n"
-        instruction += "â†’ Call collect_user_data('name', 'John Smith')\n"
-        instruction += "â†’ Call collect_user_data('company', 'ABC Corp')\n"
-        instruction += "â†’ Then respond naturally: 'Great to meet you John! What can I help you with today?'\n\n"
+        instruction += "→ Call collect_user_data('name', 'John Smith')\n"
+        instruction += "→ Call collect_user_data('company', 'ABC Corp')\n"
+        instruction += "→ Then respond naturally: 'Great to meet you John! What can I help you with today?'\n\n"
 
         instruction += "User: 'My email is john@example.com'\n"
-        instruction += "â†’ Call collect_user_data('email', 'john@example.com')\n"
-        instruction += "â†’ Then continue conversation\n\n"
+        instruction += "→ Call collect_user_data('email', 'john@example.com')\n"
+        instruction += "→ Then continue conversation\n\n"
 
         instruction += "=" * 50 + "\n"
 
@@ -253,7 +270,7 @@ def setup_langfuse(
     host = host or os.getenv("LANGFUSE_HOST")
 
     if not public_key or not secret_key or not host:
-        logger.info("â„¹ï¸ Langfuse not configured; skipping telemetry setup")
+        logger.info("ℹ️ Langfuse not configured; skipping telemetry setup")
         return
 
     langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
@@ -268,11 +285,6 @@ def setup_langfuse(
 
 async def entrypoint(ctx: JobContext):
     # Logging setup
-    # Add any other context you want in all log entries here
-    ctx.log_context_fields = {
-        "room": ctx.room.name,
-    }
-
     ctx.log_context_fields = {"room": ctx.room.name}
 
     # --- metadata extraction ---
@@ -372,28 +384,30 @@ async def entrypoint(ctx: JobContext):
     logger.info("TTS Config: %s", tts_config)
     logger.info("Langfuse metadata: %s", langfuse_metadata)
     logger.info("---------------------------------------------")
+    
     # Read Azure credentials once if needed
     azure_speech_key = os.getenv("AZURE_SPEECH_KEY")
     azure_speech_region = os.getenv("AZURE_SPEECH_REGION")
+    
     # Initialize tool handler BEFORE setting up STT/TTS
     tool_handler = None
     if assistant_id and webhook_url:
-        logger.info("ðŸ”§ Initializing tool handler...")
+        logger.info("🔧 Initializing tool handler...")
         tool_handler = DynamicToolHandler(webhook_url, assistant_id)
         config_loaded = await tool_handler.load_tool_config()
 
         if config_loaded:
-            logger.info("âœ… Tool configuration loaded successfully")
+            logger.info("✅ Tool configuration loaded successfully")
             logger.info(
-                f"ðŸ“‹ Tool will collect: {list(tool_handler.tool_config.get('parameters', {}).keys())}"
+                f"📋 Tool will collect: {list(tool_handler.tool_config.get('parameters', {}).keys())}"
             )
         else:
             logger.warning(
-                "âš ï¸ No tool configuration found - agent will work without data collection"
+                "⚠️ No tool configuration found - agent will work without data collection"
             )
             tool_handler = None
 
-    # STT / TTS selection
+    # LLM selection
     llm = None
     if realtime_provider_name == "Gemini Realtime":
         voice = (realtime_model_config or {}).get("voice") or "Puck"
@@ -408,6 +422,7 @@ async def entrypoint(ctx: JobContext):
         llm = groq.LLM(model="llama3-8b-8192")
     else:
         llm = openai.LLM(model="gpt-4.1-mini")
+    
     # Set up STT provider based on metadata
     stt = None
     if stt_provider_name == "Sarvam":
@@ -431,8 +446,8 @@ async def entrypoint(ctx: JobContext):
     else:
         stt = deepgram.STT(model="nova-3", language="multi")
 
+    # Set up TTS provider
     tts = None
-
     if tts_provider_name == "Sarvam":
         speaker = (tts_config or {}).get("speaker") or "anushka"
         logger.info("Speaker: %s", speaker)
@@ -493,18 +508,18 @@ async def entrypoint(ctx: JobContext):
         tool_instructions = tool_handler.get_tool_instructions()
         if tool_instructions:
             final_instructions += tool_instructions
-            logger.info("âœ… Added data collection instructions to system prompt")
+            logger.info("✅ Added data collection instructions to system prompt")
 
     logger.info("=============================================")
     logger.info(
-        "ðŸ“‹ Final Agent Instructions (first 500 chars):\n%s",
+        "📋 Final Agent Instructions (first 500 chars):\n%s",
         (final_instructions[:500] + "...")
         if len(final_instructions) > 500
         else final_instructions,
     )
     logger.info("=============================================")
 
-    # --- CRITICAL FIX: Create tool function and pass it to Agent (not LLM) ---
+    # Create tool function and pass it to Agent
     tool_functions = []
 
     if tool_handler and tool_handler.tool_config:
@@ -531,27 +546,20 @@ async def entrypoint(ctx: JobContext):
                 value: The value provided by the user
             """
             logger.info(
-                f"ðŸ”§ [TOOL CALLED] collect_user_data(key='{key}', value='{value}')"
+                f"🔧 [TOOL CALLED] collect_user_data(key='{key}', value='{value}')"
             )
             if tool_handler:
                 await tool_handler.collect_data(key, value)
                 missing = tool_handler.get_missing_parameters()
                 if missing:
-                    return f"âœ… Stored {key}. Still need: {', '.join(missing)}"
+                    return f"✅ Stored {key}. Still need: {', '.join(missing)}"
                 else:
-                    return f"âœ… Stored {key}. All required information collected!"
-            return f"âœ… Stored {key}"
+                    return f"✅ Stored {key}. All required information collected!"
+            return f"✅ Stored {key}"
 
         tool_functions.append(collect_user_data)
-        logger.info("âœ… Registered collect_user_data tool function")
+        logger.info("✅ Registered collect_user_data tool function")
 
-    session = AgentSession(
-        llm=llm,
-        stt=stt,
-        tts=tts,
-        vad=ctx.proc.userdata.get("vad"),
-        preemptive_generation=True,
-    )
     # Set up a voice AI pipeline using the configured provider
     session = None
     if realtime_provider_name == None:
@@ -583,16 +591,16 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(log_usage)
 
-    # CRITICAL FIX: Pass tools to Agent constructor, not to LLM
+    # Pass tools to Agent constructor
     if tool_functions:
         agent = Agent(
             instructions=final_instructions,
-            tools=tool_functions,  # â† Pass tools here to Agent
+            tools=tool_functions,
         )
-        logger.info(f"âœ… Created Agent with {len(tool_functions)} tool(s)")
+        logger.info(f"✅ Created Agent with {len(tool_functions)} tool(s)")
     else:
         agent = Agent(instructions=final_instructions)
-        logger.info("â„¹ï¸ Created Agent without tools")
+        logger.info("ℹ️ Created Agent without tools")
 
     # Start session with the agent that has tools
     await session.start(
@@ -603,7 +611,31 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
-    logger.info("âœ… Voice session started successfully with tools enabled")
+    logger.info("✅ Voice session started successfully with tools enabled")
+
+    # CRITICAL: Send collected data when call ends
+    async def send_data_on_call_end():
+        if tool_handler:
+            logger.info("📞 Call ending - preparing to send data to webhook...")
+            
+            if tool_handler.collected_data or (tool_handler.tool_config and tool_handler.tool_config.get("parameters")):
+                logger.info(f"📊 Data collected during call: {json.dumps(tool_handler.collected_data, indent=2)}")
+                
+                try:
+                    result = await tool_handler.send_to_webhook()
+                    if result:
+                        logger.info("✅ Successfully sent data to webhook on call end")
+                    else:
+                        logger.error("❌ Failed to send data to webhook on call end")
+                except Exception as e:
+                    logger.error(f"❌ Error sending webhook on call end: {e}", exc_info=True)
+            else:
+                logger.info("ℹ️ No data collected and no parameters defined - skipping webhook")
+        else:
+            logger.info("ℹ️ No tool handler configured - skipping webhook")
+
+    ctx.add_shutdown_callback(send_data_on_call_end)
+
     # Join the room and connect to the user
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
 
@@ -612,7 +644,7 @@ async def entrypoint(ctx: JobContext):
         instructions=f"Start the conversation by saying: '{custom_first_message}'"
     )
 
-    logger.info("âœ… Voice session active; waiting for events")
+    logger.info("✅ Voice session active; waiting for events")
 
 
 if __name__ == "__main__":
