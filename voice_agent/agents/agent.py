@@ -44,14 +44,13 @@ logger = logging.getLogger("agent")
 load_dotenv(".env", override=True)
 
 
-
 async def hangup_call():
     """Hang up the call by deleting the room for all participants."""
     ctx = get_job_context()
     if ctx is None:
         logger.warning("Cannot hang up: not running in a job context")
         return
-    
+
     logger.info(f"Hanging up call for room: {ctx.room.name}")
     await ctx.api.room.delete_room(
         api.DeleteRoomRequest(
@@ -73,13 +72,13 @@ class Assistant(Agent):
             if instructions is not None
             else default_instructions,
         )
+
     @function_tool
-    async def end_call(self, ctx):
+    async def end_call(self, ctx: RunContext):
         """Called when the user wants to end the call"""
-        await ctx.wait_for_playout() 
+        await ctx.wait_for_playout()
         logger.info("User requested to end the call")
         await hangup_call()
-    
 
 
 def prewarm(proc: JobProcess):
@@ -227,7 +226,7 @@ async def entrypoint(ctx: JobContext):
         logger.info("Realtime Voice: %s", voice)
         model = (realtime_model_config or {}).get(
             "model"
-        ) or "gemini-live-2.5-flash-preview"
+        ) or "gemini-2.5-flash-native-audio-preview-12-2025"
         logger.info("Realtime Model: %s", model)
         llm = google.realtime.RealtimeModel(
             model=model,
