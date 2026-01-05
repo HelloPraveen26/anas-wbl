@@ -4,6 +4,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
+from livekit import api, rtc
 from livekit.agents import (
     NOT_GIVEN,
     Agent,
@@ -14,8 +15,11 @@ from livekit.agents import (
     JobProcess,
     MetricsCollectedEvent,
     RoomInputOptions,
+    RunContext,
     WorkerOptions,
     cli,
+    function_tool,
+    get_job_context,
     metrics,
 )
 from livekit.agents.inference.tts import TTSEncoding
@@ -40,10 +44,24 @@ logger = logging.getLogger("agent")
 load_dotenv(".env", override=True)
 
 
+
+async def hangup_call():
+    ctx = get_job_context()
+    if ctx is None:
+        return
+    
+    await ctx.api.room.delete_room(
+        api.DeleteRoomRequest(
+            room=ctx.room.name,
+        )
+    )
+
+
 class Assistant(Agent):
     def __init__(self, instructions: str | None = None) -> None:
         default_instructions = """You are a helpful voice AI assistant.
             You eagerly assist users with their questions by providing information from your extensive knowledge.
+            Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
             Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
             You are curious, friendly, and have a sense of humor."""
 
@@ -52,6 +70,14 @@ class Assistant(Agent):
             if instructions is not None
             else default_instructions,
         )
+    @function_tool
+    async def end_call(self, ctx):
+        """Called when the user wants to end the call"""
+        if hasattr(ctx, "wait_for_playout"):
+            await ctx.wait_for_playout() 
+        
+        await hangup_call()
+    
 
 
 def prewarm(proc: JobProcess):
