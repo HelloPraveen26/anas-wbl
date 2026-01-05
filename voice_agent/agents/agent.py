@@ -596,7 +596,11 @@ async def entrypoint(ctx: JobContext):
 
     # Start session with the agent that has tools
     await session.start(
-        agent=agent, room=ctx.room, room_input_options=RoomInputOptions()
+        agent=agent,
+        room=ctx.room,
+        room_input_options=RoomInputOptions(
+            close_on_disconnect=True,
+        ),
     )
 
     logger.info("âœ… Voice session started successfully with tools enabled")
