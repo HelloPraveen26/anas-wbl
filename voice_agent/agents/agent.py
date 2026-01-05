@@ -46,10 +46,13 @@ load_dotenv(".env", override=True)
 
 
 async def hangup_call():
+    """Hang up the call by deleting the room for all participants."""
     ctx = get_job_context()
     if ctx is None:
+        logger.warning("Cannot hang up: not running in a job context")
         return
     
+    logger.info(f"Hanging up call for room: {ctx.room.name}")
     await ctx.api.room.delete_room(
         api.DeleteRoomRequest(
             room=ctx.room.name,
@@ -62,7 +65,7 @@ class Assistant(Agent):
         default_instructions = """You are a helpful voice AI assistant.
             You eagerly assist users with their questions by providing information from your extensive knowledge.
             Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
-            Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
+            If the user clearly wants to end the conversation, call the end_call function.
             You are curious, friendly, and have a sense of humor."""
 
         super().__init__(
@@ -73,9 +76,8 @@ class Assistant(Agent):
     @function_tool
     async def end_call(self, ctx):
         """Called when the user wants to end the call"""
-        if hasattr(ctx, "wait_for_playout"):
-            await ctx.wait_for_playout() 
-        
+        await ctx.wait_for_playout() 
+        logger.info("User requested to end the call")
         await hangup_call()
     
 
