@@ -89,15 +89,13 @@ def setup_langfuse(
 
 
 async def entrypoint(ctx: JobContext):
-    # Logging setup
-    # Add any other context you want in all log entries here
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
 
-    # Extract metadata from the job context
+    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+
     metadata = {}
-    # Check if we have job metadata available
     if hasattr(ctx.job, "metadata") and ctx.job.metadata:
         try:
             if isinstance(ctx.job.metadata, str):
@@ -199,10 +197,14 @@ async def entrypoint(ctx: JobContext):
     if realtime_provider_name == "Gemini Realtime":
         voice = (realtime_model_config or {}).get("voice") or "Puck"
         logger.info("Realtime Voice: %s", voice)
+        model = (realtime_model_config or {}).get(
+            "model"
+        ) or "gemini-live-2.5-flash-preview"
+        logger.info("Realtime Model: %s", model)
         llm = google.realtime.RealtimeModel(
-            model="gemini-2.5-flash-native-audio-preview-09-2025",
+            model=model,
             voice=voice,
-            temperature=0.8,
+            temperature=0.4,
             instructions=custom_instructions,
         )
     elif llm_provider_name == "Groq":
@@ -327,14 +329,9 @@ async def entrypoint(ctx: JobContext):
         agent=Assistant(instructions=custom_instructions),
         room=ctx.room,
         room_input_options=RoomInputOptions(
-            noise_cancellation=noise_cancellation.BVC(),
             close_on_disconnect=True,
         ),
     )
-
-    # Join the room and connect to the user
-    await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-
     await session.generate_reply(
         instructions=f"Start the conversation by saying: '{custom_first_message}'"
     )
