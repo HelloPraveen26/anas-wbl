@@ -105,7 +105,10 @@ export class PhoneService {
           if (assistant.realtimeModel?.realtimeProvider) {
             realtimeProviderName =
               assistant.realtimeModel?.realtimeProvider?.name;
-            realtimeModelConfig = assistant.realtimeConfig;
+            realtimeModelConfig = {
+              ...assistant.realtimeConfig,
+              model: assistant.realtimeModel?.name,
+            };
             this.logger.log(`Realtime Provider Name: ${realtimeProviderName}`);
           }
 
