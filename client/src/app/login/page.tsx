@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Chrome, Eye, EyeOff, AlertCircle, Loader2, ArrowLeft, Users, TrendingUp, Award, Zap, Mic2, Brain } from 'lucide-react';
+import { Chrome, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 // Assuming '@/lib/api' and '@/lib/auth' are correctly set up
 import { api, ApiError, SignInRequest } from '@/lib/api';
 import { authManager } from '@/lib/auth';
@@ -16,7 +16,7 @@ import favicon from "@/assets/favicon.png"; // ZenXai logo placeholder
 import newlogo from "@/assets/newlogo.png";
 import greeny from "@/assets/greeny.jpg";
 import wavewhite from "@/assets/Icons/wavewhite.jpeg";
-import cristy from "@/assets/cristmasCap.png";
+import cristy from "@/assets/newlogo.png";
 
 interface FormData {
   email: string;
@@ -29,24 +29,8 @@ interface FormErrors {
   general?: string;
 }
 
-// Define the feature data for the left panel showcase
-const features = [
-  {
-    icon: Mic2,
-    title: "Multilingual Agents",
-    color: "text-blue-600",
-  },
-  {
-    icon: Brain,
-    title: "AI-Powered Intelligence",
-    color: "text-purple-600",
-  },
-  {
-    icon: TrendingUp,
-    title: "Scalable Management",
-    color: "text-green-600",
-  },
-];
+
+
 
 
 export default function SignIn() {
@@ -149,8 +133,8 @@ export default function SignIn() {
   // --- Render Component ---
 
   return (
-    // Use min-h-screen and flex to fill the viewport and align children side-by-side
-    <div className="min-h-screen bg-white flex">
+    // Use h-screen w-full overflow-hidden to create a locked viewport
+    <div className="h-screen w-full bg-white flex overflow-hidden">
 
       {/* ========================================================= */}
       {/* LEFT SIDE - WELCOME SECTION (PREMIUM WHITE BACKGROUND)    */}
@@ -170,7 +154,7 @@ export default function SignIn() {
                   <img
                     src={cristy.src}
                     alt="Company Logo"
-                    className="max-w-[300px] w-full h-auto -ml-8"
+                    className="max-w-[250px] w-full h-auto -ml-3"
                   />
                 </div>
 
@@ -185,19 +169,7 @@ export default function SignIn() {
               </div>
 
               {/* Feature Grid (REPLICATED) */}
-              {/* <div className="space-y-6 pt-4">
-                  {features.map((feature, index) => (
-                    <div key={index} className="flex items-start space-x-4 p-4 rounded-xl bg-white shadow-lg transition duration-300 hover:shadow-xl hover:scale-[1.01]">
-                      <div className={`p-3 rounded-full ${feature.color} bg-gray-100/70 shadow-inner`}>
-                        <feature.icon className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{feature.title}</h3>
-                        <p className="text-sm text-gray-500 mt-1">{feature.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div> */}
+
             </div>
           </div>
 
@@ -210,161 +182,164 @@ export default function SignIn() {
 
 
       {/* ========================================================= */}
-      {/* RIGHT SIDE - SIGN IN FORM (WITH GRADIENT & DOTTED DESIGN) */}
+      {/* RIGHT SIDE WRAPPER - HANDLES SCROLLING AND LAYOUT         */}
       {/* ========================================================= */}
-      {/* Applied the custom class to include both the gradient and the dotted pattern */}
-      <div className="w-full lg:w-1/2 text-white relative flex flex-col items-center justify-center p-8 lg:p-12 -pt-12 rounded-2xl m-4 lg:m-8" style={{
-        backgroundImage: ` url(${wavewhite.src})`,
-        backgroundSize: '100% 100%, 100% 100%, cover',
-        backgroundPosition: 'center, center, center',
-        backgroundRepeat: 'no-repeat, no-repeat, no-repeat',
-        backgroundColor: '#0F172A'
-      }}>
-        {/* Abstract Gradient/Blob: Subtle tech aesthetic to break the flat background */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
-        <div className="absolute bottom-10 left-10 w-48 h-48 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+      <div className="flex-1 h-full overflow-hidden p-4 lg:p-8 flex items-center justify-center">
+        {/* RIGHT SIDE - SIGN IN FORM (WITH GRADIENT & DOTTED DESIGN) */}
+        {/* Removed margin/sizing classes that caused overflow, handled by wrapper */}
+        <div className="w-full text-white relative flex flex-col items-center justify-center p-8 lg:p-12 -pt-12 rounded-2xl" style={{
+          backgroundImage: ` url(${wavewhite.src})`,
+          backgroundSize: '100% 100%, 100% 100%, cover',
+          backgroundPosition: 'center, center, center',
+          backgroundRepeat: 'no-repeat, no-repeat, no-repeat',
+          backgroundColor: '#0F172A'
+        }}>
+          {/* Abstract Gradient/Blob: Subtle tech aesthetic to break the flat background */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+          <div className="absolute bottom-10 left-10 w-48 h-48 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
 
-        <div className="w-full max-w-md relative z-10">
+          <div className="w-full max-w-md relative z-10">
 
-          {/* Header */}
-          <div className="mb-10 mt-12 lg:mt-0">
-            <h2 className="text-4xl font-extrabold text-black relative flex justify-center">Welcome Back !</h2>
-            <p className="text-gray-600 text-lg relative flex justify-center mt-2">Log in to your dashboard</p>
-          </div>
-
-          {/* Error Alert - Enhanced for better contrast/depth */}
-          {errors.general && (
-            <div className="mb-6 p-4 bg-red-100 border border-red-700 rounded-xl flex items-start shadow-md">
-              <AlertCircle className="w-5 h-5 text-red-00 mt-0.5 mr-3 flex-shrink-0" />
-              <span className="text-sm text-red-700">{errors.general}</span>
-            </div>
-          )}
-
-          {/* Google Button - Enhanced with subtle shadoLog in to your dashboardw and border */}
-          <button
-            onClick={handleGoogleSignIn}
-            className="w-full h-12  rounded-xl flex items-center justify-center bg-gray-100 transition-all duration-200 mb-6 text-black font-semibold shadow-lg hover:shadow-xl"
-            disabled={isLoading}
-          >
-            <Chrome className="w-5 h-5 mr-3" />
-            <span>Continue with Google</span>
-          </button>
-
-          {/* Divider - Cleaned up */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-            </div>
-            <div className="relative flex justify-center">
-              <span className="px-4 text-sm text-gray-500 bg-gray-150 font-medium">OR SIGN IN WITH EMAIL</span>
-            </div>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleEmailSignIn} className="space-y-6">
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleInputChange}
-                // Input styling: Deeper background, pronounced blue focus, rounded-xl
-                className={`w-full h-12 px-4 shadow-lg rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${errors.email
-                    ? 'border-red-500 focus:border-green-500'
-                    : 'border-gray-700 focus:border-green-700  '
-                  }`}
-                disabled={isLoading}
-                required
-              />
-              {errors.email && (
-
-                <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.email}</p>
-              )}
+            {/* Header */}
+            <div className="mb-10 mt-12 lg:mt-0">
+              <h2 className="text-4xl font-extrabold text-black relative flex justify-center">Welcome Back !</h2>
+              <p className="text-gray-600 text-lg relative flex justify-center mt-2">Log in to your dashboard</p>
             </div>
 
-            {/* Password */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-800 mb-2">
-                Password
-              </label>
-              <div className="relative">
+            {/* Error Alert - Enhanced for better contrast/depth */}
+            {errors.general && (
+              <div className="mb-6 p-4 bg-red-100 border border-red-700 rounded-xl flex items-start shadow-md">
+                <AlertCircle className="w-5 h-5 text-red-00 mt-0.5 mr-3 flex-shrink-0" />
+                <span className="text-sm text-red-700">{errors.general}</span>
+              </div>
+            )}
+
+            {/* Google Button - Enhanced with subtle shadoLog in to your dashboardw and border */}
+            <button
+              onClick={handleGoogleSignIn}
+              className="w-full h-12  rounded-xl flex items-center justify-center bg-gray-100 transition-all duration-200 mb-6 text-black font-semibold shadow-lg hover:shadow-xl"
+              disabled={isLoading}
+            >
+              <Chrome className="w-5 h-5 mr-3" />
+              <span>Continue with Google</span>
+            </button>
+
+            {/* Divider - Cleaned up */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+              </div>
+              <div className="relative flex justify-center">
+                <span className="px-4 text-sm text-gray-500 bg-gray-150 font-medium">OR SIGN IN WITH EMAIL</span>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleEmailSignIn} className="space-y-6">
+              {/* Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
+                  Email Address
+                </label>
                 <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={formData.password}
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={formData.email}
                   onChange={handleInputChange}
                   // Input styling: Deeper background, pronounced blue focus, rounded-xl
-                  className={`w-full h-12 px-4 shadow-lg border-1 rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${errors.password
-                      ? 'border-red-500 focus:border-green-500'
-                      : 'border-gray-700 focus:border-green-700  '
+                  className={`w-full h-12 px-4 shadow-lg rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${errors.email
+                    ? 'border-red-500 focus:border-green-500'
+                    : 'border-gray-700 focus:border-green-700  '
                     }`}
                   disabled={isLoading}
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400 transition-colors"
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+                {errors.email && (
+
+                  <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.email}</p>
+                )}
               </div>
-              {errors.password && (
-                <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.password}</p>
-              )}
-            </div>
 
-            {/* Remember Me & Forgot Password - Increased separation and visibility */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  // Checkbox styling adjusted
-                  className="w-4 h-4 border-2 border-gray-600 rounded focus:ring-2 focus:ring-blue-500 bg-gray-800 checked:bg-blue-500 checked:border-blue-500 cursor-pointer transition-colors"
-                />
-                <span className="ml-3 text-sm text-gray-800 font-medium">Remember me</span>
-              </label>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-gray-800 font-semibold hover:text-blue-300 transition-colors"
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-800 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    // Input styling: Deeper background, pronounced blue focus, rounded-xl
+                    className={`w-full h-12 px-4 shadow-lg border-1 rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${errors.password
+                      ? 'border-red-500 focus:border-green-500'
+                      : 'border-gray-700 focus:border-green-700  '
+                      }`}
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400 transition-colors"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.password}</p>
+                )}
+              </div>
+
+              {/* Remember Me & Forgot Password - Increased separation and visibility */}
+              <div className="flex items-center justify-between pt-1">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    // Checkbox styling adjusted
+                    className="w-4 h-4 border-2 border-gray-600 rounded focus:ring-2 focus:ring-blue-500 bg-gray-800 checked:bg-blue-500 checked:border-blue-500 cursor-pointer transition-colors"
+                  />
+                  <span className="ml-3 text-sm text-gray-800 font-medium">Remember me</span>
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-gray-800 font-semibold hover:text-blue-300 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              {/* Submit Button - Elevated with strong blue color and shadow */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-12 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg  transform hover:scale-[1.005]"
               >
-                Forgot password?
-              </Link>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Authenticating...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </button>
+            </form>
+
+            {/* Footer - Cleaned up */}
+            <div className="mt-8 text-center pb-12 lg:pb-0">
+              <p className="text-sm text-gray-800">
+                Don't have an account?{' '}
+                <Link href="/signup" className="text-blue-500 font-bold hover:text-blue-400 transition-colors">
+                  Create Account
+                </Link>
+              </p>
             </div>
-
-            {/* Submit Button - Elevated with strong blue color and shadow */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-12 bg-green-600 text-white rounded-xl font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg  transform hover:scale-[1.005]"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Authenticating...
-                </>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </form>
-
-          {/* Footer - Cleaned up */}
-          <div className="mt-8 text-center pb-12 lg:pb-0">
-            <p className="text-sm text-gray-800">
-              Don't have an account?{' '}
-              <Link href="/signup" className="text-blue-500 font-bold hover:text-blue-400 transition-colors">
-                Create Account
-              </Link>
-            </p>
           </div>
         </div>
       </div>

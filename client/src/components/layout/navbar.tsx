@@ -6,7 +6,7 @@ import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { navigation } from "@/constants";
 import Button from "../atoms/button";
-import cristy from "@/assets/cristmasCap.png";
+import cristy from "@/assets/newlogo.png";
 
 type Props = {};
 
@@ -55,12 +55,12 @@ const Navbar = (props: Props) => {
       <div className="flex items-center gap-2 lg:gap-4">
         {/* Logo / Brand */}
         <div className="mr-12">
-                  <img
-                    src={cristy.src}
-                    alt="Company Logo"
-                    className="max-w-[300px] w-full h-auto -ml-6"
-                  />
-                </div>
+          <img
+            src={cristy.src}
+            alt="Company Logo"
+            className="max-w-[200px] w-full h-auto ml-1"
+          />
+        </div>
 
         {/* Navigation Links - Always visible, scrollable on mobile */}
         <nav className="flex-1 overflow-x-auto scrollbar-hide min-w-0">
