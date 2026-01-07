@@ -214,7 +214,7 @@ const Hero = () => {
         {/* Heading */}
         <div className="relative z-1 mx-auto mb-16 max-w-[62rem] text-center md:mb-26 lg:-mt-26 " >
           {/* Christmas GIF positioned above heading */}
-          <img
+          {/* <img
             src="/assets/hero/crist.gif"
             alt="Christmas decoration"
             className="move-fade w-auto h-20 md:h-32 lg:h-40  object-contain drop-shadow-lg -mt-8"
@@ -223,8 +223,8 @@ const Hero = () => {
               console.error("Failed to load Christmas GIF");
               e.currentTarget.style.display = 'none';
             }}
-          />
-          <h1 className="h1 mb-6 mt-12">
+          /> */}
+          <h1 className="h1 mb-6 -mt-8">
             Our Zenvoice AI agents makes{" "}
             <span className="relative inline-block text-green-500 overflow-hidden h-[2em] min-w-[350px] text-center flex items-center justify-center lg:-mt-4">
               <div
@@ -257,7 +257,7 @@ const Hero = () => {
             <span className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 opacity-0 transition-opacity duration-500 ease-in-out hover:opacity-20" />
           </Button>
         </div>
-      
+
         {/* Video Section */}
         <div
           className="relative max-w-[90vw] mx-auto md:max-w-5xl xl:mb-24 -mt-3"

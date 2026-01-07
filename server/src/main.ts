@@ -45,11 +45,8 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       configService.get("FRONTEND_URL"),
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
       "http://localhost:8001",
       "http://127.0.0.1:8001",
-      "https://voice.zenxai.io/",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -170,8 +167,7 @@ async function bootstrap() {
       "Call logs management - Retrieve call history with pagination and filtering",
     )
     .addServer("http://localhost:8000", "Development server")
-    .addServer("https://voice.zenxai.io/", "Production server")
-    .setContact("API Support", "https://zenxai.io/", "support@zenxai.io")
+    .addServer(configService.get("APP_BASE_URL"), "Production server")
     .setLicense("MIT", "https://opensource.org/licenses/MIT")
     .build();
 

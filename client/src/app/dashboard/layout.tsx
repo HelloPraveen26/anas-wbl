@@ -25,9 +25,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authManager } from "@/lib/auth";
 import { User as UserType } from "@/lib/api";
 import Image from "next/image";
-import newlogo from "../../assets/newlogo.png";
+import cristy from "../../assets/newlogo.png";
 import logo1 from "../../assets/logo1.png";
-import cristy from "@/assets/cristmasCap.png";
+
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -116,18 +116,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <button
         key={item.id}
         onClick={() => handleNavigation(item.path)}
-        className={`group relative w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all rounded-xl ${
-          isActive
-            ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30"
-            : "text-gray-700 hover:bg-emerald-50 hover:text-emerald-700"
-        }`}
+        className={`group relative w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all rounded-xl ${isActive
+          ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30"
+          : "text-gray-700 hover:bg-emerald-50 hover:text-emerald-700"
+          }`}
       >
         <div
-          className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
-            isActive
-              ? "bg-white/20"
-              : "bg-gray-100 text-emerald-600 group-hover:bg-emerald-100"
-          }`}
+          className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${isActive
+            ? "bg-white/20"
+            : "bg-gray-100 text-emerald-600 group-hover:bg-emerald-100"
+            }`}
         >
           <Icon className="w-5 h-5" />
         </div>
@@ -149,15 +147,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center">
         <div className="text-center">
-            <Image
-              src={logo1}
-              alt="Logo"
-              width={48}
-              height={48}
-              className="opacity-90"
-            />
-          </div>
+          <Image
+            src={logo1}
+            alt="Logo"
+            width={48}
+            height={48}
+            className="opacity-90"
+          />
         </div>
+      </div>
     );
   }
 
@@ -173,15 +171,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex">
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarCollapsed ? "w-20" : "w-72"
-        } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl`}
+        className={`${sidebarCollapsed ? "w-20" : "w-72"
+          } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl`}
       >
         {/* Header */}
-<div className="h-20 flex items-center justify-start pl-8 pr-2 border-b border-emerald-100 mr-12">
+        <div className="h-20 flex items-center justify-start pl-8 pr-2 border-b border-emerald-100 mr-12">
           {/* {!sidebarCollapsed ? (
             <div className="flex items-center gap-3">
               
@@ -204,13 +201,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               />
             </div>
           )} */}
-            <div className="mr-12">
-                  <img
-                    src={cristy.src}
-                    alt="Company Logo"
-                    className="w-[250px] max-w-none h-auto -ml-10"
-                  />
-                </div>
+          <div className="mr-12">
+            <img
+              src={cristy.src}
+              alt="Company Logo"
+              className="w-[200px] max-w-none h-auto -ml-2"
+            />
+          </div>
         </div>
 
         {/* Navigation */}
