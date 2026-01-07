@@ -14,6 +14,11 @@ console.log("🔧 API Configuration:", {
 
 // Helper function to get API base URL for use in components
 export const getApiBaseUrl = (): string => {
+  if (!API_BASE_URL) {
+    throw new Error(
+      "API_BASE_URL is not configured. Please set NEXT_PUBLIC_API_URL environment variable for production.",
+    );
+  }
   return API_BASE_URL;
 };
 
@@ -195,4 +200,4 @@ export class ApiError extends Error {
   }
 }
 
-export const api = new ApiClient(API_BASE_URL);
+export const api = new ApiClient(getApiBaseUrl());
