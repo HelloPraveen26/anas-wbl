@@ -1,8 +1,9 @@
+// phone.service.ts - UPDATED WITH DEBUG LOGGING
+
 import { Injectable, Logger, HttpException, HttpStatus } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
-import { AxiosResponse } from "axios";
 import { MakeCallDto } from "../dto/make-call.dto";
 import { HangupDto } from "../dto/hangup.dto";
 import { AssistantService } from "../../assistant/assistant.service";
@@ -31,9 +32,6 @@ export class PhoneService {
       "http://localhost:8000";
   }
 
-  /**
-   * Load tool configuration for an assistant
-   */
   async getToolConfig(assistantId: string): Promise<any> {
     try {
       this.logger.log(`🔄 Fetching tool config for assistant: ${assistantId}`);
@@ -61,16 +59,25 @@ export class PhoneService {
     }
   }
 
-  /**
-   * Initiates a phone call with tool configuration support
-   */
   async makeCall(dto: MakeCallDto, userId: string): Promise<any> {
     let callLogId: string | null = null;
+
+    // 🔍 DEBUG: Log incoming DTO
+    this.logger.log("=" .repeat(80));
+    this.logger.log("🔍 DEBUG: INCOMING MAKE CALL DTO");
+    this.logger.log("=" .repeat(80));
+    this.logger.log(`Phone Number: ${dto.phoneNumber}`);
+    this.logger.log(`Selected Assistant: ${dto.selectedAssistant}`);
+    this.logger.log(`Metadata Present: ${dto.metadata ? 'YES' : 'NO'}`);
+    if (dto.metadata) {
+      this.logger.log(`Metadata Keys: ${Object.keys(dto.metadata).join(', ')}`);
+      this.logger.log(`Metadata Content: ${JSON.stringify(dto.metadata, null, 2)}`);
+    }
+    this.logger.log("=" .repeat(80));
 
     try {
       let systemPrompt = "";
       let firstMessage = "";
-      // Get systemPrompt, firstMessage, and model configs from assistant if selectedAssistant is provided
       let realtimeProviderName: string | undefined;
       let llmProviderName: string | undefined;
       let sttProviderName: string | undefined;
@@ -80,9 +87,8 @@ export class PhoneService {
       let sttConfig: Record<string, any> | undefined;
       let ttsConfig: Record<string, any> | undefined;
       let toolConfig: any = null;
-      let webhookUrl = "http://127.0.0.1:9005/"; // Default webhook
+      let webhookUrl = "http://127.0.0.1:9005/";
 
-      // Get assistant details if selectedAssistant is provided
       if (dto.selectedAssistant) {
         this.logger.log(
           `📞 Making call with selected assistant: ${dto.selectedAssistant}`,
@@ -95,7 +101,6 @@ export class PhoneService {
           );
           systemPrompt = assistant.systemPrompt;
 
-          // Apply template rendering if metadata is present
           if (dto.metadata && systemPrompt) {
             systemPrompt = renderTemplate(systemPrompt, dto.metadata);
           }
@@ -118,7 +123,6 @@ export class PhoneService {
             this.logger.log(`LLM Provider Name: ${llmProviderName}`);
           }
 
-          // Extract STT provider name from transcriber model
           if (assistant.transcriberModel?.transcriberProvider) {
             sttProviderName =
               assistant.transcriberModel.transcriberProvider.name;
@@ -139,7 +143,6 @@ export class PhoneService {
             ttsConfig = assistant.ttsConfig;
           }
 
-          // 🔧 NEW: Load tool configuration for this assistant
           toolConfig = await this.getToolConfig(dto.selectedAssistant);
 
           if (toolConfig) {
@@ -147,6 +150,12 @@ export class PhoneService {
               `🔧 Tool configured: ${toolConfig.toolName} with ${Object.keys(toolConfig.parameters || {}).length} parameters`,
             );
             webhookUrl = toolConfig.webhookUrl || webhookUrl;
+            
+            // 🔍 DEBUG: Log tool parameters
+            this.logger.log("🔍 Tool Parameters:");
+            Object.keys(toolConfig.parameters || {}).forEach(param => {
+              this.logger.log(`   • ${param} (required: ${toolConfig.parameters[param].required})`);
+            });
           }
         } catch (error) {
           this.logger.warn(
@@ -156,10 +165,8 @@ export class PhoneService {
         }
       }
 
-      // Get livekitOutboundTrunkId from registered number
       const fromPhoneNumber = dto.fromPhoneNumber || "+19282185402";
 
-      // Create initial call log entry
       const initialCallLog = await this.callLogsService.create({
         assistantId: dto.selectedAssistant || null,
         userId: userId,
@@ -170,6 +177,7 @@ export class PhoneService {
         startTime: new Date(),
       });
       callLogId = initialCallLog.id;
+      
       const registeredNumbers =
         await this.registeredNumbersService.findAllByUser(userId);
       const registeredNumber = registeredNumbers.find(
@@ -186,7 +194,6 @@ export class PhoneService {
         );
       }
 
-      // 🔧 Build instructions that include tool parameters if configured
       let instructions = systemPrompt;
       if (toolConfig) {
         const requiredFields = Object.keys(toolConfig.parameters || {})
@@ -208,6 +215,23 @@ After collecting all required information, the system will automatically send th
           : toolInstructions;
       }
 
+      // 🔍 DEBUG: Extract and log metadata
+      const customMetadata = dto.metadata || {};
+      
+      this.logger.log("=" .repeat(80));
+      this.logger.log("🔍 DEBUG: PREPARING METADATA FOR AGENT");
+      this.logger.log("=" .repeat(80));
+      this.logger.log(`Custom Metadata Keys: ${Object.keys(customMetadata).join(', ') || 'NONE'}`);
+      if (Object.keys(customMetadata).length > 0) {
+        this.logger.log("Custom Metadata Content:");
+        Object.entries(customMetadata).forEach(([key, value]) => {
+          this.logger.log(`   • ${key}: ${value}`);
+        });
+      } else {
+        this.logger.warn("⚠️ NO CUSTOM METADATA FOUND IN DTO!");
+      }
+      this.logger.log("=" .repeat(80));
+
       const payload = {
         user_id: userId,
         phone_number: dto.phoneNumber,
@@ -225,14 +249,20 @@ After collecting all required information, the system will automatically send th
         }),
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
-        // 🔧 Add assistant ID and webhook for tool data forwarding
         ...(dto.selectedAssistant && { assistant_id: dto.selectedAssistant }),
         ...(webhookUrl && { webhook_url: webhookUrl }),
+        
+        // 🆕 PASS CUSTOM METADATA FOR PRE-POPULATION
+        ...(Object.keys(customMetadata).length > 0 && { metadata: customMetadata }),
       };
 
-      this.logger.log(
-        `📤 Sending call payload:\n${JSON.stringify(payload, null, 2)}`,
-      );
+      // 🔍 DEBUG: Log final payload
+      this.logger.log("=" .repeat(80));
+      this.logger.log("🔍 DEBUG: FINAL PAYLOAD TO PHONE SERVICE");
+      this.logger.log("=" .repeat(80));
+      this.logger.log(`Payload has metadata: ${payload.hasOwnProperty('metadata') ? 'YES' : 'NO'}`);
+      this.logger.log(`Full payload:\n${JSON.stringify(payload, null, 2)}`);
+      this.logger.log("=" .repeat(80));
 
       const { data } = await firstValueFrom(
         this.httpService.post(`${this.baseUrl}/make_call`, payload),
@@ -249,7 +279,7 @@ After collecting all required information, the system will automatically send th
       }
       return {
         ...data,
-        toolConfig, // Return tool config to frontend for UI display
+        toolConfig,
       };
     } catch (error) {
       this.logger.error(
@@ -257,7 +287,6 @@ After collecting all required information, the system will automatically send th
         error instanceof Error ? error.stack : error,
       );
 
-      // Update call log with failure status
       if (callLogId) {
         try {
           await this.callLogsService.update(callLogId, {
@@ -278,9 +307,6 @@ After collecting all required information, the system will automatically send th
     }
   }
 
-  /**
-   * Hangs up an active call
-   */
   async hangup(dto: HangupDto): Promise<any> {
     try {
       const { data } = await firstValueFrom(
@@ -300,9 +326,6 @@ After collecting all required information, the system will automatically send th
     }
   }
 
-  /**
-   * Retrieves active call details
-   */
   async getActiveCall(): Promise<any> {
     try {
       const { data } = await firstValueFrom(

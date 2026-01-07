@@ -1,4 +1,4 @@
-# agent.py  (UPDATED - Auto-send to webhook on call end)
+# agent.py  (COMPLETE UPDATED VERSION with metadata pre-population)
 import asyncio
 import base64
 import json
@@ -47,19 +47,20 @@ load_dotenv(".env", override=True)
 
 
 # -------------------------------------
-# DynamicToolHandler
+# DynamicToolHandler (UPDATED WITH METADATA PRE-POPULATION)
 # -------------------------------------
 class DynamicToolHandler:
-    """Handles dynamic tool configuration and data collection"""
+    """Handles dynamic tool configuration and data collection with metadata pre-population"""
 
-    def __init__(self, webhook_url: str, assistant_id: str):
+    def __init__(self, webhook_url: str, assistant_id: str, metadata: dict = None):
         self.webhook_url = webhook_url
         self.assistant_id = assistant_id
         self.collected_data = {}
         self.tool_config = None
+        self.metadata = metadata or {}  # Store metadata for pre-population
 
     async def load_tool_config(self):
-        """Load tool configuration from backend"""
+        """Load tool configuration from backend and pre-populate from metadata"""
         try:
             backend_url = f"http://127.0.0.1:8000/api/v1/assistants/tool-config/{self.assistant_id}"
 
@@ -77,6 +78,10 @@ class DynamicToolHandler:
                             logger.info(
                                 f"📋 Parameters: {list(self.tool_config.get('parameters', {}).keys())}"
                             )
+                            
+                            # 🆕 PRE-POPULATE DATA FROM METADATA
+                            await self._prepopulate_from_metadata()
+                            
                             return True
                         else:
                             logger.warning(
@@ -92,13 +97,62 @@ class DynamicToolHandler:
             logger.error(f"❌ Error loading tool config: {e}")
             return False
 
+    async def _prepopulate_from_metadata(self):
+        """Pre-populate collected_data with values from metadata that match tool parameters"""
+        if not self.tool_config or not self.metadata:
+            return
+
+        params = self.tool_config.get("parameters", {})
+        if not params:
+            return
+
+        logger.info("🔍 Checking metadata for pre-population...")
+        logger.info(f"📦 Available metadata: {json.dumps(self.metadata, indent=2)}")
+
+        prepopulated_count = 0
+        
+        for param_name in params.keys():
+            # Check if this parameter exists in metadata
+            # Support both exact match and common variations
+            metadata_value = None
+            
+            # Try exact match first
+            if param_name in self.metadata:
+                metadata_value = self.metadata[param_name]
+            # Try lowercase match
+            elif param_name.lower() in {k.lower(): v for k, v in self.metadata.items()}:
+                matching_keys = [k for k in self.metadata.keys() if k.lower() == param_name.lower()]
+                if matching_keys:
+                    metadata_value = self.metadata[matching_keys[0]]
+            # Try with underscores converted to spaces
+            elif param_name.replace("_", " ") in self.metadata:
+                metadata_value = self.metadata[param_name.replace("_", " ")]
+            # Try with spaces converted to underscores
+            elif param_name.replace(" ", "_") in self.metadata:
+                metadata_value = self.metadata[param_name.replace(" ", "_")]
+            
+            if metadata_value is not None and metadata_value != "":
+                # Convert to string if not already
+                metadata_value = str(metadata_value)
+                
+                self.collected_data[param_name] = metadata_value
+                prepopulated_count += 1
+                logger.info(f"✅ PRE-POPULATED from metadata: {param_name} = {metadata_value}")
+
+        if prepopulated_count > 0:
+            logger.info("=" * 60)
+            logger.info(f"🎯 PRE-POPULATED {prepopulated_count} parameter(s) from metadata!")
+            logger.info(f"📊 Pre-populated data: {json.dumps(self.collected_data, indent=2)}")
+            logger.info("=" * 60)
+        else:
+            logger.info("ℹ️ No matching parameters found in metadata for pre-population")
+
     async def collect_data(self, key: str, value: str):
         """Store user-provided information"""
         self.collected_data[key] = value
         logger.info(f"✅ [TOOL STORED] {key}: {value}")
         logger.info(f"📊 Current data: {json.dumps(self.collected_data, indent=2)}")
         
-        # Don't send webhook here - will send at end of call
         missing = self.get_missing_parameters()
         if missing:
             logger.info(f"⏳ Still need: {', '.join(missing)}")
@@ -166,7 +220,7 @@ class DynamicToolHandler:
             logger.info("=============================================")
             logger.info(f"📤 Sending collected data to backend")
             logger.info(f"🆔 Assistant ID: {self.assistant_id}")
-            logger.info(f"📊 Complete Data (including missing): {json.dumps(complete_data, indent=2)}")
+            logger.info(f"📊 Complete Data: {json.dumps(complete_data, indent=2)}")
             logger.info("=============================================")
 
             async with aiohttp.ClientSession() as session:
@@ -186,7 +240,7 @@ class DynamicToolHandler:
             return False
 
     def get_tool_instructions(self):
-        """Generate additional instructions for data collection (appended to system prompt)"""
+        """Generate additional instructions for data collection"""
         if not self.tool_config:
             return ""
 
@@ -194,27 +248,39 @@ class DynamicToolHandler:
         if not params:
             return ""
 
-        # Get required and optional parameters with descriptions
+        # Separate parameters into pre-populated and still needed
+        prepopulated_params = []
         required_params = []
         optional_params = []
 
         for param_name, param_config in params.items():
             param_desc = param_config.get("description", param_name)
             param_type = param_config.get("type", "string")
+            param_line = f"{param_name} ({param_type}): {param_desc}"
 
-            if param_config.get("required", False):
-                required_params.append(f"{param_name} ({param_type}): {param_desc}")
+            # Check if already collected from metadata
+            if param_name in self.collected_data:
+                prepopulated_params.append(param_line)
+            elif param_config.get("required", False):
+                required_params.append(param_line)
             else:
-                optional_params.append(f"{param_name} ({param_type}): {param_desc}")
+                optional_params.append(param_line)
 
         instruction = "\n\n" + "=" * 50 + "\n"
         instruction += "🔧 DATA COLLECTION TOOL ACTIVATED\n"
         instruction += "=" * 50 + "\n\n"
 
-        instruction += "YOUR PRIMARY MISSION: Collect the following information during this conversation.\n\n"
+        # Show what's already collected from metadata
+        if prepopulated_params:
+            instruction += "✅ ALREADY COLLECTED (from system):\n"
+            for i, param in enumerate(prepopulated_params, 1):
+                instruction += f"   {i}. {param}\n"
+            instruction += "\n"
+            instruction += "⚠️ IMPORTANT: DO NOT ask for the above information - we already have it!\n\n"
 
+        # Show what still needs to be collected
         if required_params:
-            instruction += "✅ REQUIRED INFORMATION (must collect all):\n"
+            instruction += "🎯 STILL NEED TO COLLECT (required):\n"
             for i, param in enumerate(required_params, 1):
                 instruction += f"   {i}. {param}\n"
             instruction += "\n"
@@ -228,22 +294,16 @@ class DynamicToolHandler:
         instruction += "🎯 CRITICAL RULES:\n"
         instruction += "1. When user provides ANY piece of information above, IMMEDIATELY call collect_user_data(key, value)\n"
         instruction += "2. Extract information naturally from conversation - don't make it feel like an interrogation\n"
-        instruction += "3. Ask follow-up questions conversationally to get missing required information\n"
-        instruction += "4. If user provides multiple pieces at once, call collect_user_data separately for each\n"
-        instruction += "5. Even if user doesn't provide all information, whatever is collected will be saved when call ends\n"
-        instruction += (
-            "6. Continue your main conversation purpose while collecting this data\n\n"
-        )
+        instruction += "3. NEVER ask for information already collected from the system (marked with ✅)\n"
+        instruction += "4. Focus ONLY on collecting the 'STILL NEED TO COLLECT' items\n"
+        instruction += "5. If user provides multiple pieces at once, call collect_user_data separately for each\n"
+        instruction += "6. Continue your main conversation purpose while collecting this data\n\n"
 
         instruction += "💡 EXAMPLES:\n"
         instruction += "User: 'Hi, I'm John Smith from ABC Corp'\n"
-        instruction += "→ Call collect_user_data('name', 'John Smith')\n"
-        instruction += "→ Call collect_user_data('company', 'ABC Corp')\n"
+        instruction += "→ Call collect_user_data('name', 'John Smith') [if name not pre-populated]\n"
+        instruction += "→ Call collect_user_data('company', 'ABC Corp') [if company not pre-populated]\n"
         instruction += "→ Then respond naturally: 'Great to meet you John! What can I help you with today?'\n\n"
-
-        instruction += "User: 'My email is john@example.com'\n"
-        instruction += "→ Call collect_user_data('email', 'john@example.com')\n"
-        instruction += "→ Then continue conversation\n\n"
 
         instruction += "=" * 50 + "\n"
 
@@ -389,11 +449,14 @@ async def entrypoint(ctx: JobContext):
     azure_speech_key = os.getenv("AZURE_SPEECH_KEY")
     azure_speech_region = os.getenv("AZURE_SPEECH_REGION")
     
-    # Initialize tool handler BEFORE setting up STT/TTS
+    # 🆕 Initialize tool handler BEFORE setting up STT/TTS (WITH METADATA)
     tool_handler = None
     if assistant_id and webhook_url:
-        logger.info("🔧 Initializing tool handler...")
-        tool_handler = DynamicToolHandler(webhook_url, assistant_id)
+        logger.info("🔧 Initializing tool handler with metadata...")
+        
+        # Pass metadata to tool handler for pre-population
+        tool_handler = DynamicToolHandler(webhook_url, assistant_id, metadata=metadata)
+        
         config_loaded = await tool_handler.load_tool_config()
 
         if config_loaded:
@@ -401,6 +464,16 @@ async def entrypoint(ctx: JobContext):
             logger.info(
                 f"📋 Tool will collect: {list(tool_handler.tool_config.get('parameters', {}).keys())}"
             )
+            
+            # Check what was pre-populated
+            if tool_handler.collected_data:
+                logger.info("=" * 60)
+                logger.info("🎯 PRE-POPULATED DATA FROM METADATA:")
+                for key, value in tool_handler.collected_data.items():
+                    logger.info(f"   • {key}: {value}")
+                logger.info("=" * 60)
+            else:
+                logger.info("ℹ️ No parameters were pre-populated from metadata")
         else:
             logger.warning(
                 "⚠️ No tool configuration found - agent will work without data collection"

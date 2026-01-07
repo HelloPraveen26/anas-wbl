@@ -16,7 +16,6 @@ from pydantic import BaseModel, Field, validator
 _ = load_dotenv()
 
 # E.164 phone number regex pattern
-# E.164 format: + followed by up to 15 digits
 E164_PATTERN = re.compile(r"^\+[1-9]\d{1,14}$")
 
 app = FastAPI(
@@ -62,14 +61,18 @@ class CallRequest(BaseModel):
     stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
     tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
 
-    # ✅ TOOLS: Added assistant_id field
     assistant_id: Optional[str] = Field(
         None, description="Assistant ID for webhook routing and tool configuration"
     )
 
-    # ✅ TOOLS: Added webhook_url field
     webhook_url: Optional[str] = Field(
         None, description="Backend webhook URL to send collected data"
+    )
+    
+    # 🆕 ADD FLEXIBLE METADATA FIELD
+    metadata: Optional[Dict[str, Any]] = Field(
+        None, 
+        description="Additional metadata for tool pre-population (e.g., name, email, company, etc.)"
     )
 
     @validator("phone_number")
@@ -92,8 +95,13 @@ class CallRequest(BaseModel):
                 "first_message": "Hello! How can I help you today?",
                 "assistant_id": "016208c6-99c1-4dba-935c-3e6256f60785",
                 "webhook_url": "https://webhook.site/your-unique-id",
+                "metadata": {
+                    "name": "John Doe",
+                    "email": "john@example.com",
+                    "company": "Acme Corp"
+                }
             },
-            "description": "Request body for initiating a phone call with custom agent behavior",
+            "description": "Request body for initiating a phone call with custom agent behavior and metadata pre-population",
         }
 
 
@@ -211,10 +219,10 @@ lk_api_key = os.getenv("LIVEKIT_API_KEY", "")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # <-- allow all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # <-- allow GET, POST, OPTIONS, DELETE, etc.
-    allow_headers=["*"],  # <-- allow Content-Type, Authorization, etc.
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -329,7 +337,7 @@ async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
 )
 async def make_call_endpoint(request: CallRequest):
     """Endpoint to initiate a call to the provided phone number"""
-    # Extract parameters from request (already validated by pydantic)
+    # Extract parameters from request
     outbound_trunk_id = request.outbound_trunk_id
     phone_number = request.phone_number
     instructions = request.instructions
@@ -342,15 +350,14 @@ async def make_call_endpoint(request: CallRequest):
     llm_config = request.llm_config
     stt_config = request.stt_config
     tts_config = request.tts_config
-    # ✅ TOOLS: Extract new fields
     assistant_id = request.assistant_id
     webhook_url = request.webhook_url
     user_id = request.user_id
+    custom_metadata = request.metadata or {}  # 🆕 Extract custom metadata
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
 
-    # Additional validation (though pydantic should catch this)
     if not E164_PATTERN.match(phone_number):
         raise HTTPException(
             status_code=400,
@@ -360,8 +367,8 @@ async def make_call_endpoint(request: CallRequest):
         )
 
     try:
-        # Create metadata for the call including dynamic parameters
-        metadata = {
+        # 🆕 Create base metadata for the call
+        base_metadata = {
             "outbound_trunk_id": outbound_trunk_id,
             "phone_number": phone_number,
             "call_type": "outbound",
@@ -376,11 +383,13 @@ async def make_call_endpoint(request: CallRequest):
             "llm_config": llm_config,
             "stt_config": stt_config,
             "tts_config": tts_config,
-            # ✅ TOOLS: Add these fields
             "assistant_id": assistant_id,
             "webhook_url": webhook_url,
             "user_id": user_id,
         }
+        
+        # 🆕 MERGE CUSTOM METADATA - This allows pre-population of tool parameters
+        metadata = {**base_metadata, **custom_metadata}
 
         # Log the metadata for debugging
         logger.info("=============================================")
@@ -388,6 +397,13 @@ async def make_call_endpoint(request: CallRequest):
         logger.info(f"📱 Phone: {phone_number}")
         logger.info(f"🆔 Assistant ID: {assistant_id}")
         logger.info(f"🔗 Webhook URL: {webhook_url}")
+        
+        # Log custom metadata if present
+        if custom_metadata:
+            logger.info("🎯 Custom metadata for tool pre-population:")
+            for key, value in custom_metadata.items():
+                logger.info(f"   • {key}: {value}")
+        
         logger.info("=============================================")
 
         # Generate unique room name
@@ -397,7 +413,7 @@ async def make_call_endpoint(request: CallRequest):
         global current_active_room
         current_active_room = room_name
 
-        # Make the call
+        # Make the call with merged metadata
         sip_details, dispatch = await make_call(
             json.dumps(metadata), room_name, phone_number, outbound_trunk_id
         )
@@ -492,5 +508,5 @@ async def root():
     return {
         "service": "Telephony Call Dispatcher",
         "version": "1.0.0",
-        "description": "API for dispatching outbound phone calls through LiveKit SIP integration",
+        "description": "API for dispatching outbound phone calls through LiveKit SIP integration with metadata pre-population support",
     }

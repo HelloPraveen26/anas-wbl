@@ -41,8 +41,15 @@ export class MakeCallDto {
 
   @ApiProperty({
     description:
-      "Optional metadata object for template rendering in system prompts",
-    example: { name: "john", company: "acme" },
+      "Optional metadata object for template rendering in system prompts AND tool parameter pre-population. " +
+      "If metadata field names match tool parameter names, those values will be automatically collected " +
+      "without asking the user during the call.",
+    example: {
+      name: "John Doe",
+      email: "john@example.com",
+      company: "Acme Corp",
+      phone: "+1234567890",
+    },
     required: false,
   })
   @IsOptional()
