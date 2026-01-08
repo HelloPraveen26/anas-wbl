@@ -167,8 +167,8 @@ export default function CallLogsPage() {
       !evaluationFilter ||
       (call.successEvaluation
         ? call.successEvaluation
-            .toLowerCase()
-            .includes(evaluationFilter.toLowerCase())
+          .toLowerCase()
+          .includes(evaluationFilter.toLowerCase())
         : false);
     return evaluationMatch;
   });
@@ -339,7 +339,7 @@ export default function CallLogsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+            className="border rounded-lg px-3 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
             disabled={loading}
           >
             <option value="">All Statuses</option>

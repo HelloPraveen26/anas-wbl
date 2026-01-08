@@ -133,13 +133,12 @@ export default function SignIn() {
   // --- Render Component ---
 
   return (
-    // Use h-screen w-full overflow-hidden to create a locked viewport
-    <div className="h-screen w-full bg-white flex overflow-hidden">
+    <div className="h-screen w-full bg-white flex flex-col lg:flex-row overflow-hidden">
 
       {/* ========================================================= */}
       {/* LEFT SIDE - WELCOME SECTION (PREMIUM WHITE BACKGROUND)    */}
       {/* ========================================================= */}
-      <div className="hidden lg:flex lg:w-1/2 relative p-12 flex-col justify-between bg-gray-50/50">
+      <div className="hidden lg:flex lg:w-1/2 relative p-12 flex-col justify-between bg-gray-50/50 h-full">
         {/* Subtle Background Graphic: Adds a professional texture */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#4b5563_1px,transparent_3px)] [background-size:16px_16px]"></div>
 
@@ -184,26 +183,26 @@ export default function SignIn() {
       {/* ========================================================= */}
       {/* RIGHT SIDE WRAPPER - HANDLES SCROLLING AND LAYOUT         */}
       {/* ========================================================= */}
-      <div className="flex-1 h-full overflow-hidden p-4 lg:p-8 flex items-center justify-center">
+      <div className="flex-1 w-full h-full p-4 lg:p-8 flex items-center justify-center bg-white lg:bg-transparent overflow-hidden">
         {/* RIGHT SIDE - SIGN IN FORM (WITH GRADIENT & DOTTED DESIGN) */}
         {/* Removed margin/sizing classes that caused overflow, handled by wrapper */}
-        <div className="w-full text-white relative flex flex-col items-center justify-center p-8 lg:p-12 -pt-12 rounded-2xl" style={{
+        <div className="w-full text-black relative flex flex-col items-center justify-center p-8 lg:p-12 -pt-12 rounded-2xl" style={{
           backgroundImage: ` url(${wavewhite.src})`,
           backgroundSize: '100% 100%, 100% 100%, cover',
           backgroundPosition: 'center, center, center',
           backgroundRepeat: 'no-repeat, no-repeat, no-repeat',
-          backgroundColor: '#0F172A'
+          backgroundColor: '#FFFFFF'
         }}>
           {/* Abstract Gradient/Blob: Subtle tech aesthetic to break the flat background */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
           <div className="absolute bottom-10 left-10 w-48 h-48 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
 
-          <div className="w-full max-w-md relative z-10">
+          <div className="w-full max-w-md relative z-10 flex flex-col h-full justify-center">
 
             {/* Header */}
-            <div className="mb-10 mt-12 lg:mt-0">
-              <h2 className="text-4xl font-extrabold text-black relative flex justify-center">Welcome Back !</h2>
-              <p className="text-gray-600 text-lg relative flex justify-center mt-2">Log in to your dashboard</p>
+            <div className="mb-4 lg:mb-10 mt-4 lg:mt-0">
+              <h2 className="text-2xl lg:text-4xl font-extrabold text-black relative flex justify-center">Welcome Back !</h2>
+              <p className="text-gray-600 text-sm lg:text-lg relative flex justify-center mt-1 lg:mt-2">Log in to your dashboard</p>
             </div>
 
             {/* Error Alert - Enhanced for better contrast/depth */}
@@ -234,7 +233,7 @@ export default function SignIn() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleEmailSignIn} className="space-y-6">
+            <form onSubmit={handleEmailSignIn} className="space-y-3 lg:space-y-6">
               {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
@@ -332,7 +331,7 @@ export default function SignIn() {
             </form>
 
             {/* Footer - Cleaned up */}
-            <div className="mt-8 text-center pb-12 lg:pb-0">
+            <div className="mt-4 lg:mt-8 text-center">
               <p className="text-sm text-gray-800">
                 Don't have an account?{' '}
                 <Link href="/signup" className="text-blue-500 font-bold hover:text-blue-400 transition-colors">
