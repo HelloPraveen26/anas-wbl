@@ -1,7 +1,9 @@
+import asyncio
 import base64
 import json
 import logging
 import os
+import time
 
 from dotenv import load_dotenv
 from livekit import api, rtc
@@ -22,16 +24,13 @@ from livekit.agents import (
     get_job_context,
     metrics,
 )
-from livekit.agents.inference.tts import TTSEncoding
 from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
     azure,
     deepgram,
-    elevenlabs,
     google,
     groq,
     lmnt,
-    noise_cancellation,
     openai,
     sarvam,
     silero,
@@ -78,11 +77,98 @@ class Assistant(Agent):
         """Called when the user wants to end the call"""
         await ctx.wait_for_playout()
         logger.info("User requested to end the call")
-        await hangup_call()
+        # Try to say goodbye message before shutting down
+        # Strategy: Try session.say() first (works for TTS-based models)
+        # If that fails, try generate_reply() for realtime models
+        goodbye_said = False
+
+        # First, try session.say() - works for STT-LLM-TTS pipeline and realtime models with TTS (Gemini Realtime)
+        try:
+            goodbye_handle = await ctx.session.say(
+                "Thank you for calling. Have a great day! Goodbye!",
+                allow_interruptions=False,
+            )
+            # Wait for the goodbye message to finish playing
+            await goodbye_handle.wait_for_playout()
+            goodbye_said = True
+            logger.info(
+                "Goodbye message delivered via session.say(), session is now closing."
+            )
+        except Exception:
+            logger.debug(
+                "trying generate_reply() as fallback for realtime models without TTS"
+            )
+            try:
+                goodbye_handle = await asyncio.wait_for(
+                    ctx.session.generate_reply(
+                        instructions="Say a brief, friendly goodbye message like 'Thank you for calling. Have a great day! Goodbye!'",
+                    ),
+                    timeout=3.0,  # Short timeout to avoid blocking
+                )
+                # Wait for the goodbye message to finish playing (with timeout)
+                try:
+                    await asyncio.wait_for(
+                        goodbye_handle.wait_for_playout(), timeout=3.0
+                    )
+                    goodbye_said = True
+                    logger.info("Goodbye message delivered via generate_reply()")
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "Goodbye message playout timeout, proceeding with shutdown"
+                    )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Goodbye message generation timeout, proceeding with shutdown"
+                )
+            except Exception as e2:
+                logger.warning(
+                    f"Could not say goodbye message via either method: {e2}, proceeding with shutdown"
+                )
+
+        if not goodbye_said:
+            logger.info("Proceeding with shutdown without goodbye message")
+
+        # Shutdown the session gracefully - this will close the session and disconnect the agent
+        ctx.session.shutdown(drain=True)
+        # Delete the room to disconnect all participants
+        job_ctx = get_job_context()
+        if job_ctx:
+            logger.info(f"Deleting room: {job_ctx.room.name}")
+            await job_ctx.delete_room()
 
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
+
+
+async def _wait_for_participant(room: rtc.Room, timeout: float = 10.0):
+    """Wait for a remote participant to connect"""
+    if room.remote_participants:
+        logger.info("Participant already connected")
+        return
+
+    logger.info("Waiting for participant to connect...")
+    future = asyncio.Future()
+
+    def _on_participant_connected(p: rtc.RemoteParticipant):
+        if not future.done():
+            logger.info(f"Participant connected: {p.identity}")
+            future.set_result(None)
+
+    room.on("participant_connected", _on_participant_connected)
+
+    # Check again in case participant connected between check and event handler setup
+    if room.remote_participants:
+        if not future.done():
+            future.set_result(None)
+        return
+
+    try:
+        await asyncio.wait_for(future, timeout=timeout)
+        logger.info("Participant connection confirmed")
+    except asyncio.TimeoutError:
+        logger.warning(f"Timeout waiting for participant to connect after {timeout}s")
+        # Continue anyway - the participant might connect later
 
 
 def setup_langfuse(
@@ -116,12 +202,18 @@ def setup_langfuse(
 
 
 async def entrypoint(ctx: JobContext):
+    entrypoint_start = time.time()
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
 
+    # Connect first - this is fast
+    connect_start = time.time()
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+    logger.info(f"Connection established in {time.time() - connect_start:.2f}s")
 
+    # Parse metadata quickly
+    metadata_start = time.time()
     metadata = {}
     if hasattr(ctx.job, "metadata") and ctx.job.metadata:
         try:
@@ -143,6 +235,7 @@ async def entrypoint(ctx: JobContext):
         except (json.JSONDecodeError, TypeError):
             logger.warning("Failed to parse room metadata, using defaults")
             metadata = {}
+    logger.info(f"Metadata parsed in {time.time() - metadata_start:.2f}s")
 
     # Get dynamic parameters from metadata
     user_id = metadata.get("user_id")
@@ -161,7 +254,7 @@ async def entrypoint(ctx: JobContext):
     stt_config = metadata.get("stt_config")
     tts_config = metadata.get("tts_config")
 
-    # Setup langfuse with metadata for tracing
+    # Prepare langfuse metadata (but setup will be done asynchronously)
     langfuse_metadata = {
         "langfuse.session.id": ctx.room.name,
         "langfuse.trace.name": f"Voice Agent Session - {ctx.room.name}",
@@ -191,14 +284,20 @@ async def entrypoint(ctx: JobContext):
     app_version = os.getenv("APP_VERSION", "1.0.0")
     langfuse_metadata["langfuse.version"] = app_version
 
-    # Setup langfuse tracer with metadata
-    trace_provider = setup_langfuse(metadata=langfuse_metadata)
+    # Setup langfuse asynchronously (non-blocking)
+    async def setup_langfuse_async():
+        try:
+            trace_provider = setup_langfuse(metadata=langfuse_metadata)
 
-    # Add a shutdown callback to flush the trace before process exit
-    async def flush_trace():
-        trace_provider.force_flush()
+            async def flush_trace():
+                trace_provider.force_flush()
 
-    ctx.add_shutdown_callback(flush_trace)
+            ctx.add_shutdown_callback(flush_trace)
+        except Exception as e:
+            logger.warning(f"Failed to setup langfuse: {e}")
+
+    # Start langfuse setup in background
+    asyncio.create_task(setup_langfuse_async())
 
     logger.info("---------------------------------------------")
     logger.info("User Id: %s", user_id)
@@ -216,93 +315,101 @@ async def entrypoint(ctx: JobContext):
     logger.info("Langfuse metadata: %s", langfuse_metadata)
     logger.info("---------------------------------------------")
 
+    # Initialize models - try to parallelize where possible
+    models_start = time.time()
+
     # Read Azure credentials once if needed
     azure_speech_key = os.getenv("AZURE_SPEECH_KEY")
     azure_speech_region = os.getenv("AZURE_SPEECH_REGION")
 
-    llm = None
-    if realtime_provider_name == "Gemini Realtime":
+    # LLM factory functions
+    def _create_gemini_realtime_llm():
         voice = (realtime_model_config or {}).get("voice") or "Puck"
         logger.info("Realtime Voice: %s", voice)
         model = (realtime_model_config or {}).get(
             "model"
         ) or "gemini-2.5-flash-native-audio-preview-12-2025"
         logger.info("Realtime Model: %s", model)
-        llm = google.realtime.RealtimeModel(
+        return google.realtime.RealtimeModel(
             model=model,
             voice=voice,
             temperature=0.4,
             instructions=custom_instructions,
         )
-    elif llm_provider_name == "Groq":
-        llm = groq.LLM(model="llama3-8b-8192")
-    else:
-        llm = openai.LLM(model="gpt-4.1-mini")
-    # Set up STT provider based on metadata
-    stt = None
-    if stt_provider_name == "Sarvam":
+
+    def _create_groq_llm():
+        return groq.LLM(model="llama3-8b-8192")
+
+    def _create_openai_llm():
+        return openai.LLM(model="gpt-4.1-mini")
+
+    # STT factory functions
+    def _create_sarvam_stt():
         language_code = (stt_config or {}).get("language") or "en_IN"
         logger.info("Language Code: %s", language_code)
-        stt = sarvam.STT(language=language_code, model="saarika:v2.5")
-    elif stt_provider_name == "Groq":
+        return sarvam.STT(language=language_code, model="saarika:v2.5")
+
+    def _create_groq_stt():
         language = (stt_config or {}).get("language") or "en"
         logger.info("Language: %s", language)
-        stt = groq.STT(model="whisper-large-v3-turbo", language=language)
-    elif stt_provider_name == "Azure":
+        return groq.STT(model="whisper-large-v3-turbo", language=language)
+
+    def _create_azure_stt():
         if not azure_speech_key or not azure_speech_region:
             logger.error(
                 "Azure STT requires AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables"
             )
             raise ValueError("Missing Azure Speech credentials")
         logger.info("Azure STT Region: %s", azure_speech_region)
-        stt = azure.STT(
+        return azure.STT(
             speech_key=azure_speech_key,
             speech_region=azure_speech_region,
         )
-    else:
-        stt = deepgram.STT(model="nova-3", language="multi")
 
-    tts = None
+    def _create_deepgram_stt():
+        return deepgram.STT(model="nova-3", language="multi")
 
-    if tts_provider_name == "Sarvam":
+    # TTS factory functions
+    def _create_sarvam_tts():
         speaker = (tts_config or {}).get("speaker") or "anushka"
         logger.info("Speaker: %s", speaker)
         language_code = (tts_config or {}).get("target_language_code") or "en_IN"
         logger.info("Language Code: %s", language_code)
-        tts = sarvam.TTS(
+        return sarvam.TTS(
             target_language_code=language_code, model="bulbul:v2", speaker=speaker
         )
-    elif tts_provider_name == "Gemini":
+
+    def _create_gemini_tts():
         voice = (tts_config or {}).get("voice_name") or "Zephyr"
         logger.info("Voice Name: %s", voice)
         instructions = (tts_config or {}).get(
             "instructions"
         ) or "Speak in a friendly and engaging tone."
         logger.info("Instructions: %s", instructions)
-        tts = google.beta.GeminiTTS(
+        return google.beta.GeminiTTS(
             model="gemini-2.5-flash-preview-tts",
             voice_name=voice,
             instructions=instructions,
         )
-    elif tts_provider_name == "Groq":
+
+    def _create_groq_tts():
         voice = (tts_config or {}).get("voice") or "Arista-PlayAI"
         logger.info("Voice Name: %s", voice)
-        tts = groq.TTS(
-            model="playai-tts",
-            voice=voice,
-        )
-    elif tts_provider_name == "Azure":
+        return groq.TTS(model="playai-tts", voice=voice)
+
+    def _create_azure_tts():
         if not azure_speech_key or not azure_speech_region:
             logger.error(
                 "Azure TTS requires AZURE_SPEECH_KEY and AZURE_SPEECH_REGION environment variables"
             )
             raise ValueError("Missing Azure Speech credentials")
         logger.info("Azure TTS Region: %s", azure_speech_region)
-        tts = azure.TTS(
+        return azure.TTS(
             speech_key=azure_speech_key,
             speech_region=azure_speech_region,
         )
-    elif tts_provider_name == "lmnt":
+
+    def _create_lmnt_tts():
         model = (tts_config or {}).get("model") or "blizzard"
         logger.info("Model: %s", model)
         voice = (tts_config or {}).get("voice") or "leah"
@@ -311,18 +418,82 @@ async def entrypoint(ctx: JobContext):
         logger.info("Language: %s", language)
         temperature = (tts_config or {}).get("temperature") or 0.3
         logger.info("Temperature: %s", temperature)
-        tts = lmnt.TTS(
+        return lmnt.TTS(
             model=model,
             language=language,
             temperature=temperature,
             voice=voice,
         )
+
+    def _create_deepgram_tts():
+        return deepgram.TTS()
+
+    # Provider factory mappings
+    LLM_FACTORIES = {
+        "Gemini Realtime": _create_gemini_realtime_llm,
+        "Groq": _create_groq_llm,
+    }
+    LLM_DEFAULT = _create_openai_llm
+
+    STT_FACTORIES = {
+        "Sarvam": _create_sarvam_stt,
+        "Groq": _create_groq_stt,
+        "Azure": _create_azure_stt,
+    }
+    STT_DEFAULT = _create_deepgram_stt
+
+    TTS_FACTORIES = {
+        "Sarvam": _create_sarvam_tts,
+        "Gemini": _create_gemini_tts,
+        "Groq": _create_groq_tts,
+        "Azure": _create_azure_tts,
+        "lmnt": _create_lmnt_tts,
+    }
+    TTS_DEFAULT = _create_deepgram_tts
+
+    # Helper functions for model initialization
+    async def _init_llm():
+        llm_start = time.time()
+        # Check realtime_provider_name first (for "Gemini Realtime"), then llm_provider_name (for "Groq")
+        provider = realtime_provider_name or llm_provider_name
+        factory = LLM_FACTORIES.get(provider) if provider else None
+        llm = factory() if factory else LLM_DEFAULT()
+        logger.info(f"LLM initialized in {time.time() - llm_start:.2f}s")
+        return llm
+
+    async def _init_stt():
+        stt_start = time.time()
+        factory = STT_FACTORIES.get(stt_provider_name) if stt_provider_name else None
+        stt = factory() if factory else STT_DEFAULT()
+        logger.info(f"STT initialized in {time.time() - stt_start:.2f}s")
+        return stt
+
+    async def _init_tts():
+        tts_start = time.time()
+        factory = TTS_FACTORIES.get(tts_provider_name) if tts_provider_name else None
+        tts = factory() if factory else TTS_DEFAULT()
+        logger.info(f"TTS initialized in {time.time() - tts_start:.2f}s")
+        return tts
+
+    # Initialize models in parallel where possible
+    if realtime_provider_name is None:
+        # For STT-LLM-TTS pipeline, initialize all three in parallel
+        llm, stt, tts = await asyncio.gather(
+            _init_llm(),
+            _init_stt(),
+            _init_tts(),
+        )
     else:
-        tts = deepgram.TTS()
+        # For realtime models, only initialize LLM
+        llm = await _init_llm()
+        stt = None
+        tts = None
+
+    logger.info(f"All models initialized in {time.time() - models_start:.2f}s")
 
     # Set up a voice AI pipeline using the configured provider
     session = None
-    if realtime_provider_name == None:
+    if realtime_provider_name is None:
         session = AgentSession(
             llm=llm,
             stt=stt,
@@ -352,6 +523,7 @@ async def entrypoint(ctx: JobContext):
     ctx.add_shutdown_callback(log_usage)
 
     # Start the session, which initializes the voice pipeline and warms up the models
+    session_start_init = time.time()
     await session.start(
         agent=Assistant(instructions=custom_instructions),
         room=ctx.room,
@@ -359,9 +531,24 @@ async def entrypoint(ctx: JobContext):
             close_on_disconnect=True,
         ),
     )
+    logger.info(f"Session started in {time.time() - session_start_init:.2f}s")
+
+    # Wait for SIP participant to connect before generating first message
+    participant_wait_start = time.time()
+    await _wait_for_participant(ctx.room, timeout=10.0)
+    logger.info(
+        f"Participant wait completed in {time.time() - participant_wait_start:.2f}s"
+    )
+
+    # Generate first message
+    first_message_start = time.time()
     await session.generate_reply(
         instructions=f"Start the conversation by saying: '{custom_first_message}'"
     )
+    logger.info(f"First message generated in {time.time() - first_message_start:.2f}s")
+
+    total_time = time.time() - entrypoint_start
+    logger.info(f"Total entrypoint time: {total_time:.2f}s")
 
 
 if __name__ == "__main__":
