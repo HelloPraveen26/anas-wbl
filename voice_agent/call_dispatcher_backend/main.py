@@ -52,12 +52,16 @@ class CallRequest(BaseModel):
     first_message: Optional[str] = Field(
         None, description="Custom first message the agent should say"
     )
-    realtime_provider_name: Optional[str] = Field(None, description="realtime_provider_name")
+    realtime_provider_name: Optional[str] = Field(
+        None, description="realtime_provider_name"
+    )
     llm_provider_name: Optional[str] = Field(None, description="llm_provider_name")
     stt_provider_name: Optional[str] = Field(None, description="stt_provider_name")
     tts_provider_name: Optional[str] = Field(None, description="tts_provider_name")
     llm_config: Optional[Dict[str, Any]] = Field(None, description="llm_config")
-    realtime_model_config: Optional[Dict[str, Any]] = Field(None, description="realtime_model_config")
+    realtime_model_config: Optional[Dict[str, Any]] = Field(
+        None, description="realtime_model_config"
+    )
     stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
     tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
 
@@ -301,7 +305,6 @@ async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
                 room_name=room_name,
                 sip_trunk_id=outbound_trunk_id,
                 sip_call_to=phone_number,
-                dtmf="#282699405",
                 participant_identity="phone_user",
                 participant_metadata=metadata,
             )
