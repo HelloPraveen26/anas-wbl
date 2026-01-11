@@ -18,6 +18,8 @@ import { ImportTwilioNumbersDto } from "./dto/import-twilio-numbers.dto";
 import { ImportTwilioResponseDto } from "./dto/import-twilio-response.dto";
 import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
 import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
+import { ImportTelecmiNumbersDto } from "./dto/import-telecmi-numbers.dto";
+import { ImportTelecmiResponseDto } from "./dto/import-telecmi-response.dto";
 
 @Injectable()
 export class RegisteredNumbersService {
@@ -311,6 +313,113 @@ export class RegisteredNumbersService {
 
       throw new BadRequestException(
         `Failed to import Plivo numbers: ${error.message}`,
+      );
+    }
+  }
+
+  async importTelecmiNumbers(
+    userId: string,
+    importDto: ImportTelecmiNumbersDto,
+  ): Promise<ImportTelecmiResponseDto> {
+    this.logger.log(`Starting Telecmi number import for user: ${userId}`);
+
+    const { phoneNumber, address, authUsername, authPassword } = importDto;
+    const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+    const LIVEKIT_API_SECRET =
+      this.configService.get<string>("LIVEKIT_API_SECRET");
+    const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+    if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+      throw new BadRequestException("LiveKit configuration is missing");
+    }
+
+    try {
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      if (!phoneNumber) {
+        this.logger.warn("No phone number provided for Telecmi import");
+        return {
+          importedCount: 0,
+          livekitOutboundTrunkId: "",
+          importedNumbers: [],
+          message: "No phone number provided for import",
+        };
+      }
+
+      const importedNumbers = [];
+
+      // Create a single SIP trunk for all numbers
+      const trunkOptions = {
+        transport: SIPTransport.SIP_TRANSPORT_AUTO,
+        auth_username: authUsername,
+        auth_password: authPassword,
+      };
+
+      const trunk = await sipClient.createSipOutboundTrunk(
+        `Telecmi Trunk ${new Date().toISOString()}`,
+        address,
+        [phoneNumber],
+        trunkOptions,
+      );
+
+      this.logger.log(
+        `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for phone number: ${phoneNumber}`,
+      );
+
+      // Import the phone number
+      const friendlyName = phoneNumber; // Use phone number as friendlyName
+
+      const registeredNumber = this.registeredNumberRepository.create({
+        providerName: "telecmi",
+        friendlyName: friendlyName,
+        phoneNo: phoneNumber,
+        livekitOutboundTrunkId: trunk.sipTrunkId,
+        active: true,
+        userId,
+      });
+
+      const savedNumber =
+        await this.registeredNumberRepository.save(registeredNumber);
+
+      importedNumbers.push({
+        phoneNumber: phoneNumber,
+        friendlyName: friendlyName,
+        registeredNumberId: savedNumber.id,
+      });
+
+      this.logger.log(`Imported phone number: ${phoneNumber}`);
+
+      const telecmiResponse: ImportTelecmiResponseDto = {
+        importedCount: importedNumbers.length,
+        livekitOutboundTrunkId: trunk.sipTrunkId,
+        importedNumbers,
+        message: `Successfully imported ${importedNumbers.length} phone numbers from Telecmi`,
+      };
+
+      this.logger.log(
+        `Telecmi import completed successfully. Imported ${importedNumbers.length} numbers`,
+      );
+      return telecmiResponse;
+    } catch (error) {
+      this.logger.error(
+        `Error importing Telecmi numbers: ${error.message}`,
+        error.stack,
+      );
+
+      if (error.message.includes("Authentication failed")) {
+        throw new BadRequestException("Invalid Telecmi credentials");
+      }
+
+      if (error.message.includes("LiveKit")) {
+        throw new BadRequestException(`LiveKit error: ${error.message}`);
+      }
+
+      throw new BadRequestException(
+        `Failed to import Telecmi numbers: ${error.message}`,
       );
     }
   }

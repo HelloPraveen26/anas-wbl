@@ -27,6 +27,8 @@ import { ImportTwilioNumbersDto } from "./dto/import-twilio-numbers.dto";
 import { ImportTwilioResponseDto } from "./dto/import-twilio-response.dto";
 import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
 import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
+import { ImportTelecmiNumbersDto } from "./dto/import-telecmi-numbers.dto";
+import { ImportTelecmiResponseDto } from "./dto/import-telecmi-response.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @ApiTags("registered-numbers")
@@ -153,6 +155,47 @@ export class RegisteredNumbersController {
     return this.registeredNumbersService.importPlivoNumbers(
       req.user.id,
       importPlivoNumbersDto,
+    );
+  }
+
+  @Post("import-phone-numbers-telecmi")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Import phone numbers from Telecmi",
+    description:
+      "Import phone numbers from Telecmi account and create LiveKit SIP trunk",
+  })
+  @ApiBody({ type: ImportTelecmiNumbersDto })
+  @ApiResponse({
+    status: 201,
+    description: "Phone numbers imported successfully",
+    type: ImportTelecmiResponseDto,
+    example: {
+      importedCount: 1,
+      livekitOutboundTrunkId: "ST_YTGYHbEZ8PWm",
+      importedNumbers: [
+        {
+          phoneNumber: "+1234567890",
+          friendlyName: "+1234567890",
+          registeredNumberId: "uuid-here",
+        },
+      ],
+      message: "Successfully imported 1 phone number from Telecmi",
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - validation failed or Telecmi/LiveKit error",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized - invalid token" })
+  async importTelecmiNumbers(
+    @Request() req,
+    @Body() importTelecmiNumbersDto: ImportTelecmiNumbersDto,
+  ): Promise<ImportTelecmiResponseDto> {
+    return this.registeredNumbersService.importTelecmiNumbers(
+      req.user.id,
+      importTelecmiNumbersDto,
     );
   }
 
