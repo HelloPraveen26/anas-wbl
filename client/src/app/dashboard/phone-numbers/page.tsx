@@ -81,7 +81,9 @@ export default function PhoneNumbersPage() {
   const [showAllNumbersModal, setShowAllNumbersModal] = useState(false);
   const [showAllRegisteredNumbersModal, setShowAllRegisteredNumbersModal] =
     useState(false);
-  const [activeTab, setActiveTab] = useState<"twilio" | "plivo">("twilio");
+  const [activeTab, setActiveTab] = useState<"twilio" | "plivo" | "telecmi">(
+    "twilio",
+  );
   const [loading, setLoading] = useState(false);
 
   // Data state
@@ -137,6 +139,16 @@ export default function PhoneNumbersPage() {
     address: "",
     authUsername: "",
     authPassword: "",
+  });
+
+  // Telecmi form
+  const [telecmiForm, setTelecmiForm] = useState({
+    accountSid: "",
+    authToken: "",
+    address: "",
+    authUsername: "",
+    authPassword: "",
+    phoneNumber: "",
   });
 
   // WS refs
@@ -364,6 +376,69 @@ export default function PhoneNumbersPage() {
       console.error("importPlivoNumbers error:", err);
       alert(
         `Error importing Plivo numbers: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const importTelecmiNumbers = async () => {
+    try {
+      setLoading(true);
+      const token = authManager.getToken();
+      if (!token) {
+        alert("Authentication token not found");
+        return;
+      }
+      if (
+        !telecmiForm.address ||
+        !telecmiForm.authUsername ||
+        !telecmiForm.authPassword ||
+        !telecmiForm.phoneNumber
+      ) {
+        alert("Please fill in all required fields");
+        return;
+      }
+      const res = await fetch(
+        `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-telecmi`,
+        {
+          method: "POST",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            accountSid: telecmiForm.accountSid,
+            authToken: telecmiForm.authToken,
+            address: telecmiForm.address,
+            authUsername: telecmiForm.authUsername,
+            authPassword: telecmiForm.authPassword,
+            phoneNumber: telecmiForm.phoneNumber,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      alert(
+        `Successfully imported ${data.importedCount ?? 0} phone numbers from Telecmi`,
+      );
+      setOpenModal(false);
+      setTelecmiForm({
+        accountSid: "",
+        authToken: "",
+        address: "",
+        authUsername: "",
+        authPassword: "",
+        phoneNumber: "",
+      });
+      await fetchRegisteredNumbers();
+    } catch (err) {
+      console.error("importTelecmiNumbers error:", err);
+      alert(
+        `Error importing Telecmi numbers: ${err instanceof Error ? err.message : "Unknown error"}`,
       );
     } finally {
       setLoading(false);
@@ -1043,7 +1118,7 @@ export default function PhoneNumbersPage() {
             </div>
 
             <div className="flex space-x-4 border-b pb-3 mb-4">
-              {(["twilio", "plivo"] as const).map((t) => (
+              {(["twilio", "plivo", "telecmi"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setActiveTab(t)}
@@ -1104,7 +1179,7 @@ export default function PhoneNumbersPage() {
                     />
                   </div>
                 </>
-              ) : (
+              ) : activeTab === "plivo" ? (
                 <>
                   <div>
                     <InputField
@@ -1153,6 +1228,65 @@ export default function PhoneNumbersPage() {
                     />
                   </div>
                 </>
+              ) : (
+                <>
+                  <div>
+                    <InputField
+                      label="Account SID (Optional)"
+                      value={telecmiForm.accountSid}
+                      onChange={(v) =>
+                        setTelecmiForm((p) => ({ ...p, accountSid: v }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <InputField
+                      label="API Secret (Optional)"
+                      value={telecmiForm.authToken}
+                      onChange={(v) =>
+                        setTelecmiForm((p) => ({ ...p, authToken: v }))
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Address"
+                      value={telecmiForm.address}
+                      onChange={(v) =>
+                        setTelecmiForm((p) => ({ ...p, address: v }))
+                      }
+                      placeholder="sipind.piopiy.com"
+                    />
+                  </div>
+                  <div>
+                    <InputField
+                      label="Auth Username"
+                      value={telecmiForm.authUsername}
+                      onChange={(v) =>
+                        setTelecmiForm((p) => ({ ...p, authUsername: v }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <InputField
+                      label="Auth Password"
+                      value={telecmiForm.authPassword}
+                      onChange={(v) =>
+                        setTelecmiForm((p) => ({ ...p, authPassword: v }))
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Phone Number"
+                      value={telecmiForm.phoneNumber}
+                      onChange={(v) =>
+                        setTelecmiForm((p) => ({ ...p, phoneNumber: v }))
+                      }
+                      placeholder="+911203134120"
+                    />
+                  </div>
+                </>
               )}
             </div>
 
@@ -1167,7 +1301,9 @@ export default function PhoneNumbersPage() {
                 onClick={
                   activeTab === "twilio"
                     ? importTwilioNumbers
-                    : importPlivoNumbers
+                    : activeTab === "plivo"
+                      ? importPlivoNumbers
+                      : importTelecmiNumbers
                 }
                 disabled={
                   loading ||
@@ -1180,7 +1316,12 @@ export default function PhoneNumbersPage() {
                       !plivoForm.authToken ||
                       !plivoForm.address ||
                       !plivoForm.authUsername ||
-                      !plivoForm.authPassword))
+                      !plivoForm.authPassword)) ||
+                  (activeTab === "telecmi" &&
+                    (!telecmiForm.address ||
+                      !telecmiForm.authUsername ||
+                      !telecmiForm.authPassword ||
+                      !telecmiForm.phoneNumber))
                 }
                 className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
