@@ -81,6 +81,9 @@ export class User {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
+  @Column({ type: "numeric", default: 0 })
+  credits: number;
+
   @OneToMany("Assistant", "user")
   assistants: any[];
 

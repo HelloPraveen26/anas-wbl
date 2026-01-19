@@ -166,6 +166,10 @@ async function bootstrap() {
       "call-logs",
       "Call logs management - Retrieve call history with pagination and filtering",
     )
+    .addTag(
+      "payment",
+      "Payment endpoints - PayU integration for payment processing",
+    )
     .addServer("http://localhost:8000", "Development server")
     .addServer(configService.get("APP_BASE_URL"), "Production server")
     .setLicense("MIT", "https://opensource.org/licenses/MIT")
