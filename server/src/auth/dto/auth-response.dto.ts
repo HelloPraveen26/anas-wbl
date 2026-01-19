@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 class UserData {
   @ApiProperty()
@@ -18,6 +18,9 @@ class UserData {
 
   @ApiProperty()
   isVerified: boolean;
+
+  @ApiProperty()
+  credits: number;
 }
 
 class AuthData {
