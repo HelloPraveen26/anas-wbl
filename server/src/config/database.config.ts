@@ -21,6 +21,7 @@ import { Assistant } from "../assistant/entities";
 import { RegisteredNumber } from "../registered-numbers/entities/registered-number.entity";
 import { ContactNumber } from "../contact-numbers/entities/contact-number.entity";
 import { CallLog } from "../call-logs/entities/call-log.entity";
+import { Payment } from "../payment/entities/payment.entity";
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -48,6 +49,7 @@ export const databaseConfig = (
     RegisteredNumber,
     ContactNumber,
     CallLog,
+    Payment,
   ],
   synchronize: configService.get("NODE_ENV") === "development",
   logging: configService.get("NODE_ENV") === "development",
