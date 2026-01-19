@@ -5,9 +5,12 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import { UsersService } from "../users/users.service";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { PaymentInitiationResponseDto } from "./dto/payment-response.dto";
+import { Payment } from "./entities/payment.entity";
 import * as crypto from "crypto";
 
 @Injectable()
@@ -17,6 +20,8 @@ export class PaymentService {
   constructor(
     private readonly configService: ConfigService,
     private readonly usersService: UsersService,
+    @InjectRepository(Payment)
+    private readonly paymentRepository: Repository<Payment>,
   ) {}
 
   async createPayment(
@@ -84,6 +89,15 @@ export class PaymentService {
 
       const hash = this.generatePayuHash(params, salt);
       const formData = { ...params, hash };
+
+      // Save payment record to database
+      const payment = this.paymentRepository.create({
+        txnid,
+        amount,
+        hash,
+        userId,
+      });
+      await this.paymentRepository.save(payment);
 
       this.logger.log(`Payment initiated successfully with txnid: ${txnid}`);
 
