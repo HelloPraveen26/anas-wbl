@@ -83,7 +83,7 @@ export class PaymentService {
       };
 
       const hash = this.generatePayuHash(params, salt);
-      const formData = { ...params };
+      const formData = { ...params, hash };
 
       this.logger.log(`Payment initiated successfully with txnid: ${txnid}`);
 
