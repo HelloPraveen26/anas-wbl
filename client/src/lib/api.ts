@@ -5,10 +5,6 @@ const API_BASE_URL =
     ? "http://localhost:8000/api/v1"
     : process.env.NEXT_PUBLIC_API_URL;
 
-
-
-
-
 //  ? "https://voice.zenxai.io/api/v1"
 // : "https://voice.zenxai.io/api/v1"
 
@@ -46,6 +42,7 @@ export interface User {
   lastName: string;
   email: string;
   phone?: string;
+  credits?: number;
   isVerified: boolean;
 }
 
