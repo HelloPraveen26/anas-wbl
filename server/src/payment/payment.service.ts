@@ -3,6 +3,7 @@ import {
   Logger,
   BadRequestException,
   InternalServerErrorException,
+  NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -11,6 +12,7 @@ import { UsersService } from "../users/users.service";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { PaymentInitiationResponseDto } from "./dto/payment-response.dto";
 import { Payment } from "./entities/payment.entity";
+import { User } from "../users/entities/user.entity";
 import * as crypto from "crypto";
 
 @Injectable()
@@ -22,6 +24,8 @@ export class PaymentService {
     private readonly usersService: UsersService,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async createPayment(
@@ -121,19 +125,170 @@ export class PaymentService {
     }
   }
 
-  async handlePaymentSuccess(body: any): Promise<void> {
+  async handlePaymentSuccess(body: any): Promise<string> {
     this.logger.log("Payment success callback received");
     this.logger.log("Success callback body:", JSON.stringify(body, null, 2));
+
+    try {
+      // Verify hash
+      const isValidHash = this.verifyPayUResponseHash(body);
+      if (!isValidHash) {
+        this.logger.error("Invalid hash in payment success response");
+        throw new BadRequestException("Invalid hash in payment response");
+      }
+
+      // Find existing payment by hash
+      const existingPayment = await this.paymentRepository.findOne({
+        where: { hash: body.hash },
+        relations: ["user"],
+      });
+
+      if (!existingPayment) {
+        this.logger.error(`Payment not found for hash: ${body.hash}`);
+        throw new NotFoundException("Payment record not found");
+      }
+
+      // Update payment record with PayU response data
+      await this.paymentRepository.update(
+        { id: existingPayment.id },
+        {
+          mihpayid: body.mihpayid,
+          status: body.status,
+          txnid: body.txnid,
+          udf1: body.udf1,
+          udf2: body.udf2,
+          udf3: body.udf3,
+          udf4: body.udf4,
+          udf5: body.udf5,
+          udf6: body.udf6,
+          udf7: body.udf7,
+          udf8: body.udf8,
+          udf9: body.udf9,
+          udf10: body.udf10,
+          field1: body.field1,
+          field2: body.field2,
+          field3: body.field3,
+          field4: body.field4,
+          field5: body.field5,
+          field6: body.field6,
+          field7: body.field7,
+          field8: body.field8,
+          field9: body.field9,
+          paymentSource: body.payment_source,
+          bankRefNum: body.bank_ref_num,
+          bankcode: body.bankcode,
+          error: body.error,
+          errorMessage: body.error_Message,
+        },
+      );
+
+      // Update user credits if payment is successful
+      if (body.status === "success") {
+        const creditAmount = parseFloat(body.amount || "0");
+        if (creditAmount > 0) {
+          await this.userRepository.increment(
+            { id: existingPayment.userId },
+            "credits",
+            creditAmount,
+          );
+          this.logger.log(
+            `Added ${creditAmount} credits to user ${existingPayment.userId}`,
+          );
+        }
+      }
+
+      this.logger.log(`Payment ${body.txnid} processed successfully`);
+
+      // Return redirect URL
+      const appBaseUrl = this.configService.get<string>("APP_BASE_URL");
+      return `${appBaseUrl}/dashboard/assistants`;
+    } catch (error) {
+      this.logger.error(
+        `Payment success processing error: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
-  async handlePaymentFailure(body: any): Promise<void> {
+  async handlePaymentFailure(body: any): Promise<string> {
     this.logger.log("Payment failure callback received");
     this.logger.log("Failure callback body:", JSON.stringify(body, null, 2));
+
+    try {
+      // Verify hash
+      const isValidHash = this.verifyPayUResponseHash(body);
+      if (!isValidHash) {
+        this.logger.error("Invalid hash in payment failure response");
+        throw new BadRequestException("Invalid hash in payment response");
+      }
+
+      // Find existing payment by hash
+      const existingPayment = await this.paymentRepository.findOne({
+        where: { hash: body.hash },
+        relations: ["user"],
+      });
+
+      if (!existingPayment) {
+        this.logger.error(`Payment not found for hash: ${body.hash}`);
+        throw new NotFoundException("Payment record not found");
+      }
+
+      // Update payment record with PayU response data
+      await this.paymentRepository.update(
+        { id: existingPayment.id },
+        {
+          mihpayid: body.mihpayid,
+          status: body.status,
+          txnid: body.txnid,
+          udf1: body.udf1,
+          udf2: body.udf2,
+          udf3: body.udf3,
+          udf4: body.udf4,
+          udf5: body.udf5,
+          udf6: body.udf6,
+          udf7: body.udf7,
+          udf8: body.udf8,
+          udf9: body.udf9,
+          udf10: body.udf10,
+          field1: body.field1,
+          field2: body.field2,
+          field3: body.field3,
+          field4: body.field4,
+          field5: body.field5,
+          field6: body.field6,
+          field7: body.field7,
+          field8: body.field8,
+          field9: body.field9,
+          paymentSource: body.payment_source,
+          bankRefNum: body.bank_ref_num,
+          bankcode: body.bankcode,
+          error: body.error,
+          errorMessage: body.error_Message,
+        },
+      );
+
+      this.logger.log(`Payment failure ${body.txnid} processed`);
+
+      // Return redirect URL
+      const appBaseUrl = this.configService.get<string>("APP_BASE_URL");
+      return `${appBaseUrl}/dashboard/assistants`;
+    } catch (error) {
+      this.logger.error(
+        `Payment failure processing error: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
   }
 
-  async handlePaymentCancel(body: any): Promise<void> {
+  async handlePaymentCancel(body: any): Promise<string> {
     this.logger.log("Payment cancel callback received");
     this.logger.log("Cancel callback body:", JSON.stringify(body, null, 2));
+
+    // Return redirect URL for cancelled payments
+    const appBaseUrl = this.configService.get<string>("APP_BASE_URL");
+    return `${appBaseUrl}/dashboard/assistants`;
   }
 
   private generatePayuHash(params: any, salt: string): string {
@@ -164,5 +319,53 @@ export class PaymentService {
     this.logger.debug(`Generated hash: ${hash}`);
 
     return hash;
+  }
+
+  private verifyPayUResponseHash(body: any): boolean {
+    try {
+      const salt = this.configService.get<string>("PAYU_SALT");
+      if (!salt) {
+        this.logger.error("PAYU_SALT not configured");
+        return false;
+      }
+
+      // PayU response hash formula: SALT|status|||||||||||||email|firstname|productinfo|amount|txnid|key
+      const hashString = [
+        salt,
+        body.status || "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "", // 13 empty fields
+        body.email || "",
+        body.firstname || "",
+        body.productinfo || "",
+        body.amount || "",
+        body.txnid || "",
+        body.key || "",
+      ].join("|");
+
+      const expectedHash = crypto
+        .createHash("sha512")
+        .update(hashString)
+        .digest("hex");
+
+      this.logger.debug(`Response hash string: ${hashString}`);
+      this.logger.debug(`Expected hash: ${expectedHash}`);
+      this.logger.debug(`Received hash: ${body.hash}`);
+
+      return expectedHash === body.hash;
+    } catch (error) {
+      this.logger.error(`Hash verification error: ${error.message}`);
+      return false;
+    }
   }
 }
