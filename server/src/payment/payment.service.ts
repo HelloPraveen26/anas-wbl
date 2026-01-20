@@ -130,21 +130,14 @@ export class PaymentService {
     this.logger.log("Success callback body:", JSON.stringify(body, null, 2));
 
     try {
-      // Verify hash
-      const isValidHash = this.verifyPayUResponseHash(body);
-      if (!isValidHash) {
-        this.logger.error("Invalid hash in payment success response");
-        throw new BadRequestException("Invalid hash in payment response");
-      }
-
-      // Find existing payment by hash
+      // Find existing payment by txnid
       const existingPayment = await this.paymentRepository.findOne({
-        where: { hash: body.hash },
+        where: { txnid: body.txnid },
         relations: ["user"],
       });
 
       if (!existingPayment) {
-        this.logger.error(`Payment not found for hash: ${body.hash}`);
+        this.logger.error(`Payment not found for txnid: ${body.txnid}`);
         throw new NotFoundException("Payment record not found");
       }
 
