@@ -5,7 +5,10 @@ import {
   UseGuards,
   Request,
   HttpStatus,
+  Res,
+  Redirect,
 } from "@nestjs/common";
+import { Response } from "express";
 import {
   ApiTags,
   ApiOperation,
@@ -14,6 +17,7 @@ import {
   ApiBody,
 } from "@nestjs/swagger";
 import { ThrottlerGuard } from "@nestjs/throttler";
+import { ConfigService } from "@nestjs/config";
 import { PaymentService } from "./payment.service";
 import {
   CreatePaymentDto,
@@ -26,7 +30,10 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 @Controller("payment")
 @UseGuards(ThrottlerGuard)
 export class PaymentController {
-  constructor(private readonly paymentService: PaymentService) {}
+  constructor(
+    private readonly paymentService: PaymentService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post("create-payment")
   @UseGuards(JwtAuthGuard)
@@ -83,33 +90,44 @@ export class PaymentController {
   @Post("success")
   async handlePaymentSuccess(
     @Body() body: any,
-  ): Promise<PaymentCallbackResponseDto> {
-    await this.paymentService.handlePaymentSuccess(body);
-    return new PaymentCallbackResponseDto(
-      true,
-      "Payment success callback processed",
-    );
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const redirectUrl = await this.paymentService.handlePaymentSuccess(body);
+      res.redirect(redirectUrl);
+    } catch (error) {
+      // On error, redirect to dashboard with error parameter
+      const baseUrl = this.configService.get<string>("APP_BASE_URL");
+      res.redirect(`${baseUrl}/dashboard/assistants?payment=error`);
+    }
   }
 
   @Post("failure")
   async handlePaymentFailure(
     @Body() body: any,
-  ): Promise<PaymentCallbackResponseDto> {
-    await this.paymentService.handlePaymentFailure(body);
-    return new PaymentCallbackResponseDto(
-      true,
-      "Payment failure callback processed",
-    );
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const redirectUrl = await this.paymentService.handlePaymentFailure(body);
+      res.redirect(`${redirectUrl}?payment=failed`);
+    } catch (error) {
+      // On error, redirect to dashboard with error parameter
+      const baseUrl = this.configService.get<string>("APP_BASE_URL");
+      res.redirect(`${baseUrl}/dashboard/assistants?payment=error`);
+    }
   }
 
   @Post("cancel")
   async handlePaymentCancel(
     @Body() body: any,
-  ): Promise<PaymentCallbackResponseDto> {
-    await this.paymentService.handlePaymentCancel(body);
-    return new PaymentCallbackResponseDto(
-      true,
-      "Payment cancel callback processed",
-    );
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const redirectUrl = await this.paymentService.handlePaymentCancel(body);
+      res.redirect(`${redirectUrl}?payment=cancelled`);
+    } catch (error) {
+      const baseUrl = this.configService.get<string>("APP_BASE_URL");
+      res.redirect(`${baseUrl}/dashboard/assistants?payment=error`);
+    }
   }
 }
