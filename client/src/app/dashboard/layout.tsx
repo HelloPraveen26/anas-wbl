@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,8 @@ import {
   CreditCard,
   Zap,
   PhoneIncoming,
-  AudioWaveform            
+  AudioWaveform,
+  RefreshCw,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authManager } from "@/lib/auth";
@@ -28,6 +29,10 @@ import Image from "next/image";
 import cristy from "../../assets/newlogo.png";
 import logo1 from "../../assets/logo1.png";
 import { BuyCreditsDialog } from "@/components/BuyCreditsDialog";
+import { useUserRefresh } from "@/hooks/useUserRefresh";
+import { useToast } from "@/hooks/useToast";
+import { ToastContainer } from "@/components/Toast";
+import { PaymentCallbackHandler } from "@/components/PaymentCallbackHandler";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -42,6 +47,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [observeExpanded, setObserveExpanded] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { refreshUser, isRefreshing } = useUserRefresh();
+  const { toasts, success, removeToast } = useToast();
 
   useEffect(() => {
     const authState = authManager.getAuthState();
@@ -284,6 +291,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Credits
                 </span>
+                <button
+                  onClick={async () => {
+                    const result = await refreshUser();
+                    if (result.success && result.user) setUser(result.user);
+                  }}
+                  disabled={isRefreshing}
+                  className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+                  title="Refresh credits"
+                >
+                  <RefreshCw
+                    className={`w-3 h-3 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                </button>
               </div>
               <div className="text-2xl font-bold text-gray-900 mb-3">
                 {user?.credits || 0}
@@ -292,9 +312,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 shadow-sm border border-gray-200">
-              <span className="text-lg font-bold text-gray-900">
-                {user?.credits || 0}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-gray-900">
+                  {user?.credits || 0}
+                </span>
+                <button
+                  onClick={async () => {
+                    const result = await refreshUser();
+                    if (result.success && result.user) setUser(result.user);
+                  }}
+                  disabled={isRefreshing}
+                  className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+                  title="Refresh credits"
+                >
+                  <RefreshCw
+                    className={`w-3 h-3 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                </button>
+              </div>
               <BuyCreditsDialog
                 trigger={
                   <Button
@@ -381,6 +416,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">{children}</div>
+
+      {/* Payment Callback Handler */}
+      <Suspense fallback={null}>
+        <PaymentCallbackHandler user={user} onUserUpdate={setUser} />
+      </Suspense>
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
