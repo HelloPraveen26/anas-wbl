@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
+import PaymentNotification from "@/components/PaymentNotification";
 import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
 
@@ -105,7 +106,7 @@ export default function AssistantsListingPage() {
 
   const filteredAssistants = assistants
     .filter((assistant) =>
-      assistant.name.toLowerCase().includes(searchTerm.toLowerCase())
+      assistant.name.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (a.id === lastUsedAssistantId) return -1;
@@ -116,11 +117,14 @@ export default function AssistantsListingPage() {
   const handleCreateAssistant = async (name: string) => {
     setCreateAssistantLoading(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/assistants/create-with-name`, {
-        method: "POST",
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+      const res = await fetch(
+        `${getApiBaseUrl()}/assistants/create-with-name`,
+        {
+          method: "POST",
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        },
+      );
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e?.message || `HTTP ${res.status}`);
@@ -165,12 +169,15 @@ export default function AssistantsListingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      <PaymentNotification />
       {/* Top Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-emerald-100 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between gap-6">
             <div>
-              <h1 className="text-2xl font-bold text-emerald-900 ml-6">Assistants</h1>
+              <h1 className="text-2xl font-bold text-emerald-900 ml-6">
+                Assistants
+              </h1>
             </div>
 
             {/* Search Bar */}
@@ -184,13 +191,12 @@ export default function AssistantsListingPage() {
                   placeholder="Search assistants..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full h-11 pl-11 pr-4 bg-white rounded-xl text-sm 
-                 text-gray-900 placeholder-gray-500 
+                  className="w-full h-11 pl-11 pr-4 bg-white rounded-xl text-sm
+                 text-gray-900 placeholder-gray-500
                  focus:outline-none focus:ring-1 focus:ring-emerald-300"
                 />
               </div>
             </div>
-
 
             <Button
               onClick={() => setShowCreateModal(true)}
@@ -214,12 +220,16 @@ export default function AssistantsListingPage() {
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-emerald-900">Your Assistants</h2>
+                  <h2 className="text-lg font-bold text-emerald-900">
+                    Your Assistants
+                  </h2>
                 </div>
               </div>
               <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full border border-emerald-200">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <span className="text-xs font-semibold text-emerald-700">Live</span>
+                <span className="text-xs font-semibold text-emerald-700">
+                  Live
+                </span>
               </div>
             </div>
           </div>
@@ -230,7 +240,9 @@ export default function AssistantsListingPage() {
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">
                   <div className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-600 text-sm font-medium">Loading assistants...</p>
+                  <p className="text-gray-600 text-sm font-medium">
+                    Loading assistants...
+                  </p>
                 </div>
               </div>
             ) : filteredAssistants.length === 0 ? (
@@ -271,31 +283,45 @@ export default function AssistantsListingPage() {
                       onMouseLeave={() => setHoveredId("")}
                       onClick={() => {
                         setLastUsedAssistantId(assistant.id);
-                        localStorage.setItem("lastUsedAssistantId", assistant.id);
+                        localStorage.setItem(
+                          "lastUsedAssistantId",
+                          assistant.id,
+                        );
                         router.push(`/dashboard/assistants/${assistant.id}`);
                       }}
-                      className={`group cursor-pointer transition-all ${isActive
+                      className={`group cursor-pointer transition-all ${
+                        isActive
                           ? "bg-gradient-to-r from-emerald-50 to-teal-50"
                           : isHovered
                             ? "bg-gray-50"
                             : "bg-white hover:bg-gray-50"
-                        }`}
+                      }`}
                     >
                       <div className="px-6 py-5">
                         <div className="flex items-center gap-4">
                           {/* Avatar */}
-                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${isActive
-                              ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/30"
-                              : "bg-gray-100 group-hover:bg-gray-200"
-                            }`}>
-                            <Mic className={`w-8 h-8 ${isActive ? "text-white" : "text-gray-600"}`} />
+                          <div
+                            className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${
+                              isActive
+                                ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/30"
+                                : "bg-gray-100 group-hover:bg-gray-200"
+                            }`}
+                          >
+                            <Mic
+                              className={`w-8 h-8 ${isActive ? "text-white" : "text-gray-600"}`}
+                            />
                           </div>
 
                           {/* Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className={`text-lg font-bold truncate ${isActive ? "text-emerald-900" : "text-gray-900"
-                                }`}>
+                              <h3
+                                className={`text-lg font-bold truncate ${
+                                  isActive
+                                    ? "text-emerald-900"
+                                    : "text-gray-900"
+                                }`}
+                              >
                                 {assistant.name}
                               </h3>
                               {isActive && (
@@ -309,12 +335,15 @@ export default function AssistantsListingPage() {
                               <div className="flex items-center gap-1.5">
                                 <Cpu className="w-4 h-4 text-emerald-600" />
                                 <span className="truncate max-w-[200px] font-medium">
-                                  {assistant.llmModel?.llmProvider?.name || "No model"}
+                                  {assistant.llmModel?.llmProvider?.name ||
+                                    "No model"}
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Clock className="w-4 h-4 text-emerald-600" />
-                                <span className="font-medium">{formatDate(assistant.createdAt)}</span>
+                                <span className="font-medium">
+                                  {formatDate(assistant.createdAt)}
+                                </span>
                               </div>
                             </div>
 
@@ -322,12 +351,19 @@ export default function AssistantsListingPage() {
                             <div className="flex items-center gap-4 text-xs text-gray-500">
                               <div className="flex items-center gap-1.5">
                                 <Zap className="w-3.5 h-3.5 text-emerald-500" />
-                                <span>{assistant.llmModel?.name || "Not configured"}</span>
+                                <span>
+                                  {assistant.llmModel?.name || "Not configured"}
+                                </span>
                               </div>
                               <div className="flex items-center gap-1.5">
-                                <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-gray-400"
-                                  }`}></div>
-                                <span className="font-medium">{isActive ? "Online" : "Offline"}</span>
+                                <div
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isActive ? "bg-emerald-500" : "bg-gray-400"
+                                  }`}
+                                ></div>
+                                <span className="font-medium">
+                                  {isActive ? "Online" : "Offline"}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -343,8 +379,11 @@ export default function AssistantsListingPage() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
-                            <ChevronRight className={`w-6 h-6 transition-all ${isActive ? "text-emerald-600" : "text-gray-400"
-                              } ${isHovered ? "translate-x-1" : ""}`} />
+                            <ChevronRight
+                              className={`w-6 h-6 transition-all ${
+                                isActive ? "text-emerald-600" : "text-gray-400"
+                              } ${isHovered ? "translate-x-1" : ""}`}
+                            />
                           </div>
                         </div>
                       </div>
