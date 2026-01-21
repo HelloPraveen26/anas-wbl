@@ -1,12 +1,13 @@
-import './globals.css';
+import "./globals.css";
 
-import type { Metadata } from 'next';
+import type { Metadata } from "next";
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Zenvoice',
-  description: 'Manage your autonomous voice assistants',
+  title: "Zenvoice",
+  description: "Manage your autonomous voice assistants",
   icons: {
-    icon: '/assets/logo1.png',
+    icon: "/assets/logo1.png",
   },
 };
 
@@ -27,7 +28,10 @@ export default function RootLayout({
         />
         {/* Temporarily removed font links to test loading */}
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

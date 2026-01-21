@@ -192,9 +192,9 @@ export class PaymentService {
 
       this.logger.log(`Payment ${body.txnid} processed successfully`);
 
-      // Return redirect URL
+      // Return redirect URL with success message
       const appBaseUrl = this.configService.get<string>("APP_BASE_URL");
-      return `${appBaseUrl}/dashboard/assistants`;
+      return `${appBaseUrl}/dashboard/assistants?payment=success`;
     } catch (error) {
       this.logger.error(
         `Payment success processing error: ${error.message}`,
@@ -263,9 +263,9 @@ export class PaymentService {
 
       this.logger.log(`Payment failure ${body.txnid} processed`);
 
-      // Return redirect URL
+      // Return redirect URL with failure message
       const appBaseUrl = this.configService.get<string>("APP_BASE_URL");
-      return `${appBaseUrl}/dashboard/assistants`;
+      return `${appBaseUrl}/dashboard/assistants?payment=failed`;
     } catch (error) {
       this.logger.error(
         `Payment failure processing error: ${error.message}`,
@@ -281,7 +281,7 @@ export class PaymentService {
 
     // Return redirect URL for cancelled payments
     const appBaseUrl = this.configService.get<string>("APP_BASE_URL");
-    return `${appBaseUrl}/dashboard/assistants`;
+    return `${appBaseUrl}/dashboard/assistants?payment=cancelled`;
   }
 
   private generatePayuHash(params: any, salt: string): string {
