@@ -55,13 +55,13 @@ export default function PaymentNotification() {
       // Show toast notification
       toast({
         variant,
-        title: (
+        title,
+        description: (
           <div className="flex items-center gap-2">
             {icon}
-            {title}
+            <span>{description}</span>
           </div>
         ),
-        description,
         duration: payment === "success" ? 8000 : 12000,
       });
 
