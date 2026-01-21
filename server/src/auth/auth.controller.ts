@@ -16,7 +16,7 @@ import {
   ApiBearerAuth,
   ApiBody,
 } from "@nestjs/swagger";
-import { ThrottlerGuard } from "@nestjs/throttler";
+import { ThrottlerGuard, Throttle, SkipThrottle } from "@nestjs/throttler";
 import { AuthService } from "./auth.service";
 import { SignUpDto } from "./dto/signup.dto";
 import { SignInDto } from "./dto/signin.dto";
@@ -188,6 +188,7 @@ export class AuthController {
   }
 
   @Get("profile")
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
