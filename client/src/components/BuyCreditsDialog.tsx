@@ -20,11 +20,13 @@ import { getApiBaseUrl } from "@/lib/api";
 interface BuyCreditsDialogProps {
   trigger?: React.ReactNode;
   onSuccess?: () => void;
+  onPaymentInitiated?: () => void;
 }
 
 export function BuyCreditsDialog({
   trigger,
   onSuccess,
+  onPaymentInitiated,
 }: BuyCreditsDialogProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -90,6 +92,11 @@ export function BuyCreditsDialog({
       if (result.success) {
         // Close the dialog first
         setOpen(false);
+
+        // Call payment initiated callback if provided
+        if (onPaymentInitiated) {
+          onPaymentInitiated();
+        }
 
         // Create and submit a form to PayU
         const form = document.createElement("form");
