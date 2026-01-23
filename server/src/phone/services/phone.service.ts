@@ -43,10 +43,13 @@ export class PhoneService {
       );
 
       if (response.data?.success && response.data?.data) {
+        const tools = response.data.data;
+        const toolsArray = Array.isArray(tools) ? tools : [tools];
+
         this.logger.log(
-          `✅ Tool config loaded: ${response.data.data.toolName}`,
+          `✅ ${toolsArray.length} tool(s) loaded for assistant`,
         );
-        return response.data.data;
+        return toolsArray;
       }
 
       this.logger.warn(`⚠️ No tool configuration found for assistant`);
@@ -63,9 +66,9 @@ export class PhoneService {
     let callLogId: string | null = null;
 
     // 🔍 DEBUG: Log incoming DTO
-    this.logger.log("=" .repeat(80));
+    this.logger.log("=".repeat(80));
     this.logger.log("🔍 DEBUG: INCOMING MAKE CALL DTO");
-    this.logger.log("=" .repeat(80));
+    this.logger.log("=".repeat(80));
     this.logger.log(`Phone Number: ${dto.phoneNumber}`);
     this.logger.log(`Selected Assistant: ${dto.selectedAssistant}`);
     this.logger.log(`Metadata Present: ${dto.metadata ? 'YES' : 'NO'}`);
@@ -73,7 +76,7 @@ export class PhoneService {
       this.logger.log(`Metadata Keys: ${Object.keys(dto.metadata).join(', ')}`);
       this.logger.log(`Metadata Content: ${JSON.stringify(dto.metadata, null, 2)}`);
     }
-    this.logger.log("=" .repeat(80));
+    this.logger.log("=".repeat(80));
 
     try {
       let systemPrompt = "";
@@ -145,16 +148,17 @@ export class PhoneService {
 
           toolConfig = await this.getToolConfig(dto.selectedAssistant);
 
-          if (toolConfig) {
+          if (toolConfig && Array.isArray(toolConfig) && toolConfig.length > 0) {
             this.logger.log(
-              `🔧 Tool configured: ${toolConfig.toolName} with ${Object.keys(toolConfig.parameters || {}).length} parameters`,
+              `🔧 ${toolConfig.length} tool(s) configured for assistant`,
             );
-            webhookUrl = toolConfig.webhookUrl || webhookUrl;
-            
-            // 🔍 DEBUG: Log tool parameters
-            this.logger.log("🔍 Tool Parameters:");
-            Object.keys(toolConfig.parameters || {}).forEach(param => {
-              this.logger.log(`   • ${param} (required: ${toolConfig.parameters[param].required})`);
+            // Use the first tool's webhook for legacy support if needed, 
+            // but agent.py now handles multiple webhooks
+            webhookUrl = toolConfig[0].webhookUrl || webhookUrl;
+
+            // 🔍 DEBUG: Log tools
+            toolConfig.forEach(tool => {
+              this.logger.log(`   • ${tool.toolName} (${Object.keys(tool.parameters || {}).length} params)`);
             });
           }
         } catch (error) {
@@ -177,7 +181,7 @@ export class PhoneService {
         startTime: new Date(),
       });
       callLogId = initialCallLog.id;
-      
+
       const registeredNumbers =
         await this.registeredNumbersService.findAllByUser(userId);
       const registeredNumber = registeredNumbers.find(
@@ -195,32 +199,15 @@ export class PhoneService {
       }
 
       let instructions = systemPrompt;
-      if (toolConfig) {
-        const requiredFields = Object.keys(toolConfig.parameters || {})
-          .filter((k) => toolConfig.parameters[k].required)
-          .join(", ");
-
-        const toolInstructions = `
-
-IMPORTANT - DATA COLLECTION TOOL ACTIVATED:
-You are configured with a data collection tool. Your primary mission is to collect the following information:
-Required fields: ${requiredFields}
-
-When the user provides ANY of this information, IMMEDIATELY call the collect_user_data tool with the appropriate key and value. Extract information naturally from conversation - don't make it feel like an interrogation.
-
-After collecting all required information, the system will automatically send the data to the webhook.`;
-
-        instructions = instructions
-          ? instructions + toolInstructions
-          : toolInstructions;
-      }
+      // 🆕 Note: Tool instructions are now handled dynamically by agent.py 
+      // based on the assistantId and available tool configurations.
 
       // 🔍 DEBUG: Extract and log metadata
       const customMetadata = dto.metadata || {};
-      
-      this.logger.log("=" .repeat(80));
+
+      this.logger.log("=".repeat(80));
       this.logger.log("🔍 DEBUG: PREPARING METADATA FOR AGENT");
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
       this.logger.log(`Custom Metadata Keys: ${Object.keys(customMetadata).join(', ') || 'NONE'}`);
       if (Object.keys(customMetadata).length > 0) {
         this.logger.log("Custom Metadata Content:");
@@ -230,7 +217,7 @@ After collecting all required information, the system will automatically send th
       } else {
         this.logger.warn("⚠️ NO CUSTOM METADATA FOUND IN DTO!");
       }
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
 
       const payload = {
         user_id: userId,
@@ -251,18 +238,18 @@ After collecting all required information, the system will automatically send th
         ...(ttsConfig && { tts_config: ttsConfig }),
         ...(dto.selectedAssistant && { assistant_id: dto.selectedAssistant }),
         ...(webhookUrl && { webhook_url: webhookUrl }),
-        
+
         // 🆕 PASS CUSTOM METADATA FOR PRE-POPULATION
         ...(Object.keys(customMetadata).length > 0 && { metadata: customMetadata }),
       };
 
       // 🔍 DEBUG: Log final payload
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
       this.logger.log("🔍 DEBUG: FINAL PAYLOAD TO PHONE SERVICE");
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
       this.logger.log(`Payload has metadata: ${payload.hasOwnProperty('metadata') ? 'YES' : 'NO'}`);
       this.logger.log(`Full payload:\n${JSON.stringify(payload, null, 2)}`);
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
 
       const { data } = await firstValueFrom(
         this.httpService.post(`${this.baseUrl}/make_call`, payload),

@@ -375,23 +375,16 @@ export class AssistantController {
 
   @Post("save-tool-config")
   @ApiOperation({
-    summary: "Save tool configuration",
-    description:
-      "Save custom tool configuration for an assistant with file persistence",
+    summary: "Save tool configuration (supports multiple tools per assistant)",
+    description: "Add or update a tool for an assistant without overwriting existing tools",
   })
   @ApiBody({
     schema: {
       type: "object",
       properties: {
         toolName: { type: "string", example: "function_tool" },
-        description: {
-          type: "string",
-          example: "Describe the tool in a few sentences",
-        },
-        assistantId: {
-          type: "string",
-          example: "123e4567-e89b-12d3-a456-426614174000",
-        },
+        description: { type: "string", example: "Describe the tool" },
+        assistantId: { type: "string", example: "123e4567-e89b-12d3-a456-426614174000" },
         webhookUrl: { type: "string", example: "https://api.example.com/function" },
         timeout: { type: "number", example: 20 },
         isAsync: { type: "boolean", example: true },
@@ -407,31 +400,70 @@ export class AssistantController {
     status: HttpStatus.CREATED,
     description: "Tool configuration saved successfully",
   })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: "Bad request - validation failed",
-  })
   async saveToolConfig(@Body() toolConfig: any): Promise<any> {
     try {
-      const { assistantId, ...config } = toolConfig;
+      const { assistantId, ...newToolConfig } = toolConfig;
 
       if (!assistantId) {
         throw new BadRequestException("assistantId is required");
       }
 
-      if (!config.webhookUrl) {
+      if (!newToolConfig.webhookUrl) {
         throw new BadRequestException("webhookUrl is required");
       }
 
-      // Save to file
+      if (!newToolConfig.toolName) {
+        throw new BadRequestException("toolName is required");
+      }
+
       const filePath = join(this.configDir, `${assistantId}.json`);
-      await fs.writeFile(filePath, JSON.stringify(config, null, 2), "utf-8");
+
+      // 🆕 STEP 1: Load existing tools (if any)
+      let existingTools: any[] = [];
+      try {
+        const fileContent = await fs.readFile(filePath, "utf-8");
+        const existingConfig = JSON.parse(fileContent);
+
+        // Handle old format (single tool) vs new format (array of tools)
+        if (Array.isArray(existingConfig)) {
+          existingTools = existingConfig;
+        } else if (existingConfig.toolName) {
+          // Old format - convert to array
+          existingTools = [existingConfig];
+        }
+      } catch (error) {
+        // File doesn't exist - that's fine, start with empty array
+        console.log(`ℹ️ No existing config for assistant ${assistantId}, creating new`);
+      }
+
+      // 🆕 STEP 2: Check if tool with same name exists
+      const existingToolIndex = existingTools.findIndex(
+        (t) => t.toolName === newToolConfig.toolName
+      );
+
+      if (existingToolIndex >= 0) {
+        // Update existing tool
+        existingTools[existingToolIndex] = newToolConfig;
+        console.log(`📝 Updated existing tool: ${newToolConfig.toolName}`);
+      } else {
+        // Add new tool
+        existingTools.push(newToolConfig);
+        console.log(`➕ Added new tool: ${newToolConfig.toolName}`);
+      }
+
+      // 🆕 STEP 3: Save ALL tools as array
+      await fs.writeFile(
+        filePath,
+        JSON.stringify(existingTools, null, 2),
+        "utf-8"
+      );
 
       console.log("=============================================");
       console.log("✅ Tool configuration saved successfully");
-      console.log("📋 Tool Name:", toolConfig.toolName);
-      console.log("🔗 Webhook URL:", toolConfig.webhookUrl);
+      console.log("📋 Tool Name:", newToolConfig.toolName);
+      console.log("🔗 Webhook URL:", newToolConfig.webhookUrl);
       console.log("🆔 Assistant ID:", assistantId);
+      console.log("📊 Total tools for this assistant:", existingTools.length);
       console.log("📂 File path:", filePath);
       console.log("=============================================");
 
@@ -439,18 +471,14 @@ export class AssistantController {
         success: true,
         message: "Tool configuration saved successfully",
         data: {
-          toolName: toolConfig.toolName,
-          description: toolConfig.description,
+          toolName: newToolConfig.toolName,
           assistantId: assistantId,
-          webhookUrl: toolConfig.webhookUrl,
-          timeout: toolConfig.timeout,
-          isAsync: toolConfig.isAsync,
-          isStrict: toolConfig.isStrict,
-          parametersCount: Object.keys(toolConfig.parameters || {}).length,
-          headersCount: Object.keys(toolConfig.httpHeaders || {}).length,
-          conditionsCount: (toolConfig.conditions || []).length,
+          totalTools: existingTools.length,
+          allTools: existingTools.map(t => ({
+            name: t.toolName,
+            webhook: t.webhookUrl
+          })),
           savedAt: new Date().toISOString(),
-          filePath: filePath,
         },
       };
     } catch (error) {
@@ -461,8 +489,8 @@ export class AssistantController {
 
   @Get("tool-config/:assistantId")
   @ApiOperation({
-    summary: "Get tool configuration",
-    description: "Retrieve saved tool configuration for an assistant",
+    summary: "Get all tool configurations for an assistant",
+    description: "Retrieve all saved tools for an assistant",
   })
   @ApiParam({
     name: "assistantId",
@@ -471,21 +499,17 @@ export class AssistantController {
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: "Configuration retrieved successfully",
+    description: "Configurations retrieved successfully",
     schema: {
       type: "object",
       properties: {
         success: { type: "boolean", example: true },
         data: {
-          type: "object",
-          description: "Tool configuration object",
+          type: "array",
+          description: "Array of tool configurations",
         },
       },
     },
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: "Configuration not found",
   })
   async getToolConfig(@Param("assistantId") assistantId: string): Promise<any> {
     try {
@@ -495,12 +519,10 @@ export class AssistantController {
       try {
         await fs.access(filePath);
       } catch {
-        console.log(
-          `ℹ️ No configuration found for assistant: ${assistantId}`
-        );
+        console.log(`ℹ️ No configuration found for assistant: ${assistantId}`);
         return {
-          success: false,
-          message: `No tool configuration found for assistant ${assistantId}`,
+          success: true,
+          data: [], // Return empty array instead of error
         };
       }
 
@@ -508,16 +530,27 @@ export class AssistantController {
       const configData = await fs.readFile(filePath, "utf-8");
       const config = JSON.parse(configData);
 
+      // Handle both old format (single tool) and new format (array)
+      let tools: any[];
+      if (Array.isArray(config)) {
+        tools = config;
+      } else if (config.toolName) {
+        // Old format - return as single-item array
+        tools = [config];
+      } else {
+        tools = [];
+      }
+
       console.log("=============================================");
-      console.log("✅ Tool configuration loaded successfully");
+      console.log("✅ Tool configurations loaded successfully");
       console.log("🆔 Assistant ID:", assistantId);
-      console.log("📋 Tool Name:", config.toolName);
-      console.log("📂 File path:", filePath);
+      console.log("📊 Total tools:", tools.length);
+      console.log("📋 Tools:", tools.map(t => t.toolName).join(", "));
       console.log("=============================================");
 
       return {
         success: true,
-        data: config,
+        data: tools,
       };
     } catch (error) {
       console.error("❌ Error loading tool config:", error);
@@ -527,124 +560,147 @@ export class AssistantController {
     }
   }
 
+  @Delete("tool-config/:assistantId/:toolName")
+  @ApiOperation({
+    summary: "Delete a specific tool from an assistant",
+    description: "Remove one tool while keeping others",
+  })
+  @ApiParam({ name: "assistantId", description: "UUID of the assistant" })
+  @ApiParam({ name: "toolName", description: "Name of the tool to delete" })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Tool deleted successfully",
+  })
+  async deleteToolConfig(
+    @Param("assistantId") assistantId: string,
+    @Param("toolName") toolName: string
+  ): Promise<any> {
+    try {
+      const filePath = join(this.configDir, `${assistantId}.json`);
+
+      // Read existing tools
+      const configData = await fs.readFile(filePath, "utf-8");
+      let tools = JSON.parse(configData);
+
+      // Convert to array if needed
+      if (!Array.isArray(tools)) {
+        tools = [tools];
+      }
+
+      // Filter out the tool to delete
+      const updatedTools = tools.filter((t) => t.toolName !== toolName);
+
+      if (updatedTools.length === tools.length) {
+        throw new NotFoundException(`Tool '${toolName}' not found`);
+      }
+
+      // Save updated tools (or delete file if no tools left)
+      if (updatedTools.length === 0) {
+        await fs.unlink(filePath);
+        console.log("=============================================");
+        console.log("🗑️ Tool configuration file deleted");
+        console.log("🆔 Assistant ID:", assistantId);
+        console.log("📋 Last Tool Deleted:", toolName);
+        console.log("ℹ️ Reason: No tools remaining for this assistant");
+        console.log("=============================================");
+      } else {
+        await fs.writeFile(
+          filePath,
+          JSON.stringify(updatedTools, null, 2),
+          "utf-8"
+        );
+        console.log("=============================================");
+        console.log("✅ Tool deleted successfully");
+        console.log("🆔 Assistant ID:", assistantId);
+        console.log("🗑️ Deleted Tool:", toolName);
+        console.log("📊 Remaining tools:", updatedTools.length);
+        console.log("📋 Current Tools:", updatedTools.map(t => t.toolName).join(", "));
+        console.log("=============================================");
+      }
+
+      return {
+        success: true,
+        message: `Tool '${toolName}' deleted successfully`,
+        remainingTools: updatedTools.length,
+      };
+    } catch (error) {
+      console.error("❌ Error deleting tool:", error);
+      throw error;
+    }
+  }
+
   @Post("agent-webhook")
   @ApiOperation({
-    summary: "Agent webhook endpoint",
-    description:
-      "Receives collected data from the agent and forwards to configured webhook",
+    summary: "Forward collected tool data to user-configured webhook",
+    description: "Endpoint called by AI agent to forward collected data to external hooks",
   })
   @ApiBody({
     schema: {
       type: "object",
       properties: {
-        assistantId: {
-          type: "string",
-          example: "123e4567-e89b-12d3-a456-426614174000",
-        },
-        collectedData: {
-          type: "object",
-          example: {
-            name: "John Doe",
-            email: "john@example.com",
-            phone: "+1234567890",
-          },
-        },
+        assistantId: { type: "string" },
+        toolName: { type: "string" },
+        collectedData: { type: "object" },
       },
     },
   })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: "Data forwarded successfully",
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: "Missing required fields",
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: "Configuration not found for assistant",
-  })
-  async agentWebhook(@Body() payload: any): Promise<any> {
+  async forwardWebhook(@Body() payload: any): Promise<any> {
+    const { assistantId, toolName, collectedData } = payload;
+
+    if (!assistantId || !toolName) {
+      throw new BadRequestException("assistantId and toolName are required");
+    }
+
+    let tool: any = null;
     try {
-      const { assistantId, collectedData } = payload;
-
-      if (!assistantId) {
-        throw new BadRequestException("assistantId is required");
-      }
-
-      if (!collectedData) {
-        throw new BadRequestException("collectedData is required");
-      }
-
-      // Read config file
       const filePath = join(this.configDir, `${assistantId}.json`);
+      const configData = await fs.readFile(filePath, "utf-8");
+      const tools = JSON.parse(configData);
 
-      let configData: string;
-      try {
-        configData = await fs.readFile(filePath, "utf-8");
-      } catch (error) {
-        throw new NotFoundException(
-          `No configuration found for assistant: ${assistantId}`
+      tool = Array.isArray(tools)
+        ? tools.find((t) => t.toolName === toolName)
+        : tools.toolName === toolName
+          ? tools
+          : null;
+
+      if (!tool || !tool.webhookUrl) {
+        console.warn(
+          `⚠️ No webhook configured for tool ${toolName} of assistant ${assistantId}`,
         );
+        return { success: false, message: "No webhook configured" };
       }
 
-      const config = JSON.parse(configData);
-      const { webhookUrl } = config;
-
-      if (!webhookUrl) {
-        throw new BadRequestException(
-          "Webhook URL not defined in configuration"
-        );
-      }
-
-      console.log("=============================================");
-      console.log(`📤 Forwarding data to webhook`);
-      console.log(`🆔 Assistant ID: ${assistantId}`);
-      console.log(`🔗 Webhook URL: ${webhookUrl}`);
       console.log(
-        `📊 Collected Data:`,
-        JSON.stringify(collectedData, null, 2)
+        `📡 Sending data for '${toolName}' to external hook: ${tool.webhookUrl}`,
       );
-      console.log("=============================================");
 
-      // Forward to webhook
-      const webhookPayload = {
-        assistantId,
-        data: collectedData,
-        timestamp: new Date().toISOString(),
-      };
+      const headers = tool.httpHeaders || {};
 
-      const response = await axios.post(webhookUrl, webhookPayload, {
-        headers: {
-          "Content-Type": "application/json",
-          ...config.httpHeaders, // Include any custom headers from config
-        },
-        timeout: (config.timeout || 20) * 1000, // Convert to milliseconds
+      // Forward the request to the external webhook
+      const response = await axios.post(tool.webhookUrl, collectedData, {
+        headers,
       });
 
-      console.log(
-        `✅ Data sent successfully to webhook (Status: ${response.status})`
-      );
+      console.log(`✅ External hook responded with status: ${response.status}`);
 
       return {
         success: true,
-        message: "Data forwarded to webhook successfully",
-        webhookResponse: {
-          status: response.status,
-          statusText: response.statusText,
-        },
+        message: "Data forwarded successfully",
+        externalStatus: response.status,
       };
-    } catch (error) {
-      console.error("❌ Agent webhook forwarding error:", error.message);
+    } catch (error: any) {
+      const statusCode = error.response?.status || "Unknown";
+      const errorData = error.response?.data ? JSON.stringify(error.response.data) : "No data";
 
-      if (error.response) {
-        console.error("Webhook response error:", {
-          status: error.response.status,
-          data: error.response.data,
-        });
-      }
+      console.error(
+        `❌ Webhook forwarding failed for tool '${toolName}'. Target: ${tool?.webhookUrl || "Unknown"}. Status: ${statusCode}. Error: ${error.message}`,
+      );
 
-      throw error;
+      return {
+        success: false,
+        message: `External webhook (${tool?.webhookUrl}) returned status ${statusCode}: ${error.message}`,
+        details: errorData
+      };
     }
   }
 }
