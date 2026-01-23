@@ -65,6 +65,11 @@ class CallRequest(BaseModel):
     )
     stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
     tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
+    sip_headers: Optional[Dict[str, str]] = Field(
+        None,
+        description="Optional SIP headers to include in the INVITE request. Required for some providers like Telecimi.",
+        examples=[{"X-Provider-Username": "username"}],
+    )
 
     @validator("phone_number")
     def validate_e164_format(cls, v):
@@ -248,7 +253,9 @@ async def health_check():
     }
 
 
-async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
+async def make_call(
+    metadata, room_name, phone_number, outbound_trunk_id, sip_headers=None
+):
     """Create a dispatch and add a SIP participant to call the phone number"""
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -286,6 +293,7 @@ async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
                 sip_call_to=phone_number,
                 participant_identity="phone_user",
                 participant_metadata=metadata,
+                headers=sip_headers,
             )
         )
         logger.info(f"Created SIP participant: {sip_participant}")
@@ -382,6 +390,7 @@ async def make_call_endpoint(request: CallRequest):
     stt_config = request.stt_config
     tts_config = request.tts_config
     user_id = request.user_id
+    sip_headers = request.sip_headers
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -424,7 +433,11 @@ async def make_call_endpoint(request: CallRequest):
 
         # Make the call
         sip_details, dispatch = await make_call(
-            json.dumps(metadata), room_name, phone_number, outbound_trunk_id
+            json.dumps(metadata),
+            room_name,
+            phone_number,
+            outbound_trunk_id,
+            sip_headers,
         )
 
         logger.info(
