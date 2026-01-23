@@ -52,14 +52,23 @@ class CallRequest(BaseModel):
     first_message: Optional[str] = Field(
         None, description="Custom first message the agent should say"
     )
-    realtime_provider_name: Optional[str] = Field(None, description="realtime_provider_name")
+    realtime_provider_name: Optional[str] = Field(
+        None, description="realtime_provider_name"
+    )
     llm_provider_name: Optional[str] = Field(None, description="llm_provider_name")
     stt_provider_name: Optional[str] = Field(None, description="stt_provider_name")
     tts_provider_name: Optional[str] = Field(None, description="tts_provider_name")
     llm_config: Optional[Dict[str, Any]] = Field(None, description="llm_config")
-    realtime_model_config: Optional[Dict[str, Any]] = Field(None, description="realtime_model_config")
+    realtime_model_config: Optional[Dict[str, Any]] = Field(
+        None, description="realtime_model_config"
+    )
     stt_config: Optional[Dict[str, Any]] = Field(None, description="stt_config")
     tts_config: Optional[Dict[str, Any]] = Field(None, description="tts_config")
+    sip_headers: Optional[Dict[str, str]] = Field(
+        None,
+        description="Optional SIP headers to include in the INVITE request. Required for some providers like Telecimi.",
+        examples=[{"X-Provider-Username": "username"}],
+    )
 
     assistant_id: Optional[str] = Field(
         None, description="Assistant ID for webhook routing and tool configuration"
@@ -68,11 +77,11 @@ class CallRequest(BaseModel):
     webhook_url: Optional[str] = Field(
         None, description="Backend webhook URL to send collected data"
     )
-    
+
     # 🆕 ADD FLEXIBLE METADATA FIELD
     metadata: Optional[Dict[str, Any]] = Field(
-        None, 
-        description="Additional metadata for tool pre-population (e.g., name, email, company, etc.)"
+        None,
+        description="Additional metadata for tool pre-population (e.g., name, email, company, etc.)",
     )
 
     @validator("phone_number")
@@ -98,8 +107,8 @@ class CallRequest(BaseModel):
                 "metadata": {
                     "name": "John Doe",
                     "email": "john@example.com",
-                    "company": "Acme Corp"
-                }
+                    "company": "Acme Corp",
+                },
             },
             "description": "Request body for initiating a phone call with custom agent behavior and metadata pre-population",
         }
@@ -265,7 +274,9 @@ async def health_check():
     }
 
 
-async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
+async def make_call(
+    metadata, room_name, phone_number, outbound_trunk_id, sip_headers=None
+):
     """Create a dispatch and add a SIP participant to call the phone number"""
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -304,6 +315,7 @@ async def make_call(metadata, room_name, phone_number, outbound_trunk_id):
                 dtmf="#282699405",
                 participant_identity="phone_user",
                 participant_metadata=metadata,
+                headers=sip_headers,
             )
         )
         logger.info(f"Created SIP participant: {sip_participant}")
@@ -354,6 +366,7 @@ async def make_call_endpoint(request: CallRequest):
     webhook_url = request.webhook_url
     user_id = request.user_id
     custom_metadata = request.metadata or {}  # 🆕 Extract custom metadata
+    sip_headers = request.sip_headers
 
     if not phone_number:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -387,7 +400,7 @@ async def make_call_endpoint(request: CallRequest):
             "webhook_url": webhook_url,
             "user_id": user_id,
         }
-        
+
         # 🆕 MERGE CUSTOM METADATA - This allows pre-population of tool parameters
         metadata = {**base_metadata, **custom_metadata}
 
@@ -397,13 +410,13 @@ async def make_call_endpoint(request: CallRequest):
         logger.info(f"📱 Phone: {phone_number}")
         logger.info(f"🆔 Assistant ID: {assistant_id}")
         logger.info(f"🔗 Webhook URL: {webhook_url}")
-        
+
         # Log custom metadata if present
         if custom_metadata:
             logger.info("🎯 Custom metadata for tool pre-population:")
             for key, value in custom_metadata.items():
                 logger.info(f"   • {key}: {value}")
-        
+
         logger.info("=============================================")
 
         # Generate unique room name
@@ -415,7 +428,11 @@ async def make_call_endpoint(request: CallRequest):
 
         # Make the call with merged metadata
         sip_details, dispatch = await make_call(
-            json.dumps(metadata), room_name, phone_number, outbound_trunk_id
+            json.dumps(metadata),
+            room_name,
+            phone_number,
+            outbound_trunk_id,
+            sip_headers,
         )
 
         logger.info(

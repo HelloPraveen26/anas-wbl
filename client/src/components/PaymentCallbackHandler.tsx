@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { User as UserType } from "@/lib/api";
 import { useUserRefresh } from "@/hooks/useUserRefresh";
@@ -16,23 +16,33 @@ export function PaymentCallbackHandler({ user, onUserUpdate }: PaymentCallbackHa
   const { refreshUser } = useUserRefresh();
   const { success } = useToast();
 
+  // Use a ref to track if we've already processed the payment callback
+  // This prevents infinite loops if dependencies change
+  const processedRef = useRef(false);
+
   useEffect(() => {
     const checkPaymentCallback = async () => {
+      // If already processed, don't run again
+      if (processedRef.current) return;
+
       const txnid = searchParams.get("txnid");
       const status = searchParams.get("status");
       const mihpayid = searchParams.get("mihpayid");
       const paymentParam = searchParams.get("payment");
-      const amount = searchParams.get("amount");
 
-      // If coming from payment, refresh user data
-      if (
+      // Check if this is a payment callback
+      const isPaymentCallback =
         txnid ||
         status ||
         mihpayid ||
         paymentParam ||
-        (typeof document !== "undefined" && document.referrer.includes("payu"))
-      ) {
+        (typeof document !== "undefined" && document.referrer.includes("payu"));
+
+      if (isPaymentCallback) {
         console.log("Payment callback detected, refreshing user data...");
+
+        // Mark as processed immediately to prevent double execution
+        processedRef.current = true;
 
         // Show processing toast
         success("Processing payment... Please wait.", 2000);
@@ -59,13 +69,15 @@ export function PaymentCallbackHandler({ user, onUserUpdate }: PaymentCallbackHa
             }
           } else {
             console.error("Failed to refresh user data:", result.error);
+            // If failed, we might want to allow retrying, but for now let's stay safe to avoid loops
+            // processedRef.current = false; 
           }
         }, 2000);
       }
     };
 
     checkPaymentCallback();
-  }, [searchParams, refreshUser, user?.credits, success, onUserUpdate]);
+  }, [searchParams, refreshUser, success, onUserUpdate, user?.credits]);
 
   return null;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { authManager } from "@/lib/auth";
 import { User } from "@/lib/api";
 
@@ -8,7 +8,7 @@ export function useUserRefresh() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  const refreshUser = async (): Promise<{
+  const refreshUser = useCallback(async (): Promise<{
     user: User | null;
     success: boolean;
     error?: string;
@@ -63,7 +63,7 @@ export function useUserRefresh() {
     } finally {
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
   return { refreshUser, isRefreshing, lastRefresh };
 }
