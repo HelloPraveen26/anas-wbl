@@ -72,7 +72,5 @@ export default function PaymentNotification() {
     }
   }, [searchParams, router, toast]);
 
-  // This component doesn't render anything visible
-  // The toast system handles the display
   return null;
 }
