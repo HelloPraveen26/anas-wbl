@@ -149,6 +149,20 @@ export class PhoneService {
         );
       }
 
+      // Determine sip_headers based on provider_name and from_phone_number
+      let sipHeaders = {};
+      if (registeredNumber.providerName === "telecmi") {
+        if (["+919840653588"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "agarwalpackers",
+          };
+        } else {
+          sipHeaders = {
+            "X-Piopiy-Username": "zenaisip",
+          };
+        }
+      }
+
       const payload = {
         user_id: userId,
         phone_number: dto.phoneNumber,
@@ -166,6 +180,7 @@ export class PhoneService {
         }),
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
+        ...(Object.keys(sipHeaders).length > 0 && { sip_headers: sipHeaders }),
       };
 
       this.logger.log(
