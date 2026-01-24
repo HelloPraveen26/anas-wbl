@@ -63,17 +63,19 @@ export class PhoneService {
     let callLogId: string | null = null;
 
     // 🔍 DEBUG: Log incoming DTO
-    this.logger.log("=" .repeat(80));
+    this.logger.log("=".repeat(80));
     this.logger.log("🔍 DEBUG: INCOMING MAKE CALL DTO");
-    this.logger.log("=" .repeat(80));
+    this.logger.log("=".repeat(80));
     this.logger.log(`Phone Number: ${dto.phoneNumber}`);
     this.logger.log(`Selected Assistant: ${dto.selectedAssistant}`);
-    this.logger.log(`Metadata Present: ${dto.metadata ? 'YES' : 'NO'}`);
+    this.logger.log(`Metadata Present: ${dto.metadata ? "YES" : "NO"}`);
     if (dto.metadata) {
-      this.logger.log(`Metadata Keys: ${Object.keys(dto.metadata).join(', ')}`);
-      this.logger.log(`Metadata Content: ${JSON.stringify(dto.metadata, null, 2)}`);
+      this.logger.log(`Metadata Keys: ${Object.keys(dto.metadata).join(", ")}`);
+      this.logger.log(
+        `Metadata Content: ${JSON.stringify(dto.metadata, null, 2)}`,
+      );
     }
-    this.logger.log("=" .repeat(80));
+    this.logger.log("=".repeat(80));
 
     try {
       let systemPrompt = "";
@@ -150,11 +152,13 @@ export class PhoneService {
               `🔧 Tool configured: ${toolConfig.toolName} with ${Object.keys(toolConfig.parameters || {}).length} parameters`,
             );
             webhookUrl = toolConfig.webhookUrl || webhookUrl;
-            
+
             // 🔍 DEBUG: Log tool parameters
             this.logger.log("🔍 Tool Parameters:");
-            Object.keys(toolConfig.parameters || {}).forEach(param => {
-              this.logger.log(`   • ${param} (required: ${toolConfig.parameters[param].required})`);
+            Object.keys(toolConfig.parameters || {}).forEach((param) => {
+              this.logger.log(
+                `   • ${param} (required: ${toolConfig.parameters[param].required})`,
+              );
             });
           }
         } catch (error) {
@@ -177,7 +181,7 @@ export class PhoneService {
         startTime: new Date(),
       });
       callLogId = initialCallLog.id;
-      
+
       const registeredNumbers =
         await this.registeredNumbersService.findAllByUser(userId);
       const registeredNumber = registeredNumbers.find(
@@ -193,7 +197,6 @@ export class PhoneService {
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
-
       let instructions = systemPrompt;
       if (toolConfig) {
         const requiredFields = Object.keys(toolConfig.parameters || {})
@@ -217,11 +220,13 @@ After collecting all required information, the system will automatically send th
 
       // 🔍 DEBUG: Extract and log metadata
       const customMetadata = dto.metadata || {};
-      
-      this.logger.log("=" .repeat(80));
+
+      this.logger.log("=".repeat(80));
       this.logger.log("🔍 DEBUG: PREPARING METADATA FOR AGENT");
-      this.logger.log("=" .repeat(80));
-      this.logger.log(`Custom Metadata Keys: ${Object.keys(customMetadata).join(', ') || 'NONE'}`);
+      this.logger.log("=".repeat(80));
+      this.logger.log(
+        `Custom Metadata Keys: ${Object.keys(customMetadata).join(", ") || "NONE"}`,
+      );
       if (Object.keys(customMetadata).length > 0) {
         this.logger.log("Custom Metadata Content:");
         Object.entries(customMetadata).forEach(([key, value]) => {
@@ -230,7 +235,21 @@ After collecting all required information, the system will automatically send th
       } else {
         this.logger.warn("⚠️ NO CUSTOM METADATA FOUND IN DTO!");
       }
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
+
+      // Determine sip_headers based on provider_name and from_phone_number
+      let sipHeaders = {};
+      if (registeredNumber.providerName === "telecmi") {
+        if (["+919840653588"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "agarwalpackers",
+          };
+        } else {
+          sipHeaders = {
+            "X-Piopiy-Username": "zenaisip",
+          };
+        }
+      }
 
       const payload = {
         user_id: userId,
@@ -251,18 +270,21 @@ After collecting all required information, the system will automatically send th
         ...(ttsConfig && { tts_config: ttsConfig }),
         ...(dto.selectedAssistant && { assistant_id: dto.selectedAssistant }),
         ...(webhookUrl && { webhook_url: webhookUrl }),
-        
-        // 🆕 PASS CUSTOM METADATA FOR PRE-POPULATION
-        ...(Object.keys(customMetadata).length > 0 && { metadata: customMetadata }),
+        ...(Object.keys(customMetadata).length > 0 && {
+          metadata: customMetadata,
+        }),
+        ...(Object.keys(sipHeaders).length > 0 && { sip_headers: sipHeaders }),
       };
 
       // 🔍 DEBUG: Log final payload
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
       this.logger.log("🔍 DEBUG: FINAL PAYLOAD TO PHONE SERVICE");
-      this.logger.log("=" .repeat(80));
-      this.logger.log(`Payload has metadata: ${payload.hasOwnProperty('metadata') ? 'YES' : 'NO'}`);
+      this.logger.log("=".repeat(80));
+      this.logger.log(
+        `Payload has metadata: ${payload.hasOwnProperty("metadata") ? "YES" : "NO"}`,
+      );
       this.logger.log(`Full payload:\n${JSON.stringify(payload, null, 2)}`);
-      this.logger.log("=" .repeat(80));
+      this.logger.log("=".repeat(80));
 
       const { data } = await firstValueFrom(
         this.httpService.post(`${this.baseUrl}/make_call`, payload),
