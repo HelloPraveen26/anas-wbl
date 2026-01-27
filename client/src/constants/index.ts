@@ -8,7 +8,7 @@ export const images = {
   Art: "/assets/Art.svg",
   Bramanic: "/assets/Bramanic.svg",
   SIS: "/assets/SIS.svg",
-  SAS : "/assets/SAS.svg",
+  SAS: "/assets/SAS.svg",
   MNJ: "/assets/MNJ.svg",
   LD: "/assets/LM.svg",
   gb: "/assets/gb.svg",
@@ -16,14 +16,14 @@ export const images = {
   DC: "/assets/DC.svg",
   CR: "/assets/CR.svg",
   ST: "/assets/ST.svg",
- 
-  
+
+
   brainwave: "/assets/brainwave.svg",
   check: "/assets/check.svg",
   check2: "/assets/check-02.svg",
   loading1: "/assets/loading-01.svg",
   brainwaveSymbol: "/assets/brainwave-symbol.svg",
-  ZV:"/assets/ZV.png",
+  ZV: "/assets/ZV.png",
   brainwaveWhiteSymbol: "/assets/brainwave-symbol-white.svg",
   play: "/assets/play.svg",
   gradient: "/assets/gradient.png",
@@ -57,13 +57,13 @@ export const images = {
   sheetss: "/assets/collaboration/sheetss.png",
   Zohoo: "/assets/collaboration/Zoho.png",
   Gmail: "/assets/collaboration/Gmail.png",
-  
-  
 
 
 
 
-  
+
+
+
   discord: "/assets/collaboration/discord.png",
   figma: "/assets/collaboration/figma.png",
   framer: "/assets/collaboration/framer.png",
@@ -108,8 +108,8 @@ export const images = {
 };
 
 const {
-  
-  
+
+
   homeSmile,
   file02,
   soda,
@@ -127,7 +127,7 @@ const {
   DC,
   CR,
   ST,
-  
+
 
   jira,
 
@@ -135,8 +135,8 @@ const {
   facebookk,
   sheetss,
   Zohoo,
-Gmail,
-MailChimp,
+  Gmail,
+  MailChimp,
 
   searchMd,
   plusSquare,
@@ -246,13 +246,18 @@ export const navigation = [
     url: "#login",
     onlyMobile: true,
   },
+  {
+    id: "6",
+    title: "Partner with us",
+    url: "/partner",
+  }
 ];
 
 export const heroIcons = [homeSmile, file02, searchMd, plusSquare];
 
 export const notificationImages = [notification4, notification3, notification2];
 
-export const companyLogos = [soda ,agarwal,DA,AS,Art,Bramanic,SIS,SAS,MNJ,LD,gb,LM,DC,CR,ST];
+export const companyLogos = [soda, agarwal, DA, AS, Art, Bramanic, SIS, SAS, MNJ, LD, gb, LM, DC, CR, ST];
 
 export const brainwaveServices = ["Speach to Speach", "Text to Text", "Seamless Integration"];
 
@@ -292,7 +297,7 @@ export const roadmap = [
     status: "progress",
     imageUrl: roadmap4,
   },
-  
+
 ];
 
 
@@ -308,28 +313,28 @@ export const collabContent = [
   {
     id: "1",
     title: "Outbound Call Campaigns",
-    text:"Reach thousands, automatically. Launch personalized, large-scale outbound call campaigns for promotions, follow-ups, feedback, and more — all without lifting the phone."
+    text: "Reach thousands, automatically. Launch personalized, large-scale outbound call campaigns for promotions, follow-ups, feedback, and more — all without lifting the phone."
   },
   {
     id: "2",
     title: "Appointment Scheduling",
-    text:"Book and manage appointments via voice. Let users schedule, reschedule, or cancel appointments in real-time through a friendly, conversational voice interface."
+    text: "Book and manage appointments via voice. Let users schedule, reschedule, or cancel appointments in real-time through a friendly, conversational voice interface."
   },
   {
     id: "3",
     title: "Voice Surveys & Feedback",
-    text:"Collect insights through natural dialogue. Deploy interactive voice surveys that feel human. Gather actionable feedback, CSAT scores, and customer opinions with ease."
- },
-//  {
-//     id: "4",
-//     title: "Order Updates & Tracking",
-//     text:"Keep customers informed — automatically. Send real-time voice updates about order status, delivery confirmations, and more — triggered by your systems via simple APIs.."
-//  },
-//  {    id: "5",
-//     title: "Health Reminders & Confirmations",
-//     text:"Automate patient communication. Voice agents can remind patients about upcoming appointments, medication schedules, or wellness checks — reducing no-shows and improving care"
-//   },
- ];
+    text: "Collect insights through natural dialogue. Deploy interactive voice surveys that feel human. Gather actionable feedback, CSAT scores, and customer opinions with ease."
+  },
+  //  {
+  //     id: "4",
+  //     title: "Order Updates & Tracking",
+  //     text:"Keep customers informed — automatically. Send real-time voice updates about order status, delivery confirmations, and more — triggered by your systems via simple APIs.."
+  //  },
+  //  {    id: "5",
+  //     title: "Health Reminders & Confirmations",
+  //     text:"Automate patient communication. Voice agents can remind patients about upcoming appointments, medication schedules, or wellness checks — reducing no-shows and improving care"
+  //   },
+];
 
 export const collabApps = [
   {
@@ -378,7 +383,7 @@ export const collabApps = [
     id: "6",
     title: "Zohoo",
     icon: Zohoo,
-    width:  60,
+    width: 60,
     height: 94,
   },
   {
@@ -493,7 +498,7 @@ export const socials = [
     title: "Twitter",
     iconUrl: twitter,
     url: "#",
-  },  
+  },
 
   {
     id: "2",

@@ -720,7 +720,7 @@ export default function PhoneNumbersPage() {
     if (wsRef.current) {
       try {
         wsRef.current.close();
-      } catch (e) {}
+      } catch (e) { }
       wsRef.current = null;
     }
   };
@@ -847,7 +847,7 @@ export default function PhoneNumbersPage() {
               onClick={() => setOpenModal(true)}
               className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
 
-              //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
+            //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
             >
               Import Phone Number
             </button>
@@ -877,11 +877,10 @@ export default function PhoneNumbersPage() {
                   <div
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
-                      selectedRegisteredNumber === num.id
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                    }`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 bg-white"
+                      }`}
                   >
                     <div>
                       <p className="font-medium text-sm text-gray-900">
@@ -894,11 +893,10 @@ export default function PhoneNumbersPage() {
                     </div>
                     <div className="ml-4 text-right">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          num.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                          }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
@@ -959,11 +957,10 @@ export default function PhoneNumbersPage() {
                     <div
                       key={a.id}
                       onClick={() => selectAssistant(a.id)}
-                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${
-                        selectedAssistant === a.id
-                          ? "border-emerald-500 bg-emerald-50"
-                          : "border-gray-200 bg-white"
-                      }`}
+                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${selectedAssistant === a.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
+                        }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
@@ -1056,7 +1053,7 @@ export default function PhoneNumbersPage() {
                             }
                             className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
 
-                            //className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
+                          //className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
                           >
                             {isLoading ? "Calling..." : "Call"}
                           </button>
@@ -1354,11 +1351,10 @@ export default function PhoneNumbersPage() {
                   <div
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
-                      selectedRegisteredNumber === num.id
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                    }`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 bg-white"
+                      }`}
                   >
                     <div>
                       <p className="font-medium text-sm text-gray-900">
@@ -1371,11 +1367,10 @@ export default function PhoneNumbersPage() {
                     </div>
                     <div className="ml-4 text-right">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          num.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                          }`}
                       >
                         {num.active ? "Active" : "Inactive"}
                       </span>
@@ -1465,11 +1460,10 @@ export default function PhoneNumbersPage() {
               <button
                 onClick={handleAddContact}
                 disabled={loading}
-                className={`px-4 py-2 rounded-md text-white ${
-                  loading
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-emerald-600 hover:bg-emerald-700"
-                }`}
+                className={`px-4 py-2 rounded-md text-white ${loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
               >
                 {loading ? "Saving..." : "Save"}
               </button>
