@@ -41,6 +41,7 @@ const CompanyLogos = ({ className }: { className: string }) => {
             ))}
           </ul>
 
+
           {/* Duplicate set for seamless loop */}
           <ul className="flex shrink-0">
             {companyLogos.map((logo, index) => (

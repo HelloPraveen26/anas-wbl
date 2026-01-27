@@ -257,7 +257,7 @@ export const heroIcons = [homeSmile, file02, searchMd, plusSquare];
 
 export const notificationImages = [notification4, notification3, notification2];
 
-export const companyLogos = [soda, agarwal, DA, AS, Art, Bramanic, SIS, SAS, MNJ, LD, gb, LM, DC, CR, ST];
+export const companyLogos: (string | { text: string })[] = [soda, agarwal, DA, AS, Art, Bramanic, SIS, SAS, MNJ, LD, gb, LM, DC, CR, ST];
 
 export const brainwaveServices = ["Speach to Speach", "Text to Text", "Seamless Integration"];
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import {
     CheckCircle2,
     Zap,
@@ -36,7 +36,7 @@ import {
 const Partner = () => {
     const [activeModel, setActiveModel] = useState(0);
 
-    const containerVariants = {
+    const containerVariants: Variants = {
         hidden: { opacity: 0 },
         visible: {
             opacity: 1,
@@ -44,12 +44,12 @@ const Partner = () => {
         }
     };
 
-    const itemVariants = {
+    const itemVariants: Variants = {
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
     };
 
-    const hoverCardVariants = {
+    const hoverCardVariants: Variants = {
         initial: { y: 0, opacity: 1 },
         hover: {
             y: -8,
