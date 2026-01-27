@@ -160,6 +160,10 @@ export class PhoneService {
           sipHeaders = {
             "X-Piopiy-Username": "vidhuacademy",
           };
+        } else if (["+917943446690"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "gnsolutions",
+          };
         } else {
           sipHeaders = {
             "X-Piopiy-Username": "zenaisip",
