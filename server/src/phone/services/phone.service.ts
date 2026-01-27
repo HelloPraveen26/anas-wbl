@@ -152,9 +152,13 @@ export class PhoneService {
       // Determine sip_headers based on provider_name and from_phone_number
       let sipHeaders = {};
       if (registeredNumber.providerName === "telecmi") {
-        if (["+919840653588"].includes(fromPhoneNumber)) {
+        if (["+917943446693"].includes(fromPhoneNumber)) {
           sipHeaders = {
             "X-Piopiy-Username": "agarwalpackers",
+          };
+        } else if (["+917943446695"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "vidhuacademy",
           };
         } else {
           sipHeaders = {
