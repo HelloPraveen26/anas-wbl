@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { navigation } from "@/constants";
@@ -12,6 +13,7 @@ type Props = {};
 
 const Navbar = (props: Props) => {
   const [hash, setHash] = useState<string>("hero");
+  const pathname = usePathname();
 
   useEffect(() => {
     const dynamicNavbarHighlight = () => {
@@ -74,13 +76,13 @@ const Navbar = (props: Props) => {
                     `relative font-code uppercase transition-colors flex-shrink-0
                     px-1.5 sm:px-2 lg:px-3 py-6 text-[10px] sm:text-xs lg:text-base
                     font-medium tracking-wide whitespace-nowrap`,
-                    item.url === hash
+                    (item.url === hash || (item.url.startsWith('/') && pathname === item.url))
                       ? "text-green-400"
                       : "text-gray-300 hover:text-green-300 mr-5"
                   )}
                 >
                   {item.title}
-                  {item.url === hash && (
+                  {(item.url === hash || (item.url.startsWith('/') && pathname === item.url)) && (
                     <span className="absolute left-1/2 -bottom-1 h-0.5 w-3 sm:w-4 lg:w-6 -translate-x-1/2 rounded-full bg-green-400"></span>
                   )}
                 </Link>
