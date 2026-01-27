@@ -306,6 +306,7 @@ async def make_call(
         )
 
     try:
+        logger.info(sip_headers)
         sip_participant = await lkapi.sip.create_sip_participant(
             api.CreateSIPParticipantRequest(
                 room_name=room_name,
