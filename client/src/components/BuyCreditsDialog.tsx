@@ -43,6 +43,14 @@ export function BuyCreditsDialog({
     };
   };
 
+  const calculateTotal = (baseAmount: number) => {
+    const gst = Math.round(baseAmount * 0.18);
+    return {
+      gst,
+      total: baseAmount + gst
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -68,6 +76,7 @@ export function BuyCreditsDialog({
 
     try {
       const reference = `ORDER-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+      const { total } = calculateTotal(amountValue);
 
       const response = await fetch(
         `${getApiBaseUrl()}/payment/create-payment`,
@@ -78,7 +87,7 @@ export function BuyCreditsDialog({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            amount: amountValue,
+            amount: total, // Sending total amount including GST
             reference: reference,
           }),
         },
@@ -162,6 +171,9 @@ export function BuyCreditsDialog({
 
   const quickAmounts = [2000, 5000, 8000, 10000, 15000];
 
+  const amountValue = parseInt(amount || "0", 10);
+  const { gst, total } = calculateTotal(amountValue);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -225,6 +237,34 @@ export function BuyCreditsDialog({
                 </motion.p>
               )}
             </AnimatePresence>
+
+            {amountValue > 0 && !error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="bg-gray-50 rounded-xl p-3 space-y-2 border border-dashed border-gray-200"
+              >
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500 font-medium">Base Amount:</span>
+                  <span className="font-semibold text-gray-700">₹{amountValue.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500 font-medium">GST (18%):</span>
+                    <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Tax</span>
+                  </div>
+                  <span className="font-semibold text-gray-700">₹{gst.toLocaleString()}</span>
+                </div>
+                <div className="h-px bg-gray-200 my-1" />
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-emerald-700 font-bold">Total Payable:</span>
+                  <span className="font-bold text-xl text-emerald-700">₹{total.toLocaleString()}</span>
+                </div>
+                <p className="text-[11px] text-gray-400 text-right pt-1">
+                  Includes 18% Goods and Services Tax (Government Mandated)
+                </p>
+              </motion.div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -249,7 +289,7 @@ export function BuyCreditsDialog({
                       : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:bg-emerald-50/50"
                   )}
                 >
-                  <span className="text-[10px] opacity-70 font-medium leading-none mb-0.5">₹</span>
+                  <span className="text-[20px] opacity-80 font-small leading-none mb-0.5">₹</span>
                   {quickAmount}
                 </button>
               ))}
@@ -269,6 +309,7 @@ export function BuyCreditsDialog({
               </div>
             </div>
           </div>
+
 
           <DialogFooter className="px-0 pt-2 pb-6 flex flex-col-reverse sm:flex-row gap-3">
             <Button
@@ -294,6 +335,7 @@ export function BuyCreditsDialog({
                 <>
                   <CreditCard className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
                   Proceed to Pay
+                  {amountValue > 0 && <span className="ml-1 opacity-90">(₹{total.toLocaleString()})</span>}
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform opacity-50" />
                 </>
               )}

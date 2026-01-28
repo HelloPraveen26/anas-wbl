@@ -92,6 +92,10 @@ export default function PhoneNumbersPage() {
   >([]);
   const [contactNumbers, setContactNumbers] = useState<ContactNumber[]>([]);
   const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [numSearchTerm, setNumSearchTerm] = useState("");
+  const [numProviderFilter, setNumProviderFilter] = useState("all");
+  const [assistantSearchTerm, setAssistantSearchTerm] = useState("");
+  const [contactSearchTerm, setContactSearchTerm] = useState("");
 
   // Selected items & calls
   const [selectedRegisteredNumber, setSelectedRegisteredNumber] =
@@ -792,12 +796,46 @@ export default function PhoneNumbersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const filteredNumbers = React.useMemo(() => {
+    return registeredNumbers.filter((num) => {
+      const matchesSearch =
+        num.friendlyName?.toLowerCase().includes(numSearchTerm.toLowerCase()) ||
+        num.phoneNo?.toLowerCase().includes(numSearchTerm.toLowerCase());
+      const matchesProvider =
+        numProviderFilter === "all" ||
+        num.providerName?.toLowerCase() === numProviderFilter.toLowerCase();
+      return matchesSearch && matchesProvider;
+    });
+  }, [registeredNumbers, numSearchTerm, numProviderFilter]);
+
+  const selectedNumObj = React.useMemo(() => {
+    return registeredNumbers.find((n) => n.id === selectedRegisteredNumber);
+  }, [registeredNumbers, selectedRegisteredNumber]);
+
+  const filteredAssistants = React.useMemo(() => {
+    return assistants.filter((a) =>
+      a.name?.toLowerCase().includes(assistantSearchTerm.toLowerCase()),
+    );
+  }, [assistants, assistantSearchTerm]);
+
+  const selectedAssistantObj = React.useMemo(() => {
+    return assistants.find((a) => a.id === selectedAssistant);
+  }, [assistants, selectedAssistant]);
+
+  const filteredContacts = React.useMemo(() => {
+    return contactNumbers.filter(
+      (c) =>
+        c.name?.toLowerCase().includes(contactSearchTerm.toLowerCase()) ||
+        c.phoneNo?.toLowerCase().includes(contactSearchTerm.toLowerCase()),
+    );
+  }, [contactNumbers, contactSearchTerm]);
+
   // Show first 4 registered numbers, then show "Show All" button
-  const displayedNumbers = registeredNumbers.slice(0, 4);
-  const hasMoreRegisteredNumbers = registeredNumbers.length > 4;
+  const displayedNumbers = filteredNumbers.slice(0, 4);
+  const hasMoreRegisteredNumbers = filteredNumbers.length > 4;
   // Get first 3 contacts for display
-  const displayedContacts = contactNumbers.slice(0, 3);
-  const hasMoreContacts = contactNumbers.length > 3;
+  const displayedContacts = filteredContacts.slice(0, 3);
+  const hasMoreContacts = filteredContacts.length > 3;
 
   /* -------------------- Render -------------------- */
   return (
@@ -818,7 +856,7 @@ export default function PhoneNumbersPage() {
                 type="tel"
                 value={directPhoneNumber}
                 onChange={(e) => setDirectPhoneNumber(e.target.value)}
-                placeholder="+916382831505"
+                placeholder="+919999999999"
                 className="w-40 px-3 py-2 border border-green-500 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-500"
               />
               <button
@@ -858,9 +896,55 @@ export default function PhoneNumbersPage() {
       {/* MAIN */}
       <main className="max-w-6xl mx-auto px-6 py-8">
         <div className="space-y-6">
+          {/* Selected Number Display */}
+          {selectedNumObj && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-emerald-600 font-semibold uppercase tracking-wider">
+                    Ready for Outbound Calls
+                  </p>
+                  <h4 className="text-lg font-bold text-gray-900">
+                    {selectedNumObj.friendlyName} <span className="text-gray-400 font-normal ml-1">({selectedNumObj.phoneNo})</span>
+                  </h4>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase font-medium">
+                      {selectedNumObj.providerName}
+                    </span>
+                    {selectedAssistantObj && (
+                      <span className="text-sm text-gray-600 font-medium">
+                        • Assistant: <span className="text-emerald-700">{selectedAssistantObj.name}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="hidden sm:block">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  Ready for Calls
+                </span>
+              </div>
+            </div>
+          )}
           {/* Registered Numbers Card */}
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-800">
                   Registered Numbers
@@ -868,6 +952,44 @@ export default function PhoneNumbersPage() {
                 <p className="text-sm text-gray-500">
                   Select a number to make calls from.
                 </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative w-full sm:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search numbers..."
+                    value={numSearchTerm}
+                    onChange={(e) => setNumSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all text-gray-600"
+                  />
+                </div>
+
+                <select
+                  value={numProviderFilter}
+                  onChange={(e) => setNumProviderFilter(e.target.value)}
+                  className="block w-full sm:w-auto pl-3 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all bg-white text-gray-600"
+                >
+                  <option value="all">All Providers</option>
+                  <option value="twilio">Twilio</option>
+                  <option value="plivo">Plivo</option>
+                  <option value="telecmi">Telecmi</option>
+                </select>
               </div>
             </div>
 
@@ -924,15 +1046,15 @@ export default function PhoneNumbersPage() {
                   onClick={() => setShowAllRegisteredNumbersModal(true)}
                   className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
                 >
-                  Show All Registered Numbers ({registeredNumbers.length})
+                  Show All Registered Numbers ({filteredNumbers.length})
                 </button>
               </div>
             )}
           </section>
 
-          {/* Select Assistant Card - Only shows header if no number selected */}
+          {/* Select Assistant Card - Only shows content if number selected */}
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-800">
                   Select Assistant
@@ -943,17 +1065,39 @@ export default function PhoneNumbersPage() {
                     : "Select a registered number first to choose an assistant."}
                 </p>
               </div>
+
               {selectedRegisteredNumber && (
-                <div className="text-sm text-white">
-                  {assistants.length} assistants
+                <div className="relative w-full sm:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search assistants..."
+                    value={assistantSearchTerm}
+                    onChange={(e) => setAssistantSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all text-gray-600"
+                  />
                 </div>
               )}
             </div>
 
             {selectedRegisteredNumber && (
               <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                {assistants.length > 0 ? (
-                  assistants.map((a) => (
+                {filteredAssistants.length > 0 ? (
+                  filteredAssistants.map((a) => (
                     <div
                       key={a.id}
                       onClick={() => selectAssistant(a.id)}
@@ -991,9 +1135,8 @@ export default function PhoneNumbersPage() {
             )}
           </section>
 
-          {/* Contact Numbers Card */}
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-800">
                   Contact Numbers
@@ -1004,10 +1147,34 @@ export default function PhoneNumbersPage() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative w-full sm:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search contacts..."
+                    value={contactSearchTerm}
+                    onChange={(e) => setContactSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all text-gray-600"
+                  />
+                </div>
+
                 <button
                   onClick={() => setShowAddContactModal(true)}
-                  //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm font-medium flex items-center gap-2"
                   className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
                 >
                   Add New Contact
@@ -1332,58 +1499,108 @@ export default function PhoneNumbersPage() {
       {/* SHOW ALL REGISTERED NUMBERS MODAL */}
       {showAllRegisteredNumbersModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                All Registered Numbers ({registeredNumbers.length})
-              </h3>
-              <button
-                onClick={() => setShowAllRegisteredNumbersModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
+          <div className="bg-white w-full max-w-4xl rounded-xl shadow-xl p-6 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  All Registered Numbers ({filteredNumbers.length})
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Search and filter your registered numbers.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative w-full sm:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search numbers..."
+                    value={numSearchTerm}
+                    onChange={(e) => setNumSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all text-gray-600"
+                  />
+                </div>
+
+                <select
+                  value={numProviderFilter}
+                  onChange={(e) => setNumProviderFilter(e.target.value)}
+                  className="block w-full sm:w-auto pl-3 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all bg-white text-gray-600"
+                >
+                  <option value="all">All Providers</option>
+                  <option value="twilio">Twilio</option>
+                  <option value="plivo">Plivo</option>
+                  <option value="telecmi">Telecmi</option>
+                </select>
+
+                <button
+                  onClick={() => setShowAllRegisteredNumbersModal(false)}
+                  className="text-gray-500 hover:text-gray-700 p-2"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="overflow-y-auto flex-1 pr-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {registeredNumbers.map((num) => (
-                  <div
-                    key={num.id}
-                    onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 bg-white"
-                      }`}
-                  >
-                    <div>
-                      <p className="font-medium text-sm text-gray-900">
-                        {num.friendlyName}
-                      </p>
-                      <p className="text-xs text-gray-600">{num.phoneNo}</p>
-                      <p className="text-xs text-gray-400">
-                        Provider: {num.providerName}
-                      </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredNumbers.length > 0 ? (
+                  filteredNumbers.map((num) => (
+                    <div
+                      key={num.id}
+                      onClick={() => handleSelectNumber(num.id)}
+                      className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
+                        }`}
+                    >
+                      <div>
+                        <p className="font-medium text-sm text-gray-900">
+                          {num.friendlyName}
+                        </p>
+                        <p className="text-xs text-gray-600">{num.phoneNo}</p>
+                        <p className="text-xs text-gray-400">
+                          Provider: {num.providerName}
+                        </p>
+                      </div>
+                      <div className="ml-4 text-right">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                            }`}
+                        >
+                          {num.active ? "Active" : "Inactive"}
+                        </span>
+                        {selectedRegisteredNumber === num.id && (
+                          <div className="mt-1">
+                            <span className="text-xs text-emerald-600 font-medium">
+                              ✓ Selected
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="ml-4 text-right">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                          }`}
-                      >
-                        {num.active ? "Active" : "Inactive"}
-                      </span>
-                      {selectedRegisteredNumber === num.id && (
-                        <div className="mt-1">
-                          <span className="text-xs text-emerald-600 font-medium">
-                            ✓ Selected
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-12 text-center text-gray-500">
+                    No numbers match your search or filter.
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
@@ -1444,7 +1661,7 @@ export default function PhoneNumbersPage() {
                       phoneNo: e.target.value,
                     }))
                   }
-                  placeholder="+916382831505"
+                  placeholder="+919999999999"
                   className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
                 />
               </div>
@@ -1475,88 +1692,127 @@ export default function PhoneNumbersPage() {
       {/* SHOW ALL CONTACTS MODAL (now shows contacts) */}
       {showAllNumbersModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-3xl rounded-xl shadow-xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                All Contact Numbers ({contactNumbers.length})
-              </h3>
-              <button
-                onClick={() => setShowAllNumbersModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
+          <div className="bg-white w-full max-w-4xl rounded-xl shadow-xl p-6 max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  All Contact Numbers ({filteredContacts.length})
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Search and manage your contacts.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative w-full sm:w-64">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search contacts..."
+                    value={contactSearchTerm}
+                    onChange={(e) => setContactSearchTerm(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all text-gray-600"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setShowAllNumbersModal(false)}
+                  className="text-gray-500 hover:text-gray-700 p-2"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="overflow-y-auto flex-1 pr-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {contactNumbers.map((contact) => {
-                  const isActive = activeCalls.has(contact.id);
-                  const isLoading = callLoading.has(contact.id);
-                  return (
-                    <div
-                      key={contact.id}
-                      className="p-4 border rounded-lg flex items-center justify-between bg-white"
-                    >
-                      <div>
-                        <p className="font-medium text-sm text-gray-900">
-                          {contact.name}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {contact.phoneNo}
-                        </p>
-                      </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredContacts.length > 0 ? (
+                  filteredContacts.map((contact) => {
+                    const isActive = activeCalls.has(contact.id);
+                    const isLoading = callLoading.has(contact.id);
+                    return (
+                      <div
+                        key={contact.id}
+                        className="p-4 border rounded-lg flex items-center justify-between bg-white hover:shadow-md transition-shadow"
+                      >
+                        <div>
+                          <p className="font-medium text-sm text-gray-900">
+                            {contact.name}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {contact.phoneNo}
+                          </p>
+                        </div>
 
-                      <div className="flex flex-col items-end gap-2">
-                        {isActive ? (
-                          <button
-                            onClick={() => disconnectCall(contact)}
-                            disabled={isLoading}
-                            className="px-3 py-1 rounded-md bg-red-100 text-red-700 text-sm hover:bg-red-200 disabled:opacity-50"
-                          >
-                            {isLoading ? "Disconnecting..." : "Disconnect"}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              // If required preconditions not met, show a message instead of attempting call
-                              if (!selectedRegisteredNumber) {
-                                alert(
-                                  "Please select a registered number to make calls from.",
-                                );
-                                return;
+                        <div className="flex flex-col items-end gap-2">
+                          {isActive ? (
+                            <button
+                              onClick={() => disconnectCall(contact)}
+                              disabled={isLoading}
+                              className="px-3 py-1 rounded-md bg-red-100 text-red-700 text-sm hover:bg-red-200 disabled:opacity-50"
+                            >
+                              {isLoading ? "Disconnecting..." : "Disconnect"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                // If required preconditions not met, show a message instead of attempting call
+                                if (!selectedRegisteredNumber) {
+                                  alert(
+                                    "Please select a registered number to make calls from.",
+                                  );
+                                  return;
+                                }
+                                if (!selectedAssistant) {
+                                  alert(
+                                    "Please select an assistant to handle the call.",
+                                  );
+                                  return;
+                                }
+                                // call without closing modal
+                                makeCall(contact);
+                              }}
+                              disabled={
+                                !selectedRegisteredNumber ||
+                                !selectedAssistant ||
+                                isLoading
                               }
-                              if (!selectedAssistant) {
-                                alert(
-                                  "Please select an assistant to handle the call.",
-                                );
-                                return;
-                              }
-                              // call without closing modal
-                              makeCall(contact);
-                            }}
-                            disabled={
-                              !selectedRegisteredNumber ||
-                              !selectedAssistant ||
-                              isLoading
-                            }
-                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-sm font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
-                          >
-                            {isLoading ? "Calling..." : "Call"}
-                          </button>
-                        )}
-                        {isActive ? (
-                          <div className="inline-flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                            <span className="text-xs text-gray-500">Live</span>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-400">Idle</div>
-                        )}
+                              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+                            >
+                              {isLoading ? "Calling..." : "Call"}
+                            </button>
+                          )}
+                          {isActive ? (
+                            <div className="inline-flex items-center gap-2">
+                              <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
+                              <span className="text-xs text-gray-500">Live</span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-400">Idle</div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="col-span-full py-12 text-center text-gray-500">
+                    No contacts match your search.
+                  </div>
+                )}
               </div>
             </div>
 
