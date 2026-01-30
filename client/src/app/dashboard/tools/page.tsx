@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { authManager } from '@/lib/auth';      // ✅ FIXED
-import { getApiBaseUrl } from '@/lib/api';     // ✅ FIXED
+import { authManager } from '@/lib/auth';
+import { getApiBaseUrl } from '@/lib/api';
 
 import {
   Settings,
@@ -29,6 +29,7 @@ interface Tool {
   subItems?: Tool[];
   content?: React.ReactNode;
   assistantId?: string;
+  toolId?: string;
 }
 
 interface Parameter {
@@ -46,27 +47,16 @@ interface Condition {
   value: string;
 }
 
-// Placeholder components
-const GoogleSheetsTool = () => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-2">Google Sheets Tool</h3>
-    <p className="text-gray-600">Configure your Google Sheets integration here.</p>
-  </div>
-);
-
-const GoogleCalendarTool = ({ onSendMessage }: { onSendMessage: (msg: any) => void }) => (
-  <div className="p-6">
-    <h3 className="text-lg font-semibold mb-2">Google Calendar Tool</h3>
-    <p className="text-gray-600">Configure your Google Calendar integration here.</p>
-  </div>
-);
-
 const CustomTool = ({
   onSave,
-  initialAssistantId
+  initialAssistantId,
+  initialToolName,
+  onReload
 }: {
-  onSave?: (name: string, desc: string) => void;
+  onSave?: (name: string, desc: string, assistantId: string, toolId: string) => void;
   initialAssistantId?: string;
+  initialToolName?: string;
+  onReload?: () => void;
 }) => {
   const [toolName, setToolName] = useState('function_tool');
   const [description, setDescription] = useState('Describe the tool in a few sentences');
@@ -87,6 +77,7 @@ const CustomTool = ({
 
   const [assistants, setAssistants] = useState<any[]>([]);
   const [selectedAssistant, setSelectedAssistant] = useState(initialAssistantId || '');
+  const [currentToolId, setCurrentToolId] = useState('');
   const [showAssistantDropdown, setShowAssistantDropdown] = useState(false);
   const [saveResult, setSaveResult] = useState<string>('');
   const [editingParameter, setEditingParameter] = useState<Parameter | null>(null);
@@ -131,28 +122,16 @@ const CustomTool = ({
     fetchAssistants();
   }, []);
 
-  // Auto-load tool configuration when assistant is selected
+  // Load tool configuration when assistant or initialToolName changes
   React.useEffect(() => {
     const loadToolConfig = async () => {
-      if (!selectedAssistant) {
-        setToolName('function_tool');
-        setDescription('Describe the tool in a few sentences');
-        setWebHookUrl('https://api.example.com/function');
-        setTimeoutValue('20');
-        setParameters([]);
-        setHttpHeaders([]);
-        setRequestStartOption('default');
-        setCustomRequestStartMessage('Please hold on.');
-        setFailedMessage('');
-        setCompleteMessage('');
-        setDelayedMessage('');
-        setDelayedTiming('1000');
-        setConditions([]);
+      if (!selectedAssistant || !initialToolName) {
+        console.log('⏭️ Skipping config load - creating new tool');
         return;
       }
 
       try {
-        console.log('🔄 Loading tool config for assistant:', selectedAssistant);
+        console.log('🔄 Loading tool config:', { assistantId: selectedAssistant, toolId: currentToolId });
 
         const response = await fetch(
           `${getApiBaseUrl()}/assistants/tool-config/${selectedAssistant}`,
@@ -166,8 +145,12 @@ const CustomTool = ({
         if (response.ok) {
           const result = await response.json();
 
-          if (result.success && result.data) {
-            const config = result.data;
+          if (result.success && result.data && Array.isArray(result.data)) {
+            const config = result.data.find((t: any) => t.toolName === initialToolName);
+            if (!config) {
+              console.log('ℹ️ Tool not found in assistant config');
+              return;
+            }
             console.log('✅ Loaded config:', config);
 
             setToolName(config.toolName || 'function_tool');
@@ -176,6 +159,7 @@ const CustomTool = ({
             setTimeoutValue(config.timeout?.toString() || '20');
             setIsAsync(config.isAsync ?? true);
             setIsStrict(config.isStrict ?? true);
+            setCurrentToolId(config.id || config.toolId || '');
 
             if (config.parameters && Object.keys(config.parameters).length > 0) {
               const paramsArray = Object.keys(config.parameters).map((key, index) => ({
@@ -233,17 +217,15 @@ const CustomTool = ({
     };
 
     loadToolConfig();
-  }, [selectedAssistant]);
+  }, [selectedAssistant, initialToolName]);
 
   const handleSelectAssistant = (assistantId: string) => {
     setSelectedAssistant(assistantId);
     setShowAssistantDropdown(false);
   };
 
-  // ✅ FIXED: Added assistant validation
   const handleSaveConfig = async () => {
     try {
-      // ✅ CRITICAL FIX: Validate assistant selection
       if (!selectedAssistant) {
         setSaveResult('❌ Please select an assistant first!');
         setTimeout(() => setSaveResult(''), 3000);
@@ -262,7 +244,10 @@ const CustomTool = ({
         return acc;
       }, {} as Record<string, any>);
 
+      const toolId = currentToolId || `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       const payload = {
+        toolId: toolId,
         toolName: toolName,
         description: description,
         assistantId: selectedAssistant,
@@ -303,7 +288,6 @@ const CustomTool = ({
         body: JSON.stringify(payload),
       });
 
-      // ✅ IMPROVED: Better error handling
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Backend error:', response.status, errorText);
@@ -317,9 +301,20 @@ const CustomTool = ({
       if (data.success) {
         setSaveResult('✅ Configuration saved successfully!');
         console.log('✅ Save response:', data);
+
+        const savedId = data.data?.id || toolId;
+        setCurrentToolId(savedId);
+
         if (onSave) {
-          onSave(toolName, description);
+          onSave(toolName, description, selectedAssistant, savedId);
         }
+
+        if (onReload) {
+          setTimeout(() => {
+            onReload();
+          }, 500);
+        }
+
         setTimeout(() => setSaveResult(''), 3000);
       } else {
         setSaveResult('❌ Save failed: ' + (data.message || JSON.stringify(data)));
@@ -593,6 +588,7 @@ const CustomTool = ({
 // Description: ${description}
 
 const toolConfig = {
+  toolId: "${currentToolId}",
   name: "${toolName}",
   description: "${description}",
   assistantId: "${selectedAssistant}",
@@ -612,7 +608,7 @@ const toolConfig = {
     setTimeout(() => {
       const selectedAssistantData = assistants.find(a => a.id === selectedAssistant);
 
-      setTestResult(`✅ Test Successful!\n\nTool Name: ${toolName}\nDescription: ${description}\nAssistant: ${selectedAssistantData?.name || 'None'}\nWebhook: ${webhook}\nTimeout: ${timeout}s\nAsync: ${isAsync ? 'Yes' : 'No'}\nStrict: ${isStrict ? 'Yes' : 'No'}\n\nParameters: ${parameters.length}\n\n📝 Configuration is valid!`);
+      setTestResult(`✅ Test Successful!\n\nTool ID: ${currentToolId}\nTool Name: ${toolName}\nDescription: ${description}\nAssistant: ${selectedAssistantData?.name || 'None'}\nWebhook: ${webhook}\nTimeout: ${timeout}s\nAsync: ${isAsync ? 'Yes' : 'No'}\nStrict: ${isStrict ? 'Yes' : 'No'}\n\nParameters: ${parameters.length}\n\n📝 Configuration is valid!`);
       setIsTestRunning(false);
     }, 1500);
   };
@@ -639,14 +635,17 @@ const toolConfig = {
           <span className="text-xs font-medium border rounded-full px-2 py-0.5 bg-green-100 text-green-800">
             {isAsync ? 'async' : 'sync'} tool
           </span>
+          {currentToolId && (
+            <span className="text-xs font-mono text-gray-500">ID: {currentToolId.substring(0, 12)}...</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div className="relative assistant-dropdown-container">
             <button
               onClick={() => setShowAssistantDropdown(!showAssistantDropdown)}
               className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg ${selectedAssistant
-                  ? 'bg-green-100 text-green-700 hover:bg-greeb-200'
-                  : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-300 animate-pulse'
+                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-300 animate-pulse'
                 }`}
             >
               <Settings size={16} />
@@ -692,7 +691,7 @@ const toolConfig = {
           </button>
           <button
             onClick={handleTestTool}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-900 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md shadow-emerald-500/30"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-500"
           >
             Test
           </button>
@@ -987,7 +986,6 @@ const toolConfig = {
                 onClick={handleAddHeader}
                 className="mt-2 text-sm font-semibold text-green-600 hover:text-green-500"
 
-
               >
                 + Add Header
               </button>
@@ -1112,19 +1110,77 @@ export default function ToolsPage() {
   };
 
   const handleCreateToolClick = () => {
-    setShowToolsList(true);
-    setActiveTool(null);
+    // Use a unique key to force a fresh instance of the CustomTool component
+    const newKey = `new_${Date.now()}`;
+    const newToolContent = <CustomTool key={newKey} onSave={handleSaveCustomTool} onReload={loadAllSavedTools} />;
+
+    const newTool: Tool = {
+      name: 'Custom',
+      description: 'Create a new custom tool',
+      icon: 'Wrench',
+      color: '#007bff',
+      content: newToolContent,
+      toolId: 'new_tool_temporary' // Temporary ID for active state tracking
+    };
+
+    setActiveTool(newTool);
+    setShowToolsList(false);
   };
 
   const handleSelectTool = (tool: Tool, subItem: Tool | null = null) => {
     const toolToAdd = subItem || tool;
-    const toolExists = selectedTools.some(t => t.name === toolToAdd.name);
-
-    if (!toolExists) {
-      setSelectedTools(prev => [...prev, toolToAdd]);
-    }
     setShowToolsList(false);
     setActiveTool(toolToAdd);
+  };
+
+  const handleDeleteTool = async (tool: Tool) => {
+    // Custom tools shouldn't be deleted if they are not saved yet (no assistantId/name)
+    // Note: The backend uses 'toolName' as the identifier for deletion
+    if (!tool.assistantId || !tool.name || tool.name === 'Custom') {
+      console.error('❌ Cannot delete: Missing assistantId or tool name');
+      return;
+    }
+
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${tool.name}"?`);
+    if (!confirmDelete) return;
+
+    try {
+      console.log('🗑️ Deleting tool:', { assistantId: tool.assistantId, toolName: tool.name });
+
+      const token = authManager.getToken();
+      const response = await fetch(
+        `${getApiBaseUrl()}/assistants/tool-config/${tool.assistantId}/${encodeURIComponent(tool.name)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        console.log('✅ Tool deleted successfully');
+        alert('✅ Tool deleted successfully');
+
+        // Remove from local state
+        setSelectedTools(prev => prev.filter(t => !(t.name === tool.name && t.assistantId === tool.assistantId)));
+        setCustomTools(prev => prev.filter(t => !(t.name === tool.name && t.assistantId === tool.assistantId)));
+
+        if (activeTool && activeTool.name === tool.name && activeTool.assistantId === tool.assistantId) {
+          setActiveTool(null);
+        }
+
+        // Reload everything to stay in sync
+        loadAllSavedTools();
+      } else {
+        const error = await response.json();
+        console.error('❌ Failed to delete tool:', error);
+        alert(`❌ Failed to delete tool: ${error.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error deleting tool:', error);
+      alert('❌ Failed to delete tool');
+    }
   };
 
   const handleRemoveTool = (toolName: string) => {
@@ -1138,160 +1194,111 @@ export default function ToolsPage() {
     console.log('Message from tool:', message);
   };
 
-  const handleSaveCustomTool = (name: string, desc: string) => {
-    const loadAllSavedTools = async () => {
-      try {
-        const token = authManager.getToken();
-        if (!token) return;
+  const loadAllSavedTools = async () => {
+    setIsLoading(true);
+    try {
+      const token = authManager.getToken();
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
-        const assistantsResponse = await fetch(`${getApiBaseUrl()}/assistants`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'accept': 'application/json'
-          }
-        });
+      console.log('🔄 Loading all assistants and their saved tools...');
 
-        if (!assistantsResponse.ok) return;
+      const assistantsResponse = await fetch(`${getApiBaseUrl()}/assistants`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'accept': 'application/json'
+        }
+      });
 
-        const fetchedAssistants = await assistantsResponse.json();
-        const assistantsList = Array.isArray(fetchedAssistants) ? fetchedAssistants : [];
+      if (!assistantsResponse.ok) {
+        setIsLoading(false);
+        return;
+      }
 
-        const savedToolsTemp: Tool[] = [];
+      const fetchedAssistants = await assistantsResponse.json();
+      const assistantsList = Array.isArray(fetchedAssistants) ? fetchedAssistants : [];
 
-        for (const assistant of assistantsList) {
-          try {
-            const configResponse = await fetch(
-              `${getApiBaseUrl()}/assistants/tool-config/${assistant.id}`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                }
-              }
-            );
+      if (assistantsList.length === 0) {
+        console.log('ℹ️ No assistants found');
+        setIsLoading(false);
+        return;
+      }
 
-            if (configResponse.ok) {
-              const result = await configResponse.json();
+      const savedToolsTemp: Tool[] = [];
 
-              if (result.success && result.data) {
-                const config = result.data;
-
-                const savedTool: Tool = {
-                  name: `${config.toolName || 'Custom Tool'}`,
-                  description: `${assistant.name} - ${config.description || 'No description'}`,
-                  icon: 'Wrench',
-                  color: '#007bff',
-                  assistantId: assistant.id,
-                  content: <CustomTool onSave={handleSaveCustomTool} initialAssistantId={assistant.id} />
-                };
-
-                savedToolsTemp.push(savedTool);
+      // ✅ FIXED: Use the correct endpoint that exists on your backend
+      for (const assistant of assistantsList) {
+        try {
+          const configResponse = await fetch(
+            `${getApiBaseUrl()}/assistants/tool-config/${assistant.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${token}`,
               }
             }
-          } catch (error) {
-            // Ignore
-          }
-        }
+          );
 
-        if (savedToolsTemp.length > 0) {
-          setCustomTools(savedToolsTemp);
-          setSelectedTools(savedToolsTemp);
-        }
-      } catch (error) {
-        console.error('Error reloading saved tools:', error);
-      }
-    };
+          if (configResponse.ok) {
+            const result = await configResponse.json();
 
-    loadAllSavedTools();
-  };
-
-  React.useEffect(() => {
-    const loadAllSavedTools = async () => {
-      setIsLoading(true);
-      try {
-        const token = authManager.getToken();
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-
-        console.log('🔄 Loading all assistants and their saved tools...');
-
-        const assistantsResponse = await fetch(`${getApiBaseUrl()}/assistants`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'accept': 'application/json'
-          }
-        });
-
-        if (!assistantsResponse.ok) {
-          setIsLoading(false);
-          return;
-        }
-
-        const fetchedAssistants = await assistantsResponse.json();
-        const assistantsList = Array.isArray(fetchedAssistants) ? fetchedAssistants : [];
-
-        if (assistantsList.length === 0) {
-          console.log('ℹ️ No assistants found');
-          setIsLoading(false);
-          return;
-        }
-
-        const savedToolsTemp: Tool[] = [];
-
-        for (const assistant of assistantsList) {
-          try {
-            const configResponse = await fetch(
-              `${getApiBaseUrl()}/assistants/tool-config/${assistant.id}`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                }
-              }
-            );
-
-            if (configResponse.ok) {
-              const result = await configResponse.json();
-
-              if (result.success && result.data) {
-                const config = result.data;
+            if (result.success && result.data && Array.isArray(result.data)) {
+              for (const config of result.data) {
+                // Use actual DB id as the unique identifier
+                const toolId = config.id || config.toolId || `tool_${Date.now()}_${Math.random()}`;
 
                 const savedTool: Tool = {
-                  name: `${config.toolName || 'Custom Tool'}`,
+                  name: config.toolName || 'Custom Tool',
                   description: `${assistant.name} - ${config.description || 'No description'}`,
                   icon: 'Wrench',
                   color: '#007bff',
                   assistantId: assistant.id,
-                  content: <CustomTool onSave={handleSaveCustomTool} initialAssistantId={assistant.id} />
+                  toolId: toolId,
+                  content: (
+                    <CustomTool
+                      onSave={handleSaveCustomTool}
+                      initialAssistantId={assistant.id}
+                      initialToolName={config.toolName}
+                      onReload={loadAllSavedTools}
+                    />
+                  )
                 };
 
                 savedToolsTemp.push(savedTool);
                 console.log(`✅ Loaded tool for ${assistant.name}:`, config.toolName);
               }
             }
-          } catch (error) {
-            console.log(`ℹ️ No config for assistant ${assistant.name}`);
           }
+        } catch (error) {
+          console.log(`ℹ️ No tools for assistant ${assistant.name}`);
         }
-
-        if (savedToolsTemp.length > 0) {
-          console.log(`✅ Found ${savedToolsTemp.length} saved tools`);
-          setCustomTools(savedToolsTemp);
-          setSelectedTools(savedToolsTemp);
-
-          if (savedToolsTemp.length > 0) {
-            setActiveTool(savedToolsTemp[0]);
-          }
-        } else {
-          console.log('ℹ️ No saved tools found');
-        }
-      } catch (error) {
-        console.error('❌ Error loading saved tools:', error);
-      } finally {
-        setIsLoading(false);
       }
-    };
 
+      if (savedToolsTemp.length > 0) {
+        console.log(`✅ Found ${savedToolsTemp.length} saved tools`);
+        setCustomTools(savedToolsTemp);
+        setSelectedTools(savedToolsTemp);
+
+        if (savedToolsTemp.length > 0 && !activeTool) {
+          setActiveTool(savedToolsTemp[0]);
+        }
+      } else {
+        console.log('ℹ️ No saved tools found');
+      }
+    } catch (error) {
+      console.error('❌ Error loading saved tools:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveCustomTool = (name: string, desc: string, assistantId: string, toolId: string) => {
+    console.log('✅ Tool saved callback:', { name, desc, assistantId, toolId });
+    loadAllSavedTools();
+  };
+
+  React.useEffect(() => {
     loadAllSavedTools();
   }, []);
 
@@ -1299,13 +1306,11 @@ export default function ToolsPage() {
     ...customTools,
     {
       name: 'Custom',
-      description: '',
+      description: 'Create a new custom tool',
       icon: 'Wrench',
       color: '#007bff',
-      content: <CustomTool onSave={handleSaveCustomTool} />
+      content: <CustomTool onSave={handleSaveCustomTool} onReload={loadAllSavedTools} />
     },
-    // { name: 'Google sheet', description: '', icon: 'FileSpreadsheet', color: '#00ff95ff', content: <GoogleSheetsTool /> },
-    //{ name: 'Google Calendar', description: '', icon: 'Calendar', color: '#4285f4', content: <GoogleCalendarTool onSendMessage={handleSendMessage} /> },
   ];
 
   const filteredTools = toolsList.filter(tool =>
@@ -1314,6 +1319,12 @@ export default function ToolsPage() {
   );
 
   const renderToolContent = () => {
+    // Priority: 1. Active tool (Selected or New)
+    if (activeTool && activeTool.content) {
+      return activeTool.content;
+    }
+
+    // Priority: 2. Loading state
     if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center text-center h-full p-10">
@@ -1326,9 +1337,7 @@ export default function ToolsPage() {
       );
     }
 
-    if (activeTool && activeTool.content) {
-      return activeTool.content;
-    }
+    // Priority: 3. Empty state
     return (
       <div className="flex flex-col items-center justify-center text-center h-full p-10">
         <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-400 mb-4">
@@ -1390,7 +1399,7 @@ export default function ToolsPage() {
                 {filteredTools.length > 0 ? filteredTools.map((tool, index) => {
                   const IconComponent = getIconComponent(tool.icon);
                   return (
-                    <div key={index}>
+                    <div key={`${tool.toolId || index}-${tool.assistantId || index}`}>
                       <div
                         className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 text-gray-900"
                         onClick={() => {
@@ -1427,10 +1436,10 @@ export default function ToolsPage() {
               <div className="flex flex-col gap-2">
                 {selectedTools.map((tool, index) => {
                   const IconComponent = getIconComponent(tool.icon);
-                  const isActive = activeTool && activeTool.name === tool.name;
+                  const isActive = activeTool && activeTool.toolId === tool.toolId && activeTool.assistantId === tool.assistantId;
                   return (
                     <div
-                      key={index}
+                      key={`${tool.toolId || index}-${tool.assistantId || index}`}
                       className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer ${isActive ? 'bg-gray-200' : 'hover:bg-gray-100'}`}
                       onClick={() => setActiveTool(tool)}
                     >
@@ -1445,10 +1454,11 @@ export default function ToolsPage() {
                         className="w-5 h-5 flex items-center justify-center rounded-md bg-gray-200 hover:bg-red-500 hover:text-white text-gray-600"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRemoveTool(tool.name);
+                          handleDeleteTool(tool);
                         }}
+                        title="Delete tool"
                       >
-                        <X size={12} />
+                        <Trash size={12} />
                       </button>
                     </div>
                   );
