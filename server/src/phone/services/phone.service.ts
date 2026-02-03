@@ -199,19 +199,26 @@ export class PhoneService {
       }
       let instructions = systemPrompt;
       if (toolConfig) {
-        const requiredFields = Object.keys(toolConfig.parameters || {})
-          .filter((k) => toolConfig.parameters[k].required)
-          .join(", ");
+        const toolsArray = Array.isArray(toolConfig) ? toolConfig : [toolConfig];
+        let toolInstructions = `
 
-        const toolInstructions = `
+IMPORTANT - TOOLS ACTIVATED:`;
 
-IMPORTANT - DATA COLLECTION TOOL ACTIVATED:
-You are configured with a data collection tool. Your primary mission is to collect the following information:
-Required fields: ${requiredFields}
+        toolsArray.forEach((tool, index) => {
+          const requiredFields = Object.keys(tool.parameters || {})
+            .filter((k) => tool.parameters[k].required)
+            .join(", ");
 
-When the user provides ANY of this information, IMMEDIATELY call the collect_user_data tool with the appropriate key and value. Extract information naturally from conversation - don't make it feel like an interrogation.
+          toolInstructions += `
+${index + 1}. DATA COLLECTION (${tool.toolName}): You have a tool named 'collect_${tool.toolName}'. 
+   Primary mission: Collect ${requiredFields || "information"}.
+   Call this tool IMMEDIATELY when the user provides this info.`;
+        });
 
-After collecting all required information, the system will automatically send the data to the webhook.`;
+        toolInstructions += `
+${toolsArray.length + 1}. END CALL: When the user wants to end the conversation, ALWAYS call the 'end_call' tool to say goodbye and disconnect gracefully.
+
+After collecting all required information, the system will automatically process the data.`;
 
         instructions = instructions
           ? instructions + toolInstructions

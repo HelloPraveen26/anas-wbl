@@ -5,8 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from "typeorm";
+import { ToolConfig } from "./tool-config.entity";
 
 @Entity("assistants")
 export class Assistant {
@@ -71,6 +73,9 @@ export class Assistant {
   @ManyToOne("RealtimeModel")
   @JoinColumn({ name: "realtime_model_id" })
   realtimeModel: any;
+
+  @OneToMany("ToolConfig", (toolConfig: any) => toolConfig.assistant)
+  toolConfigs: any[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

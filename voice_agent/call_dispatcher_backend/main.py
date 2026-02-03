@@ -3,11 +3,12 @@ import logging
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from pydantic import BaseModel, Field, validator
@@ -184,6 +185,22 @@ class ErrorResponse(BaseModel):
         json_schema_extra = {"example": {"detail": "Phone number is required"}}
 
 
+class TranscriptRequest(BaseModel):
+    room_name: str
+    history: Dict[str, Any]  # Raw history structure from session.history.to_dict()
+    captured_at: str
+
+
+class WebhookDataResponse(BaseModel):
+    room_name: str
+    event_type: str
+    webhook_timestamp: str
+    transcript: Optional[Dict[str, Any]] = None
+    room_info: Dict[str, Any]
+    participants: list[Dict[str, Any]]
+    metadata: Optional[Dict[str, Any]] = None
+
+
 def sip_parser(sip_details: str, phone_number: str) -> dict:
     parsed = {}
     for line in sip_details.strip().split("\n"):
@@ -225,13 +242,51 @@ lk_url = os.getenv("LIVEKIT_URL", "")
 lk_api_secret = os.getenv("LIVEKIT_API_SECRET", "")
 lk_api_key = os.getenv("LIVEKIT_API_KEY", "")
 
+# In-memory storage for transcripts and webhooks
+# Using dictionaries to temporarily hold data until retrieved or combined
+transcript_buffer: Dict[str, Dict[str, Any]] = {}
+webhook_buffer: Dict[str, Dict[str, Any]] = {}
+TTL_SECONDS = 3600  # 1 hour for cleanup
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # <-- allow all origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def cleanup_expired_data():
+    """Cleanup expired in-memory data periodically"""
+    now = datetime.now(timezone.utc)
+    
+    # Cleanup transcripts
+    expired_transcripts = [
+        room for room, data in transcript_buffer.items()
+        if (now - datetime.fromisoformat(data["created_at"])).total_seconds() > TTL_SECONDS
+    ]
+    for room in expired_transcripts:
+        del transcript_buffer[room]
+        
+    # Cleanup webhooks
+    expired_webhooks = [
+        room for room, data in webhook_buffer.items()
+        if (now - datetime.fromisoformat(data["created_at"])).total_seconds() > TTL_SECONDS
+    ]
+    for room in expired_webhooks:
+        del webhook_buffer[room]
+
+    if expired_transcripts or expired_webhooks:
+        logger.info(f"Cleaned up {len(expired_transcripts)} transcripts and {len(expired_webhooks)} webhooks from memory.")
+
+
+async def notify_call_completed(room_name: str, webhook_data: Dict[str, Any]):
+    """Internal callback for call completion notification"""
+    logger.info(f"Call completed notification for room {room_name}")
+    # This is where you can add custom logic for handling call completion
+    # For example: send to another service, update database, trigger workflows, etc.
+    pass
 
 
 @app.on_event("startup")
@@ -518,7 +573,144 @@ async def get_active_call():
     }
 
 
-@app.get("/")
+@app.post(
+    "/transcript/{room_name}",
+    summary="Receive Transcript from Agent",
+    description="Endpoint for agent to send transcript data when session ends",
+    status_code=status.HTTP_200_OK,
+)
+async def receive_transcript(room_name: str, transcript_data: TranscriptRequest):
+    """Receive and store transcript from agent in memory"""
+    try:
+        transcript_buffer[room_name] = {
+            "data": transcript_data.model_dump(),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        logger.info(f"Transcript stored in memory for room {room_name}")
+
+        return {"status": "success", "room_name": room_name}
+    except Exception as e:
+        logger.error(f"Error storing transcript for room {room_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to store transcript: {str(e)}",
+        )
+
+
+@app.post(
+    "/webhook",
+    summary="Webhook Endpoint",
+    description="Receives webhook from agent when call completes. Stores webhook data with transcript.",
+    status_code=status.HTTP_200_OK,
+)
+async def webhook_handler(
+    webhook_data: Dict[str, Any], background_tasks: BackgroundTasks
+):
+    """Handle webhook from agent when call completes"""
+    try:
+        room_name = webhook_data.get("room_name")
+        if not room_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Webhook missing room_name",
+            )
+
+        # Retrieve transcript from memory
+        transcript_entry = transcript_buffer.get(room_name)
+        transcript_data = None
+        if transcript_entry:
+            transcript_data = transcript_entry.get("data")
+            # Delete from buffer after retrieval to keep memory clean
+            del transcript_buffer[room_name]
+            logger.info(f"Transcript found in memory for room {room_name}")
+        else:
+            logger.warning(f"No transcript found in memory for room {room_name}")
+
+        # Prepare final webhook data with transcript
+        final_webhook_data = {
+            "room_name": room_name,
+            "event_type": webhook_data.get("event_type", "call_completed"),
+            "webhook_timestamp": datetime.now(timezone.utc).isoformat(),
+            "transcript": transcript_data,
+            "room_info": webhook_data.get("room_info", {"name": room_name}),
+            "participants": webhook_data.get("participants", []),
+            "metadata": webhook_data.get("metadata"),
+        }
+
+        # Store webhook data in memory buffer
+        webhook_buffer[room_name] = {
+            "data": final_webhook_data,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        logger.info(f"Webhook data buffered in memory for room {room_name}")
+
+        # Trigger internal callback in background
+        background_tasks.add_task(notify_call_completed, room_name, final_webhook_data)
+
+        # Periodically cleanup old memory entries
+        background_tasks.add_task(cleanup_expired_data)
+
+        return {"status": "success", "room_name": room_name}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing webhook: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process webhook: {str(e)}",
+        )
+
+
+@app.get(
+    "/webhook/{room_name}",
+    response_model=WebhookDataResponse,
+    summary="Get Webhook Data",
+    description="Retrieve stored webhook data (including transcript) for a specific room. File is deleted after successful retrieval (one-time read).",
+    responses={
+        200: {
+            "description": "Webhook data retrieved successfully",
+            "model": WebhookDataResponse,
+        },
+        404: {
+            "description": "Webhook data not found or expired",
+            "model": ErrorResponse,
+        },
+    },
+)
+async def get_webhook_data(room_name: str):
+    """Retrieve stored webhook data from memory for a room and delete it after reading"""
+    try:
+        webhook_entry = webhook_buffer.get(room_name)
+
+        if not webhook_entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Webhook data not found or expired in memory for room {room_name}",
+            )
+
+        data = webhook_entry.get("data")
+        # One-time read: delete from memory after retrieval
+        del webhook_buffer[room_name]
+        logger.info(f"Webhook memory data retrieved and cleared for room {room_name}")
+        
+        return data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving webhook data for room {room_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve webhook data: {str(e)}",
+        )
+
+
+@app.get(
+    "/",
+    summary="API Information",
+    description="Root endpoint with API version and description",
+)
 async def root():
     """Root endpoint with API information"""
     return {

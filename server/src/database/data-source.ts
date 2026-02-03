@@ -23,6 +23,7 @@ import { RegisteredNumber } from "../registered-numbers/entities/registered-numb
 import { ContactNumber } from "../contact-numbers/entities/contact-number.entity";
 import { CallLog } from "../call-logs/entities/call-log.entity";
 import { Payment } from "../payment/entities/payment.entity";
+import { ToolConfig } from "../assistant/entities/tool-config.entity";
 
 config();
 
@@ -53,6 +54,7 @@ export const AppDataSource = new DataSource({
     ContactNumber,
     CallLog,
     Payment,
+    ToolConfig,
   ],
   migrations: [__dirname + "/migrations/*.{ts,js}"],
   migrationsTableName: "migrations",
