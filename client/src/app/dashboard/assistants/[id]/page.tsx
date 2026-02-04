@@ -682,20 +682,20 @@ export default function AssistantEditPage() {
 
   const filteredSynthesizerModels = selectedSynthesizerProvider
     ? synthesizerModels.filter(
-        (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
-      )
+      (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
+    )
     : synthesizerModels;
 
   const filteredTranscriberModels = selectedTranscriberProvider
     ? transcriberModels.filter(
-        (m) => m.transcriberProvider.id === selectedTranscriberProvider,
-      )
+      (m) => m.transcriberProvider.id === selectedTranscriberProvider,
+    )
     : transcriberModels;
 
   const filteredRealtimeModels = selectedRealtimeProvider
     ? realtimeModels.filter(
-        (m) => m.realtimeProvider.id === selectedRealtimeProvider,
-      )
+      (m) => m.realtimeProvider.id === selectedRealtimeProvider,
+    )
     : realtimeModels;
 
   // Update firstMessage based on mode
@@ -887,24 +887,27 @@ export default function AssistantEditPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-emerald-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-3 md:px-6 py-2 md:py-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-1.5 md:gap-4 flex-1 min-w-0 w-full lg:w-auto">
               <Button
                 variant="ghost"
                 onClick={() => router.push("/dashboard/assistants")}
-                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full w-10 h-10 p-0"
+                className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full w-8 h-8 md:w-10 md:h-10 p-0 flex-shrink-0"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
               </Button>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-extrabold text-gray-900">
-                  {currentAssistant?.name || "Assistant Configuration"}
+
+              <div className="flex items-center gap-1.5 md:gap-2 flex-1 min-w-0 overflow-hidden">
+                <h1 className="text-sm md:text-2xl font-bold md:font-extrabold text-gray-900 truncate">
+                  {currentAssistant?.name || "Assistant"}
                 </h1>
+
+                {/* Assistant ID - always inline next to name */}
                 {assistantId && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-green-900 font-mono bg-green-100 px-2 py-1 rounded-xl select-text">
-                      {assistantId.slice(0, 15)}...
+                  <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                    <span className="text-[10px] md:text-xs text-green-900 font-mono bg-green-100 px-1.5 md:px-2 py-0.5 md:py-1 rounded md:rounded-xl select-text">
+                      {assistantId.slice(0, 8)}...
                     </span>
                     <button
                       onClick={() => {
@@ -914,82 +917,33 @@ export default function AssistantEditPage() {
                       }}
                       className="text-gray-400 hover:text-emerald-600 transition-colors"
                     >
-                      <Copy className="w-3.5 h-3.5" />
+                      <Copy className="w-3 h-3 md:w-3.5 md:h-3.5" />
                     </button>
                     {copied && (
-                      <span className="text-xs text-emerald-600 font-medium">
+                      <span className="text-[10px] md:text-xs text-emerald-600 font-medium">
                         Copied!
                       </span>
                     )}
                   </div>
                 )}
               </div>
+
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={handleDeleteAssistant}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0 w-8 h-8 md:w-auto md:h-auto p-1 md:p-2"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
               </Button>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1 border border-gray-200">
-                <Input
-                  type="text"
-                  placeholder="+919999999999"
-                  className="w-44 border-0 bg-transparent focus-visible:ring-0 text-sm h-4"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                />
-                {inCall ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md"
-                    onClick={handleHangup}
-                  >
-                    <PhoneOff className="w-4 h-4 mr-1" />
-                    Hang Up
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-emerald-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-md"
-                    onClick={handleCall}
-                  >
-                    <Phone className="w-4 h-4 mr-1" />
-                    Call
-                  </Button>
-                )}
-              </div>
-
-              {/* <Button
-                variant="outline"
-                size="sm"
-                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                onClick={() => setShowLiveKitModal(true)}
-              >
-                ZX Global
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
-                onClick={() => setShowAivocoModal(true)}
-              >
-                ZX India
-              </Button> */}
-
-              <div className="h-6 w-px bg-gray-200"></div>
-
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-3 w-full lg:w-auto">
               <Button
                 onClick={handlePublishAssistant}
                 size="sm"
                 variant="outline"
-                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 flex-1 sm:flex-initial text-xs md:text-sm h-8 md:h-9"
                 disabled={!assistantId || loading}
               >
                 Publish
@@ -999,23 +953,28 @@ export default function AssistantEditPage() {
                 onClick={handleSaveAssistant}
                 disabled={loading}
                 size="sm"
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/30"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/30 flex-1 sm:flex-initial text-xs md:text-sm h-8 md:h-9"
               >
-                {loading
-                  ? "Saving..."
-                  : assistants.some((a) => a.id === assistantId)
-                    ? "Update Assistant"
-                    : "Create Assistant"}
+                <span className="hidden sm:inline">
+                  {loading
+                    ? "Saving..."
+                    : assistants.some((a) => a.id === assistantId)
+                      ? "Update Assistant"
+                      : "Create Assistant"}
+                </span>
+                <span className="sm:hidden">
+                  {loading ? "Saving..." : "Update"}
+                </span>
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-7xl mx-auto px-3 md:px-6 py-3 md:py-6">
         {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 mb-6 p-2">
-          <div className="flex gap-2">
+        <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-200 mb-4 md:mb-6 p-1 md:p-2">
+          <div className="flex gap-1 md:gap-2">
             {[
               { id: "assistant", label: "Assistant", icon: Settings },
               { id: "model", label: "Model", icon: Zap },
@@ -1028,14 +987,14 @@ export default function AssistantEditPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl transition-all font-medium text-sm ${
-                    activeTab === (tab.id as any)
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
+                  className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 py-1.5 md:py-3 px-1 md:px-4 rounded-lg md:rounded-xl transition-all font-medium text-[10px] md:text-sm ${activeTab === (tab.id as any)
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
+                  <Icon className="w-3 h-3 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span className="sm:hidden text-[9px] leading-tight">{tab.label}</span>
                 </button>
               );
             })}
@@ -1365,26 +1324,26 @@ export default function AssistantEditPage() {
 
                             {(config.type === "string" ||
                               config.type === "number") && (
-                              <Input
-                                type={
-                                  config.type === "number" ? "number" : "text"
-                                }
-                                value={
-                                  synthesizerConfigValues[config.key] ||
-                                  config.defaultValue
-                                }
-                                onChange={(e) =>
-                                  setSynthesizerConfigValues((prev) => ({
-                                    ...prev,
-                                    [config.key]:
-                                      config.type === "number"
-                                        ? Number(e.target.value)
-                                        : e.target.value,
-                                  }))
-                                }
-                                className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
-                              />
-                            )}
+                                <Input
+                                  type={
+                                    config.type === "number" ? "number" : "text"
+                                  }
+                                  value={
+                                    synthesizerConfigValues[config.key] ||
+                                    config.defaultValue
+                                  }
+                                  onChange={(e) =>
+                                    setSynthesizerConfigValues((prev) => ({
+                                      ...prev,
+                                      [config.key]:
+                                        config.type === "number"
+                                          ? Number(e.target.value)
+                                          : e.target.value,
+                                    }))
+                                  }
+                                  className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                />
+                              )}
                           </div>
                         ))}
                       </div>
@@ -1509,27 +1468,27 @@ export default function AssistantEditPage() {
 
                           {(config.type === "string" ||
                             config.type === "number") && (
-                            <Input
-                              type={
-                                config.type === "number" ? "number" : "text"
-                              }
-                              value={
-                                sttConfigValues[config.key] ||
-                                config.defaultValue
-                              }
-                              onChange={(e) =>
-                                setSttConfigValues((prev) => ({
-                                  ...prev,
-                                  [config.key]:
-                                    config.type === "number"
-                                      ? Number(e.target.value)
-                                      : e.target.value,
-                                }))
-                              }
-                              placeholder={config.defaultValue}
-                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                            />
-                          )}
+                              <Input
+                                type={
+                                  config.type === "number" ? "number" : "text"
+                                }
+                                value={
+                                  sttConfigValues[config.key] ||
+                                  config.defaultValue
+                                }
+                                onChange={(e) =>
+                                  setSttConfigValues((prev) => ({
+                                    ...prev,
+                                    [config.key]:
+                                      config.type === "number"
+                                        ? Number(e.target.value)
+                                        : e.target.value,
+                                  }))
+                                }
+                                placeholder={config.defaultValue}
+                                className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                              />
+                            )}
                         </div>
                       ))}
                     </div>
@@ -1653,27 +1612,27 @@ export default function AssistantEditPage() {
 
                           {(config.type === "string" ||
                             config.type === "number") && (
-                            <Input
-                              type={
-                                config.type === "number" ? "number" : "text"
-                              }
-                              value={
-                                realtimeConfigValues[config.key] ||
-                                config.defaultValue
-                              }
-                              onChange={(e) =>
-                                setRealtimeConfigValues((prev) => ({
-                                  ...prev,
-                                  [config.key]:
-                                    config.type === "number"
-                                      ? Number(e.target.value)
-                                      : e.target.value,
-                                }))
-                              }
-                              placeholder={config.defaultValue}
-                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                            />
-                          )}
+                              <Input
+                                type={
+                                  config.type === "number" ? "number" : "text"
+                                }
+                                value={
+                                  realtimeConfigValues[config.key] ||
+                                  config.defaultValue
+                                }
+                                onChange={(e) =>
+                                  setRealtimeConfigValues((prev) => ({
+                                    ...prev,
+                                    [config.key]:
+                                      config.type === "number"
+                                        ? Number(e.target.value)
+                                        : e.target.value,
+                                  }))
+                                }
+                                placeholder={config.defaultValue}
+                                className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                              />
+                            )}
                         </div>
                       ))}
                     </div>

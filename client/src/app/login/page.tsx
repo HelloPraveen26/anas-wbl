@@ -201,6 +201,14 @@ export default function SignIn() {
 
             {/* Header */}
             <div className="mb-4 lg:mb-10 mt-4 lg:mt-0">
+              {/* Mobile Logo */}
+              <div className="lg:hidden flex justify-center mb-6">
+                <img
+                  src={cristy.src}
+                  alt="Company Logo"
+                  className="max-w-[200px] w-full h-auto"
+                />
+              </div>
               <h2 className="text-2xl lg:text-4xl font-extrabold text-black relative flex justify-center">Welcome Back !</h2>
               <p className="text-gray-600 text-sm lg:text-lg relative flex justify-center mt-1 lg:mt-2">Log in to your dashboard</p>
             </div>

@@ -629,17 +629,17 @@ const toolConfig = {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      <div className="flex justify-between items-center p-4 border-b">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center p-4 border-b gap-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold text-green-600">{toolName}</h2>
-          <span className="text-xs font-medium border rounded-full px-2 py-0.5 bg-green-100 text-green-800">
+          <h2 className="text-xl font-semibold text-green-600 truncate">{toolName}</h2>
+          <span className="text-xs font-medium border rounded-full px-2 py-0.5 bg-green-100 text-green-800 whitespace-nowrap">
             {isAsync ? 'async' : 'sync'} tool
           </span>
           {currentToolId && (
             <span className="text-xs font-mono text-gray-500">ID: {currentToolId.substring(0, 12)}...</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative assistant-dropdown-container">
             <button
               onClick={() => setShowAssistantDropdown(!showAssistantDropdown)}
@@ -653,6 +653,7 @@ const toolConfig = {
                 ? assistants.find(a => a.id === selectedAssistant)?.name || 'Select Assistant'
                 : '⚠️ Select Assistant'}
             </button>
+
 
             {showAssistantDropdown && (
               <div className="absolute right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -707,7 +708,7 @@ const toolConfig = {
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="flex flex-col gap-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex flex-col flex-1 gap-2">
               <label className="text-sm font-medium text-black">Tool Name</label>
               <input
@@ -1358,25 +1359,45 @@ export default function ToolsPage() {
     }
   };
 
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+
   return (
-    <div className="flex h-screen w-full bg-gray-50">
-      <div className="flex flex-col w-72 min-w-72 bg-white border-r h-full">
+    <div className="flex h-screen w-full bg-gray-50 relative">
+      {/* Mobile Sidebar Overlay */}
+      {showMobileSidebar && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed md:relative z-50 md:z-0
+        flex flex-col w-72 min-w-72 bg-white border-r h-full
+        transition-transform duration-300 ease-in-out
+        ${showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
         <div className="flex flex-col h-full p-4">
           <div className="flex items-center justify-between pb-4 border-b">
-            {showToolsList ? (
-              <>
-                <button className="text-gray-600 hover:text-gray-900 rotate-180" onClick={() => setShowToolsList(false)}>
-                  <ChevronRight size={14} />
-                </button>
-                <div className="text-xs font-semibold uppercase tracking-wider text-gray-600">Tools</div>
-              </>
-            ) : (
-              <>
-                <div className="text-xs font-semibold uppercase tracking-wider text-gray-600">Tools</div>
-                <button className="w-5 h-5 flex items-center justify-center bg-green-600 text-white hover:bg-green-500 rounded-md" onClick={handleCreateToolClick}>
-                  <Plus size={16} />
-                </button>
-              </>
+            <div className="flex items-center gap-2">
+              <button
+                className="md:hidden p-2 -ml-2 text-gray-600"
+                onClick={() => setShowMobileSidebar(false)}
+              >
+                <X size={20} />
+              </button>
+              <div className="text-xs font-semibold uppercase tracking-wider text-gray-600">Tools</div>
+            </div>
+            {!showToolsList && (
+              <button className="w-5 h-5 flex items-center justify-center bg-green-600 text-white hover:bg-green-500 rounded-md" onClick={handleCreateToolClick}>
+                <Plus size={16} />
+              </button>
+            )}
+            {showToolsList && (
+              <button className="text-gray-600 hover:text-gray-900 rotate-180" onClick={() => setShowToolsList(false)}>
+                <ChevronRight size={14} />
+              </button>
             )}
           </div>
 
@@ -1476,8 +1497,22 @@ export default function ToolsPage() {
         </div>
       </div>
 
-      <div className="flex-1 h-full overflow-hidden">
-        {renderToolContent()}
+      <div className="flex-1 h-full overflow-hidden flex flex-col">
+        {/* Mobile Header Toggle */}
+        <div className="md:hidden flex items-center p-4 bg-white border-b gap-3">
+          <button
+            onClick={() => setShowMobileSidebar(true)}
+            className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <Wrench size={20} />
+          </button>
+          <span className="font-semibold text-gray-900 truncate">
+            {activeTool ? activeTool.name : 'Select Tool'}
+          </span>
+        </div>
+        <div className="flex-1 overflow-auto">
+          {renderToolContent()}
+        </div>
       </div>
     </div>
   );
