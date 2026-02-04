@@ -1233,36 +1233,33 @@ export default function ToolsPage() {
 
       console.log('📋 Collected assistant IDs:', assistantIds);
 
-      // Step 3: Fetch tool configurations for ALL assistants in PARALLEL
-      // We use the stable individual endpoint to avoid 404 errors on older server versions
-      console.log(`📡 Fetching tool configs for ${assistantsList.length} assistants in parallel...`);
+      // Step 3: Fetch tool configurations for ALL assistants using BULK endpoint
+      console.log(`📡 Fetching tool configs for ${assistantsList.length} assistants in bulk...`);
 
       const toolConfigsGrouped: Record<string, any[]> = {};
 
-      await Promise.all(
-        assistantsList.map(async (assistant: any) => {
-          try {
-            const configResponse = await fetch(
-              `${getApiBaseUrl()}/assistants/tool-config/${assistant.id}`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'accept': 'application/json'
-                }
-              }
-            );
+      try {
+        const bulkResponse = await fetch(`${getApiBaseUrl()}/assistants/tool-configs/bulk`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'accept': 'application/json'
+          },
+          body: JSON.stringify({ assistantIds })
+        });
 
-            if (configResponse.ok) {
-              const result = await configResponse.json();
-              if (result.success && result.data) {
-                toolConfigsGrouped[assistant.id] = result.data;
-              }
-            }
-          } catch (error) {
-            console.error(`❌ Failed to fetch tools for assistant ${assistant.name}:`, error);
+        if (bulkResponse.ok) {
+          const result = await bulkResponse.json();
+          if (result.success && result.data) {
+            Object.assign(toolConfigsGrouped, result.data);
           }
-        })
-      );
+        } else {
+          console.error(`❌ Bulk fetch failed with status: ${bulkResponse.status}`);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching bulk tool configs:', error);
+      }
 
       console.log('✅ All tool configurations loaded successfully');
 
