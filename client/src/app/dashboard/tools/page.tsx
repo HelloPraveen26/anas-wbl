@@ -1206,6 +1206,7 @@ export default function ToolsPage() {
 
       console.log('🔄 Loading all assistants and their saved tools...');
 
+      // Step 1: Fetch all assistants
       const assistantsResponse = await fetch(`${getApiBaseUrl()}/assistants`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1227,57 +1228,82 @@ export default function ToolsPage() {
         return;
       }
 
+      // Step 2: Collect all assistant IDs into an array
+      const assistantIds = assistantsList.map((assistant: any) => assistant.id);
+
+      console.log('📋 Collected assistant IDs:', assistantIds);
+
+      // Step 3: Fetch tool configurations for ALL assistants in PARALLEL
+      // We use the stable individual endpoint to avoid 404 errors on older server versions
+      console.log(`📡 Fetching tool configs for ${assistantsList.length} assistants in parallel...`);
+
+      const toolConfigsGrouped: Record<string, any[]> = {};
+
+      await Promise.all(
+        assistantsList.map(async (assistant: any) => {
+          try {
+            const configResponse = await fetch(
+              `${getApiBaseUrl()}/assistants/tool-config/${assistant.id}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'accept': 'application/json'
+                }
+              }
+            );
+
+            if (configResponse.ok) {
+              const result = await configResponse.json();
+              if (result.success && result.data) {
+                toolConfigsGrouped[assistant.id] = result.data;
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Failed to fetch tools for assistant ${assistant.name}:`, error);
+          }
+        })
+      );
+
+      console.log('✅ All tool configurations loaded successfully');
+
       const savedToolsTemp: Tool[] = [];
 
-      // ✅ FIXED: Use the correct endpoint that exists on your backend
+      // Step 4: Loop through the grouped tool configs and build the tools array
       for (const assistant of assistantsList) {
-        try {
-          const configResponse = await fetch(
-            `${getApiBaseUrl()}/assistants/tool-config/${assistant.id}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              }
-            }
-          );
+        const toolConfigs = toolConfigsGrouped[assistant.id] || [];
 
-          if (configResponse.ok) {
-            const result = await configResponse.json();
+        if (toolConfigs.length > 0) {
+          console.log(`📦 Processing ${toolConfigs.length} tool(s) for assistant: ${assistant.name}`);
+        }
 
-            if (result.success && result.data && Array.isArray(result.data)) {
-              for (const config of result.data) {
-                // Use actual DB id as the unique identifier
-                const toolId = config.id || config.toolId || `tool_${Date.now()}_${Math.random()}`;
+        for (const config of toolConfigs) {
+          // Use actual DB id as the unique identifier
+          const toolId = config.id || config.toolId || `tool_${Date.now()}_${Math.random()}`;
 
-                const savedTool: Tool = {
-                  name: config.toolName || 'Custom Tool',
-                  description: `${assistant.name} - ${config.description || 'No description'}`,
-                  icon: 'Wrench',
-                  color: '#007bff',
-                  assistantId: assistant.id,
-                  toolId: toolId,
-                  content: (
-                    <CustomTool
-                      onSave={handleSaveCustomTool}
-                      initialAssistantId={assistant.id}
-                      initialToolName={config.toolName}
-                      onReload={loadAllSavedTools}
-                    />
-                  )
-                };
+          const savedTool: Tool = {
+            name: config.toolName || 'Custom Tool',
+            description: `${assistant.name} - ${config.description || 'No description'}`,
+            icon: 'Wrench',
+            color: '#007bff',
+            assistantId: assistant.id,
+            toolId: toolId,
+            content: (
+              <CustomTool
+                onSave={handleSaveCustomTool}
+                initialAssistantId={assistant.id}
+                initialToolName={config.toolName}
+                onReload={loadAllSavedTools}
+              />
+            )
+          };
 
-                savedToolsTemp.push(savedTool);
-                console.log(`✅ Loaded tool for ${assistant.name}:`, config.toolName);
-              }
-            }
-          }
-        } catch (error) {
-          console.log(`ℹ️ No tools for assistant ${assistant.name}`);
+          savedToolsTemp.push(savedTool);
+          console.log(`✅ Loaded tool: ${config.toolName} for ${assistant.name}`);
         }
       }
 
       if (savedToolsTemp.length > 0) {
-        console.log(`✅ Found ${savedToolsTemp.length} saved tools`);
+        console.log(`✅ Total ${savedToolsTemp.length} saved tool(s) loaded successfully`);
         setCustomTools(savedToolsTemp);
         setSelectedTools(savedToolsTemp);
 

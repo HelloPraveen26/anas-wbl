@@ -14,7 +14,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, In } from "typeorm";
 import {
   ApiTags,
   ApiOperation,
@@ -519,6 +519,98 @@ export class AssistantController {
       throw new NotFoundException(
         `Failed to load configuration for assistant: ${assistantId}`
       );
+    }
+  }
+
+  @Post("tool-configs/bulk")
+  @ApiOperation({
+    summary: "Get tool configurations for multiple assistants (Bulk)",
+    description: "Retrieve all saved tools for multiple assistants in a single request",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        assistantIds: {
+          type: "array",
+          items: { type: "string" },
+          example: ["123e4567-e89b-12d3-a456-426614174000", "123e4567-e89b-12d3-a456-426614174001"],
+          description: "Array of assistant UUIDs"
+        },
+      },
+      required: ["assistantIds"]
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Bulk configurations retrieved successfully",
+    schema: {
+      type: "object",
+      properties: {
+        success: { type: "boolean", example: true },
+        data: {
+          type: "object",
+          description: "Tool configurations grouped by assistant ID",
+          additionalProperties: {
+            type: "array",
+            description: "Array of tool configurations for each assistant"
+          }
+        },
+        totalTools: { type: "number", example: 5 },
+      },
+    },
+  })
+  async getBulkToolConfigs(@Body() body: { assistantIds: string[] }): Promise<any> {
+    try {
+      const { assistantIds } = body;
+
+      if (!assistantIds || !Array.isArray(assistantIds) || assistantIds.length === 0) {
+        throw new BadRequestException("assistantIds array is required and cannot be empty");
+      }
+
+      console.log("=============================================");
+      console.log("🔄 Bulk loading tool configurations");
+      console.log("📋 Assistant IDs:", assistantIds);
+      console.log("=============================================");
+
+      // Use TypeORM's In operator to fetch all tools for the given assistant IDs in one query
+      const tools = await this.toolConfigRepository.find({
+        where: { assistantId: In(assistantIds) },
+      });
+
+      // Group tools by assistant ID
+      const groupedTools: Record<string, any[]> = {};
+      assistantIds.forEach(id => {
+        groupedTools[id] = [];
+      });
+
+      tools.forEach(tool => {
+        if (groupedTools[tool.assistantId]) {
+          groupedTools[tool.assistantId].push(tool);
+        }
+      });
+
+      const totalTools = tools.length;
+
+      console.log("✅ Bulk tool configurations loaded");
+      console.log("📊 Total tools found:", totalTools);
+      console.log("🗂️  Tools per assistant:");
+      Object.entries(groupedTools).forEach(([assistantId, toolList]) => {
+        console.log(`   - ${assistantId}: ${toolList.length} tool(s)`);
+      });
+      console.log("=============================================");
+
+      return {
+        success: true,
+        data: groupedTools,
+        totalTools: totalTools,
+      };
+    } catch (error) {
+      console.error("❌ Error loading bulk tool configs from DB:", error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new NotFoundException("Failed to load bulk configurations");
     }
   }
 
