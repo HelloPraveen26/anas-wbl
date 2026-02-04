@@ -508,13 +508,13 @@ export default function VoicesPage() {
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-4">
                             <div>
-                                <h1 className="text-2xl font-bold text-emerald-800 ml-24">AI Voice Library</h1>
+                                <h1 className="text-xl md:text-2xl font-bold text-emerald-800">AI Voice Library</h1>
                             </div>
                         </div>
                     </div>
 
                     {/* Filters */}
-                    <div className="flex flex-col sm:flex-row gap-4 items-end ml-24">
+                    <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-end">
                         {/* Search Input */}
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -545,7 +545,7 @@ export default function VoicesPage() {
                         </div>
 
                         {/* Gender Dropdown */}
-                        <div className="w-full sm:w-[180px]">
+                        <div className="w-full lg:w-[180px]">
                             <select
                                 id="gender-select"
                                 value={selectedGender}
@@ -638,8 +638,8 @@ export default function VoicesPage() {
             {/* Footer Stats */}
             <div className="bg-white/90 backdrop-blur-xl border-t border-slate-200 flex-shrink-0">
                 <div className="px-6 py-5">
-                    <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-6 text-slate-600">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 md:gap-6 text-slate-600">
                             <span className="font-semibold text-slate-900">
                                 {filteredVoices.length} {filteredVoices.length === 1 ? 'Voice' : 'Voices'}
                             </span>

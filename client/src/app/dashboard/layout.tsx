@@ -21,6 +21,8 @@ import {
   PhoneIncoming,
   AudioWaveform,
   RefreshCw,
+  Menu,
+  X,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authManager } from "@/lib/auth";
@@ -43,6 +45,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [buildExpanded, setBuildExpanded] = useState(true);
   const [observeExpanded, setObserveExpanded] = useState(true);
   const router = useRouter();
@@ -82,6 +85,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     } else {
       router.push(`/dashboard${path}`);
     }
+    // Close mobile sidebar on navigation
+    setIsMobileSidebarOpen(false);
   };
 
   const handleProfileClick = () => {
@@ -184,42 +189,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex">
+      {/* Mobile Backdrop Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div
         className={`${sidebarCollapsed ? "w-20" : "w-72"
-          } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl`}
+          } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl
+        ${isMobileSidebarOpen ? "fixed inset-y-0 left-0 z-50" : "hidden"} md:flex`}
       >
         {/* Header */}
-        <div className="h-20 flex items-center justify-start pl-8 pr-2 border-b border-emerald-100 mr-12">
-          {/* {!sidebarCollapsed ? (
-            <div className="flex items-center gap-3">
-
-              <Image
-                src={newlogo}
-                alt="ZenVoice Logo"
-                width={180}
-                height={46}
-                className="object-contain "
-              />
-            </div>
-          ) : (
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-              <Image
-                src={logo1}
-                alt="Logo"
-                width={24}
-                height={24}
-                className="object-contain"
-              />
-            </div>
-          )} */}
-          <div className="mr-12">
+        <div className="h-20 flex items-center justify-between px-4 border-b border-emerald-100">
+          <div className="flex-1">
             <img
               src={cristy.src}
               alt="Company Logo"
-              className="w-[200px] max-w-none h-auto -ml-2"
+              className="h-10 w-auto"
             />
           </div>
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden p-2 rounded-lg hover:bg-emerald-50 transition-colors flex-shrink-0"
+            aria-label="Close sidebar"
+          >
+            <X className="w-6 h-6 text-gray-600" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -412,7 +412,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">{children}</div>
+      <div className="flex-1 flex flex-col overflow-auto">
+        {/* Mobile Header with Hamburger */}
+        <div className="md:hidden sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-emerald-100 px-4 py-3 flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-emerald-50 transition-colors"
+            aria-label="Open sidebar"
+          >
+            <Menu className="w-6 h-6 text-gray-700" />
+          </button>
+          <img
+            src={cristy.src}
+            alt="ZenVoice Logo"
+            className="h-8 w-auto"
+          />
+        </div>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-auto">{children}</div>
+      </div>
 
       {/* Payment Callback Handler */}
       <Suspense fallback={null}>

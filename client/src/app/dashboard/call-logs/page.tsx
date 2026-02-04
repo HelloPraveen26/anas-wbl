@@ -305,16 +305,16 @@ export default function CallLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] p-6 space-y-6">
+    <div className="min-h-screen bg-[#f8f9fa] p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gray-100 rounded-lg">
             <FileText className="h-6 w-6 text-gray-700" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Call Logs</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Call Logs</h2>
+            <p className="text-xs md:text-sm text-gray-600">
               View and manage call logs for your assistants.
             </p>
           </div>
@@ -322,7 +322,7 @@ export default function CallLogsPage() {
 
         <button
           onClick={exportToCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium w-full sm:w-auto justify-center"
           disabled={filteredCalls.length === 0}
         >
           <Download className="h-4 w-4" />
@@ -331,15 +331,15 @@ export default function CallLogsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row flex-wrap gap-4">
+        <div className="flex-1 min-w-[200px]">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Call Status
           </label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
             disabled={loading}
           >
             <option value="">All Statuses</option>
@@ -350,14 +350,14 @@ export default function CallLogsPage() {
           </select>
         </div>
 
-        <div>
+        <div className="flex-1 min-w-[200px]">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Success Evaluation
           </label>
           <select
             value={evaluationFilter}
             onChange={(e) => setEvaluationFilter(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
           >
             <option value="">All Evaluations</option>
             <option value="pass">Pass</option>

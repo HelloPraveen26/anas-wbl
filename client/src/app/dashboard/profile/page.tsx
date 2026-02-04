@@ -223,30 +223,30 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-56 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 h-32 md:h-56 relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-4 md:px-6">
         {/* Profile Header Card */}
-        <div className="relative -mt-32 mb-8">
+        <div className="relative -mt-16 md:-mt-32 mb-6 md:mb-8">
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-emerald-100 overflow-hidden">
-            <div className="p-8">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+            <div className="p-4 md:p-8">
+              <div className="flex flex-col md:flex-row items-center md:items-center gap-4 md:gap-6 text-center md:text-left">
                 {/* Profile Picture */}
                 <div className="relative">
-                  <div className="w-36 h-36 rounded-2xl overflow-hidden border-4 border-white shadow-2xl shadow-emerald-500/20 bg-gradient-to-br from-emerald-400 to-teal-500">
+                  <div className="w-24 h-24 md:w-36 md:h-36 rounded-2xl overflow-hidden border-4 border-white shadow-2xl shadow-emerald-500/20 bg-gradient-to-br from-emerald-400 to-teal-500">
                     {profilePicture ? (
                       <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-6xl font-bold text-white">{userProfile?.firstName?.[0] || 'U'}</span>
+                        <span className="text-4xl md:text-6xl font-bold text-white">{userProfile?.firstName?.[0] || 'U'}</span>
                       </div>
                     )}
                   </div>
-                  <label className="absolute bottom-2 right-2 w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center cursor-pointer hover:from-emerald-600 hover:to-teal-600 transition shadow-lg shadow-emerald-500/30">
+                  <label className="absolute bottom-1 right-1 md:bottom-2 md:right-2 w-8 h-8 md:w-12 md:h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg md:rounded-xl flex items-center justify-center cursor-pointer hover:from-emerald-600 hover:to-teal-600 transition shadow-lg shadow-emerald-500/30">
                     <input type="file" accept="image/*" onChange={handleProfilePictureChange} className="hidden" />
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 md:w-5 md:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
@@ -254,22 +254,25 @@ export default function ProfilePage() {
                 </div>
 
                 {/* User Info */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-4xl font-bold text-gray-900">{userProfile?.firstName} {userProfile?.lastName}</h1>
-
+                <div className="flex-1 min-w-0">
+                  <div className="mb-2">
+                    <h1 className="text-2xl md:text-4xl font-bold text-gray-900 truncate">
+                      {userProfile?.firstName} {userProfile?.lastName}
+                    </h1>
                   </div>
-                  <p className="text-gray-600 mb-4 flex items-center gap-2 text-lg">
+                  <p className="text-gray-600 mb-4 flex items-center justify-center md:justify-start gap-2 text-base md:text-lg truncate">
                     {userProfile?.email}
                   </p>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg">
+                  <div className="flex flex-wrap justify-center md:justify-start gap-2 md:gap-4 text-xs md:text-sm text-gray-600">
+                    <div className="flex items-center gap-2 bg-emerald-50 px-2 md:px-3 py-1 md:py-1.5 rounded-lg">
                       <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      <span className="font-medium">{orgForm.organizationName || 'No organization'}</span>
+                      <span className="font-medium truncate max-w-[120px] md:max-w-none">
+                        {orgForm.organizationName || 'No organization'}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 bg-teal-50 px-3 py-1.5 rounded-lg">
+                    <div className="flex items-center gap-2 bg-teal-50 px-2 md:px-3 py-1 md:py-1.5 rounded-lg">
                       <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
@@ -279,11 +282,11 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <button className="px-6 py-3 bg-white border-2 border-emerald-200 hover:border-emerald-400 text-emerald-700 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md">
+                {/* <div className="w-full md:w-auto">
+                  <button className="w-full md:w-auto px-6 py-3 bg-white border-2 border-emerald-200 hover:border-emerald-400 text-emerald-700 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md">
                     Credits
                   </button>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -306,39 +309,41 @@ export default function ProfilePage() {
         )}
 
         {/* Tabs Navigation */}
-        <div className="bg-white rounded-2xl shadow-lg border border-emerald-100 mb-6 p-2">
-          <nav className="flex gap-2">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-sm border border-emerald-100/50 mb-5 p-1 md:p-2">
+          <nav className="flex items-center gap-0.5 md:gap-2">
             {[
-              { id: 'profile', label: 'Profile Information', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
-              { id: 'billing', label: 'Billing Address', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z' },
+              { id: 'profile', label: 'Profile', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+              { id: 'billing', label: 'Billing', icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z' },
               { id: 'organization', label: 'Organization', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16 M3 10h18 M9 21v-8a1 1 0 011-1h4a1 1 0 011 1v8' },
               { id: 'security', label: 'Security', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold rounded-xl transition-all ${activeTab === tab.id
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
-                    : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
+                className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 py-2 md:py-3 px-1 md:px-4 rounded-lg md:rounded-xl transition-all duration-300 ${activeTab === tab.id
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20'
+                  : 'text-gray-500 hover:text-emerald-600 hover:bg-emerald-50/50'
                   }`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={tab.icon} />
                 </svg>
-                <span className="hidden md:inline">{tab.label}</span>
+                <span className="text-[9px] min-[380px]:text-[10px] sm:text-xs md:text-sm font-bold tracking-tight text-center">
+                  {tab.label}
+                </span>
               </button>
             ))}
           </nav>
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-2xl shadow-lg border border-emerald-100 p-8 mb-8 overflow-y-auto max-h-[500px]">
+        <div className="bg-white rounded-2xl shadow-lg border border-emerald-100 p-4 md:p-8 mb-8 overflow-y-auto max-h-[600px]">
           {/* Profile Information Tab */}
           {activeTab === 'profile' && (
             <div>
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 -mx-8 -mt-8 px-8 py-5 mb-8 border-b border-emerald-100 ">
-                <h2 className="text-2xl font-bold text-emerald-900">Profile Information</h2>
-                <p className="text-sm text-emerald-700 mt-1">Update your personal details</p>
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 -mx-4 md:-mx-8 -mt-4 md:-mt-8 px-4 md:px-8 py-4 md:py-5 mb-6 md:mb-8 border-b border-emerald-100 ">
+                <h2 className="text-xl md:text-2xl font-bold text-emerald-900">Profile Information</h2>
+                <p className="text-xs md:text-sm text-emerald-700 mt-1">Update your personal details</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

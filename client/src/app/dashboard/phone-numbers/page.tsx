@@ -897,53 +897,53 @@ export default function PhoneNumbersPage() {
     <div className="min-h-screen bg-gray-50">
       {/* NAVBAR */}
       <header className="w-full bg-white border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-emerald-800 font-semibold text-2xl">
-              Phone Numbers
+        <div className="max-w-6xl mx-auto px-3 md:px-6 py-3 md:py-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-0">
+            <div className="flex items-center gap-3">
+              <div className="text-emerald-800 font-semibold text-lg md:text-2xl">
+                Phone Numbers
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            {/* Phone Number Input and Trigger Button */}
-            <div className="flex items-center gap-2">
-              <input
-                type="tel"
-                value={directPhoneNumber}
-                onChange={(e) => setDirectPhoneNumber(e.target.value)}
-                placeholder="+919999999999"
-                className="w-40 px-3 py-2 border border-green-500 rounded-md text-sm text-black focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-500"
-              />
-              <button
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-full font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
-                //className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-sm"
-                title="Call"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  className="w-5 h-5"
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 w-full md:w-auto">
+              {/* Phone Number Input and Trigger Button */}
+              <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+                <input
+                  type="tel"
+                  value={directPhoneNumber}
+                  onChange={(e) => setDirectPhoneNumber(e.target.value)}
+                  placeholder="+919999999999"
+                  className="flex-1 sm:w-40 px-2 md:px-3 py-2 border border-green-500 rounded-md text-xs md:text-sm text-black focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-500"
+                />
+                <button
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-9 md:h-11 px-4 md:px-6 rounded-full font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+                  title="Call"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-4 h-4 md:w-5 md:h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setOpenModal(true)}
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-9 md:h-11 px-4 md:px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0 text-xs md:text-sm"
+              >
+                <span className="hidden sm:inline">Import Phone Number</span>
+                <span className="sm:hidden">Import Number</span>
               </button>
             </div>
-
-            <button
-              onClick={() => setOpenModal(true)}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
-
-            //className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md shadow-sm text-sm"
-            >
-              Import Phone Number
-            </button>
           </div>
         </div>
       </header>
@@ -1069,14 +1069,6 @@ export default function PhoneNumbersPage() {
                       </p>
                     </div>
                     <div className="ml-4 text-right">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                          }`}
-                      >
-                        {num.active ? "Active" : "Inactive"}
-                      </span>
                       {selectedRegisteredNumber === num.id && (
                         <div className="mt-1">
                           <span className="text-xs text-emerald-600 font-medium">
@@ -1190,9 +1182,7 @@ export default function PhoneNumbersPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        {a.isActive ? "Active" : ""}
-                      </div>
+                      {/* Status container removed */}
                     </div>
                   ))
                 ) : (
@@ -1259,25 +1249,25 @@ export default function PhoneNumbersPage() {
                   return (
                     <div
                       key={contact.id}
-                      className="p-4 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col justify-between"
+                      className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 flex items-center justify-between gap-3"
                     >
-                      <div>
-                        <p className="font-semibold text-gray-800">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 truncate text-sm">
                           {contact.name}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-[11px] font-semibold text-gray-500 truncate">
                           {contact.phoneNo}
                         </p>
                       </div>
 
-                      <div className="mt-4 flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
                         {isActive ? (
                           <button
                             onClick={() => disconnectCall(contact)}
                             disabled={isLoading}
-                            className="flex-1 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 text-sm"
+                            className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 disabled:opacity-50 text-[10px] font-bold border border-rose-100 transition-all"
                           >
-                            {isLoading ? "Disconnecting..." : "Disconnect"}
+                            {isLoading ? "..." : "Hangup"}
                           </button>
                         ) : (
                           <button
@@ -1287,33 +1277,18 @@ export default function PhoneNumbersPage() {
                               !selectedAssistant ||
                               isLoading
                             }
-                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
-
-                          //className="flex-1 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm"
+                            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-4 rounded-xl font-bold shadow-md shadow-emerald-500/20 flex-shrink-0 text-[10px] active:scale-95 transition-all disabled:opacity-40"
                           >
-                            {isLoading ? "Calling..." : "Call"}
+                            {isLoading ? "..." : "Call"}
                           </button>
                         )}
 
-                        {/* small indicator for active */}
-                        <div className="w-10 text-right">
-                          {isActive ? (
-                            <div className="inline-flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                              <span className="text-xs text-gray-500">
-                                Live
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-xs text-gray-400">Idle</div>
-                          )}
-                        </div>
                         <button
                           onClick={() => deleteContactNumber(contact.id)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                           title="Delete Contact"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                           </svg>
                         </button>
@@ -1656,14 +1631,6 @@ export default function PhoneNumbersPage() {
                         </p>
                       </div>
                       <div className="ml-4 text-right">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${num.active
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                            }`}
-                        >
-                          {num.active ? "Active" : "Inactive"}
-                        </span>
                         {selectedRegisteredNumber === num.id && (
                           <div className="mt-1">
                             <span className="text-xs text-emerald-600 font-medium">
@@ -1785,31 +1752,32 @@ export default function PhoneNumbersPage() {
       {showAllNumbersModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-4xl rounded-xl shadow-xl p-6 max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">
-                  All Contact Numbers ({filteredContacts.length})
-                </h3>
-                <p className="text-sm text-gray-500">
-                  Search and manage your contacts.
-                </p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center justify-between w-full md:w-auto">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    All Contact Numbers
+                    <span className="ml-2 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-100">
+                      {filteredContacts.length}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Search and manage your contacts.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAllNumbersModal(false)}
+                  className="md:hidden p-2 text-gray-400 hover:text-emerald-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <div className="relative w-full sm:w-64">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      className="h-4 w-4 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 md:w-80">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
                   </div>
                   <input
@@ -1817,15 +1785,15 @@ export default function PhoneNumbersPage() {
                     placeholder="Search contacts..."
                     value={contactSearchTerm}
                     onChange={(e) => setContactSearchTerm(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all text-gray-600"
+                    className="block w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-gray-700"
                   />
                 </div>
 
                 <button
                   onClick={() => setShowAllNumbersModal(false)}
-                  className="text-gray-500 hover:text-gray-700 p-2"
+                  className="hidden md:flex items-center justify-center p-2 text-gray-400 hover:text-emerald-600 bg-gray-50 rounded-xl border border-gray-100 hover:border-emerald-100 transition-all"
                 >
-                  ✕
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
             </div>
@@ -1839,72 +1807,55 @@ export default function PhoneNumbersPage() {
                     return (
                       <div
                         key={contact.id}
-                        className="p-4 border rounded-lg flex items-center justify-between bg-white hover:shadow-md transition-shadow"
+                        className="group p-3 bg-white rounded-xl border border-gray-100 hover:border-emerald-200 hover:shadow-md transition-all flex items-center justify-between gap-3"
                       >
-                        <div>
-                          <p className="font-medium text-sm text-gray-900">
-                            {contact.name}
-                          </p>
-                          <p className="text-xs text-gray-600">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-gray-900 truncate text-sm">
+                            {contact.name || 'Unnamed Contact'}
+                          </h4>
+                          <p className="text-[11px] font-semibold text-gray-500 truncate mt-0.5">
                             {contact.phoneNo}
                           </p>
                         </div>
 
-                        <div className="flex flex-col items-end gap-2">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                           {isActive ? (
                             <button
                               onClick={() => disconnectCall(contact)}
                               disabled={isLoading}
-                              className="px-3 py-1 rounded-md bg-red-100 text-red-700 text-sm hover:bg-red-200 disabled:opacity-50"
+                              className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-[10px] font-bold hover:bg-rose-100 border border-rose-100 transition-all disabled:opacity-50"
                             >
-                              {isLoading ? "Disconnecting..." : "Disconnect"}
+                              {isLoading ? "..." : "Hangup"}
                             </button>
                           ) : (
                             <button
                               onClick={() => {
-                                // If required preconditions not met, show a message instead of attempting call
                                 if (!selectedRegisteredNumber) {
-                                  alert(
-                                    "Please select a registered number to make calls from.",
-                                  );
+                                  alert("Please select a registered number to make calls from.");
                                   return;
                                 }
                                 if (!selectedAssistant) {
-                                  alert(
-                                    "Please select an assistant to handle the call.",
-                                  );
+                                  alert("Please select an assistant to handle the call.");
                                   return;
                                 }
-                                // call without closing modal
                                 makeCall(contact);
                               }}
-                              disabled={
-                                !selectedRegisteredNumber ||
-                                !selectedAssistant ||
-                                isLoading
-                              }
-                              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+                              disabled={!selectedRegisteredNumber || !selectedAssistant || isLoading}
+                              className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white h-8 px-4 rounded-xl text-[10px] font-bold shadow-md shadow-emerald-500/20 hover:shadow-lg active:scale-95 transition-all disabled:opacity-40"
                             >
-                              {isLoading ? "Calling..." : "Call"}
+                              {isLoading ? "..." : "Call"}
                             </button>
                           )}
-                          {isActive ? (
-                            <div className="inline-flex items-center gap-2">
-                              <span className="h-2 w-2 rounded-full bg-green-500 inline-block" />
-                              <span className="text-xs text-gray-500">Live</span>
-                            </div>
-                          ) : (
-                            <div className="text-xs text-gray-400">Idle</div>
-                          )}
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               deleteContactNumber(contact.id);
                             }}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                            className="p-1.5 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                             title="Delete Contact"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                               <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                             </svg>
                           </button>

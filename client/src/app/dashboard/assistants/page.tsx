@@ -168,20 +168,20 @@ export default function AssistantsListingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+    <div className="h-full flex flex-col bg-gradient-to-br from-emerald-50 via-white to-teal-50 overflow-hidden">
       <PaymentNotification />
       {/* Top Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-emerald-100 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-5">
-          <div className="flex items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-5">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6">
             <div>
-              <h1 className="text-2xl font-bold text-emerald-900 ml-6">
+              <h1 className="text-xl md:text-2xl font-bold text-emerald-900">
                 Assistants
               </h1>
             </div>
 
             {/* Search Bar */}
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 w-full md:max-w-md">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500" />
 
               {/* Gradient Border Wrapper */}
@@ -200,7 +200,7 @@ export default function AssistantsListingPage() {
 
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0 w-full md:w-auto"
             >
               <Plus className="w-4 h-4 mr-2" />
               New Assistant
@@ -210,8 +210,8 @@ export default function AssistantsListingPage() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="bg-white rounded-2xl border border-emerald-100 shadow-lg overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 md:px-6 py-4 md:py-6 overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white rounded-2xl border border-emerald-100 shadow-lg overflow-hidden">
           {/* Container Header */}
           <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 border-b border-emerald-100">
             <div className="flex items-center justify-between">
@@ -225,17 +225,12 @@ export default function AssistantsListingPage() {
                   </h2>
                 </div>
               </div>
-              <div className="flex items-center gap-2 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-full border border-emerald-200">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                <span className="text-xs font-semibold text-emerald-700">
-                  Live
-                </span>
-              </div>
+
             </div>
           </div>
 
           {/* Scrollable List */}
-          <div className="max-h-[calc(100vh-280px)] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             {assistantsLoading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">
@@ -289,79 +284,74 @@ export default function AssistantsListingPage() {
                         );
                         router.push(`/dashboard/assistants/${assistant.id}`);
                       }}
-                      className={`group cursor-pointer transition-all ${
-                        isActive
-                          ? "bg-gradient-to-r from-emerald-50 to-teal-50"
-                          : isHovered
-                            ? "bg-gray-50"
-                            : "bg-white hover:bg-gray-50"
-                      }`}
+                      className={`group cursor-pointer transition-all ${isActive
+                        ? "bg-gradient-to-r from-emerald-50 to-teal-50"
+                        : isHovered
+                          ? "bg-gray-50"
+                          : "bg-white hover:bg-gray-50"
+                        }`}
                     >
                       <div className="px-6 py-5">
                         <div className="flex items-center gap-4">
                           {/* Avatar */}
                           <div
-                            className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${
-                              isActive
-                                ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/30"
-                                : "bg-gray-100 group-hover:bg-gray-200"
-                            }`}
+                            className={`w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0 transition-all shadow-md ${isActive
+                              ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-emerald-500/30"
+                              : "bg-gray-100 group-hover:bg-gray-200"
+                              }`}
                           >
                             <Mic
-                              className={`w-8 h-8 ${isActive ? "text-white" : "text-gray-600"}`}
+                              className={`w-6 h-6 md:w-8 md:h-8 ${isActive ? "text-white" : "text-gray-600"}`}
                             />
                           </div>
 
                           {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 min-w-0 py-1">
+                            <div className="flex items-center gap-2 mb-3">
                               <h3
-                                className={`text-lg font-bold truncate ${
-                                  isActive
-                                    ? "text-emerald-900"
-                                    : "text-gray-900"
-                                }`}
+                                className={`text-base md:text-lg font-bold truncate ${isActive
+                                  ? "text-emerald-900"
+                                  : "text-gray-900"
+                                  }`}
+                                title={assistant.name}
                               >
                                 {assistant.name}
                               </h3>
-                              {isActive && (
-                                <span className="px-2.5 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold rounded-full uppercase shadow-sm">
-                                  Active
-                                </span>
-                              )}
+
                             </div>
 
-                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                              <div className="flex items-center gap-1.5">
-                                <Cpu className="w-4 h-4 text-emerald-600" />
-                                <span className="truncate max-w-[200px] font-medium">
-                                  {assistant.llmModel?.llmProvider?.name ||
-                                    "No model"}
+                            {/* Metadata Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-x-6 gap-y-2 md:gap-y-3">
+                              {/* Provider */}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Cpu className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                <span className="text-xs md:text-sm text-gray-600 truncate font-medium">
+                                  {assistant.llmModel?.llmProvider?.name || "No model"}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="w-4 h-4 text-emerald-600" />
-                                <span className="font-medium">
+
+                              {/* Date */}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Clock className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                <span className="text-xs md:text-sm text-gray-600 font-medium">
                                   {formatDate(assistant.createdAt)}
                                 </span>
                               </div>
-                            </div>
 
-                            {/* Bottom Info */}
-                            <div className="flex items-center gap-4 text-xs text-gray-500">
-                              <div className="flex items-center gap-1.5">
-                                <Zap className="w-3.5 h-3.5 text-emerald-500" />
-                                <span>
+                              {/* Model */}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Zap className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                <span className="text-xs md:text-sm text-gray-500 truncate">
                                   {assistant.llmModel?.name || "Not configured"}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1.5">
+
+                              {/* Status */}
+                              <div className="flex items-center gap-2">
                                 <div
-                                  className={`w-1.5 h-1.5 rounded-full ${
-                                    isActive ? "bg-emerald-500" : "bg-gray-400"
-                                  }`}
+                                  className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`}
                                 ></div>
-                                <span className="font-medium">
+                                <span className="text-xs md:text-sm font-medium text-gray-500">
                                   {isActive ? "Online" : "Offline"}
                                 </span>
                               </div>
@@ -380,9 +370,8 @@ export default function AssistantsListingPage() {
                               <Trash2 className="w-4 h-4" />
                             </button>
                             <ChevronRight
-                              className={`w-6 h-6 transition-all ${
-                                isActive ? "text-emerald-600" : "text-gray-400"
-                              } ${isHovered ? "translate-x-1" : ""}`}
+                              className={`w-6 h-6 transition-all ${isActive ? "text-emerald-600" : "text-gray-400"
+                                } ${isHovered ? "translate-x-1" : ""}`}
                             />
                           </div>
                         </div>

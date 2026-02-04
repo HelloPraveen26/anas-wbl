@@ -182,9 +182,8 @@ export default function DashboardOverview() {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${
-          i < rating ? 'text-green-500 fill-current' : 'text-gray-300'
-        }`}
+        className={`w-4 h-4 ${i < rating ? 'text-green-500 fill-current' : 'text-gray-300'
+          }`}
       />
     ));
   };
@@ -258,12 +257,12 @@ export default function DashboardOverview() {
   /* -------------------------------------------------------------------------- */
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
+    <div className="p-4 md:p-6 bg-gray-100 min-h-screen">
       <div className="space-y-6">
 
         {/* Welcome Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl md:text-3xl font-bold">
             <span className="text-gray-600">Welcome </span>
             {user?.firstName ? (
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-700 to-teal-400">
@@ -273,16 +272,16 @@ export default function DashboardOverview() {
               <span className="text-gray-600">User</span>
             )}
           </h1>
-          <p className="text-gray-700">Here's your dashboard overview and analytics</p>
+          <p className="text-sm md:text-base text-gray-700">Here's your dashboard overview and analytics</p>
         </div>
 
         {/* Analytics Section */}
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-700">Analytics</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-700">Analytics</h2>
 
             <select
-              className="bg-white border-gray-300 text-gray-700 text-sm rounded-lg px-3 py-2 shadow-sm"
+              className="bg-white border-gray-300 text-gray-700 text-sm rounded-lg px-3 py-2 shadow-sm w-full sm:w-auto"
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value)}
             >
