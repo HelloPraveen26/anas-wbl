@@ -408,7 +408,9 @@ async def entrypoint(ctx: JobContext):
             
             trace_provider = setup_langfuse(metadata=langfuse_metadata)
             if trace_provider:
-                ctx.add_shutdown_callback(lambda: trace_provider.force_flush())
+                async def flush_trace_provider():
+                    trace_provider.force_flush()
+                ctx.add_shutdown_callback(flush_trace_provider)
         except Exception:
             pass
     asyncio.create_task(setup_telemetry_async())
