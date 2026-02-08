@@ -24,6 +24,7 @@ import { ContactNumber } from "../contact-numbers/entities/contact-number.entity
 import { CallLog } from "../call-logs/entities/call-log.entity";
 import { Payment } from "../payment/entities/payment.entity";
 import { ToolConfig } from "../assistant/entities/tool-config.entity";
+import { File } from "../file-storage/entities/file.entity";
 
 config();
 
@@ -55,6 +56,7 @@ export const AppDataSource = new DataSource({
     CallLog,
     Payment,
     ToolConfig,
+    File,
   ],
   migrations: [__dirname + "/migrations/*.{ts,js}"],
   migrationsTableName: "migrations",

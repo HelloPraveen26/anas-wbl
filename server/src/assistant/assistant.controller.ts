@@ -12,6 +12,9 @@ import {
   HttpStatus,
   BadRequestException,
   NotFoundException,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
@@ -22,7 +25,13 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiParam,
+  ApiConsumes,
 } from "@nestjs/swagger";
+import {
+  FileInterceptor,
+  FilesInterceptor,
+  FileFieldsInterceptor,
+} from "@nestjs/platform-express";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { AssistantService } from "./assistant.service";
 import {
@@ -35,6 +44,8 @@ import {
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import axios from "axios";
 import { ToolConfig } from "./entities/tool-config.entity";
+import { FileStorageService } from "../file-storage/file-storage.service";
+import { FileResponseDto } from "../file-storage/dto";
 
 @ApiTags("assistants")
 @Controller("assistants")
@@ -43,8 +54,9 @@ export class AssistantController {
   constructor(
     private readonly assistantService: AssistantService,
     @InjectRepository(ToolConfig)
-    private readonly toolConfigRepository: Repository<ToolConfig>
-  ) { }
+    private readonly toolConfigRepository: Repository<ToolConfig>,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   @Get()
   @UseGuards(JwtAuthGuard)
@@ -118,7 +130,7 @@ export class AssistantController {
     description: "Unauthorized - invalid token",
   })
   async getConnectionDetails(
-    @Request() req
+    @Request() req,
   ): Promise<ConnectionDetailsResponseDto> {
     const response = await this.assistantService.getConnectionDetails();
 
@@ -167,7 +179,7 @@ export class AssistantController {
   })
   async findOne(
     @Param("id", ParseUUIDPipe) id: string,
-    @Request() req
+    @Request() req,
   ): Promise<AssistantResponseDto> {
     return this.assistantService.findOne(id, req.user.id);
   }
@@ -175,27 +187,62 @@ export class AssistantController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
+  @UseInterceptors(FilesInterceptor("files", 10))
+  @ApiConsumes("multipart/form-data", "application/json")
   @ApiOperation({
     summary: "Create new assistant",
-    description: "Create a new assistant for the authenticated user",
+    description:
+      "Create a new assistant for the authenticated user. Optionally upload files during creation.",
   })
-  @ApiBody({ type: CreateAssistantDto })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", example: "Customer Service Assistant" },
+        firstMessage: {
+          type: "string",
+          example: "Hello! How can I help you today?",
+        },
+        systemPrompt: {
+          type: "string",
+          example: "You are a helpful customer service assistant...",
+        },
+        llmModelId: {
+          type: "string",
+          example: "123e4567-e89b-12d3-a456-426614174000",
+        },
+        transcriberModelId: {
+          type: "string",
+          example: "123e4567-e89b-12d3-a456-426614174001",
+        },
+        synthesizerModelId: {
+          type: "string",
+          example: "123e4567-e89b-12d3-a456-426614174002",
+        },
+        realtimeModelId: { type: "string" },
+        sttConfig: { type: "object" },
+        ttsConfig: { type: "object" },
+        realtimeConfig: { type: "object" },
+        isActive: { type: "boolean" },
+        files: {
+          type: "array",
+          items: { type: "string", format: "binary" },
+        },
+      },
+      required: [
+        "name",
+        "firstMessage",
+        "systemPrompt",
+        "llmModelId",
+        "transcriberModelId",
+        "synthesizerModelId",
+      ],
+    },
+  })
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: "Assistant created successfully",
     type: AssistantResponseDto,
-    example: {
-      id: "123e4567-e89b-12d3-a456-426614174000",
-      name: "Customer Service Assistant",
-      firstMessage: "Hello! How can I help you today?",
-      systemPrompt: "You are a helpful customer service assistant...",
-      llmModelId: "123e4567-e89b-12d3-a456-426614174001",
-      transcriberModelId: "123e4567-e89b-12d3-a456-426614174002",
-      synthesizerModelId: "123e4567-e89b-12d3-a456-426614174003",
-      isActive: true,
-      createdAt: "2024-01-01T00:00:00.000Z",
-      updatedAt: "2024-01-01T00:00:00.000Z",
-    },
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -207,24 +254,59 @@ export class AssistantController {
   })
   async create(
     @Body() createAssistantDto: CreateAssistantDto,
-    @Request() req
+    @UploadedFiles() files: Express.Multer.File[],
+    @Request() req,
   ): Promise<AssistantResponseDto> {
-    return this.assistantService.create(req.user.id, createAssistantDto);
+    const assistant = await this.assistantService.create(
+      req.user.id,
+      createAssistantDto,
+    );
+
+    // Upload files if provided
+    if (files && files.length > 0) {
+      await this.fileStorageService.uploadFiles(files, assistant.id);
+    }
+
+    return assistant;
   }
 
   @Patch(":id")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
+  @UseInterceptors(FilesInterceptor("files", 10))
+  @ApiConsumes("multipart/form-data", "application/json")
   @ApiOperation({
     summary: "Update assistant",
-    description: "Update an existing assistant",
+    description:
+      "Update an existing assistant. Optionally upload additional files during update.",
   })
   @ApiParam({
     name: "id",
     description: "UUID of the assistant",
     example: "123e4567-e89b-12d3-a456-426614174000",
   })
-  @ApiBody({ type: UpdateAssistantDto })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        firstMessage: { type: "string" },
+        systemPrompt: { type: "string" },
+        llmModelId: { type: "string" },
+        transcriberModelId: { type: "string" },
+        synthesizerModelId: { type: "string" },
+        realtimeModelId: { type: "string" },
+        sttConfig: { type: "object" },
+        ttsConfig: { type: "object" },
+        realtimeConfig: { type: "object" },
+        isActive: { type: "boolean" },
+        files: {
+          type: "array",
+          items: { type: "string", format: "binary" },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Assistant updated successfully",
@@ -245,17 +327,167 @@ export class AssistantController {
   async update(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() updateAssistantDto: UpdateAssistantDto,
-    @Request() req
+    @UploadedFiles() files: Express.Multer.File[],
+    @Request() req,
   ): Promise<AssistantResponseDto> {
-    return this.assistantService.update(id, req.user.id, updateAssistantDto);
+    const assistant = await this.assistantService.update(
+      id,
+      req.user.id,
+      updateAssistantDto,
+    );
+
+    // Upload files if provided
+    if (files && files.length > 0) {
+      await this.fileStorageService.uploadFiles(files, id);
+    }
+
+    return assistant;
   }
+
+  // ============== FILE UPLOAD ENDPOINTS ==============
+
+  @Post(":id/files")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @UseInterceptors(FilesInterceptor("files", 10))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({
+    summary: "Upload files to assistant",
+    description:
+      "Upload one or multiple files to an assistant. Max 10 files, 1MB each. Audio and video files are not allowed.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "UUID of the assistant",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        files: {
+          type: "array",
+          items: {
+            type: "string",
+            format: "binary",
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: "Files uploaded successfully",
+    type: [FileResponseDto],
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Bad request - invalid file type or size",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Assistant not found",
+  })
+  async uploadFiles(
+    @Param("id", ParseUUIDPipe) id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Request() req,
+  ): Promise<FileResponseDto[]> {
+    // Verify assistant exists and belongs to user
+    await this.assistantService.findOne(id, req.user.id);
+
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files provided");
+    }
+
+    const uploadedFiles = await this.fileStorageService.uploadFiles(files, id);
+    return uploadedFiles.map((file) => new FileResponseDto(file));
+  }
+
+  @Get(":id/files")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Get all files for an assistant",
+    description: "Retrieve all files associated with an assistant",
+  })
+  @ApiParam({
+    name: "id",
+    description: "UUID of the assistant",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Files retrieved successfully",
+    type: [FileResponseDto],
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Assistant not found",
+  })
+  async getFiles(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Request() req,
+  ): Promise<FileResponseDto[]> {
+    // Verify assistant exists and belongs to user
+    await this.assistantService.findOne(id, req.user.id);
+
+    const files = await this.fileStorageService.getFilesByAssistantId(id);
+    return files.map((file) => new FileResponseDto(file));
+  }
+
+  @Delete(":id/files/:fileId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Delete a file",
+    description: "Delete a specific file from an assistant",
+  })
+  @ApiParam({
+    name: "id",
+    description: "UUID of the assistant",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @ApiParam({
+    name: "fileId",
+    description: "UUID of the file",
+    example: "123e4567-e89b-12d3-a456-426614174001",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "File deleted successfully",
+    schema: {
+      type: "object",
+      properties: {
+        message: { type: "string", example: "File deleted successfully" },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Assistant or file not found",
+  })
+  async deleteFile(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("fileId", ParseUUIDPipe) fileId: string,
+    @Request() req,
+  ): Promise<{ message: string }> {
+    // Verify assistant exists and belongs to user
+    await this.assistantService.findOne(id, req.user.id);
+
+    await this.fileStorageService.deleteFile(fileId, id);
+    return { message: "File deleted successfully" };
+  }
+
+  // ============== ASSISTANT CRUD ENDPOINTS ==============
 
   @Delete(":id")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
     summary: "Delete assistant",
-    description: "Delete an assistant (soft delete)",
+    description:
+      "Delete an assistant (soft delete). All associated files will also be deleted.",
   })
   @ApiParam({
     name: "id",
@@ -282,7 +514,7 @@ export class AssistantController {
   })
   async remove(
     @Param("id", ParseUUIDPipe) id: string,
-    @Request() req
+    @Request() req,
   ): Promise<{ message: string }> {
     await this.assistantService.remove(id, req.user.id);
     return { message: "Assistant deleted successfully" };
@@ -350,11 +582,11 @@ export class AssistantController {
   })
   async createWithCustomName(
     @Body() createDefaultAssistantDto: CreateDefaultAssistantDto,
-    @Request() req
+    @Request() req,
   ): Promise<AssistantResponseDto> {
     return this.assistantService.createDefaultAssistant(
       req.user.id,
-      createDefaultAssistantDto.name
+      createDefaultAssistantDto.name,
     );
   }
 
@@ -365,7 +597,8 @@ export class AssistantController {
   @Post("save-tool-config")
   @ApiOperation({
     summary: "Save tool configuration (supports multiple tools per assistant)",
-    description: "Add or update a tool for an assistant without overwriting existing tools",
+    description:
+      "Add or update a tool for an assistant without overwriting existing tools",
   })
   @ApiBody({
     schema: {
@@ -373,8 +606,14 @@ export class AssistantController {
       properties: {
         toolName: { type: "string", example: "function_tool" },
         description: { type: "string", example: "Describe the tool" },
-        assistantId: { type: "string", example: "123e4567-e89b-12d3-a456-426614174000" },
-        webhookUrl: { type: "string", example: "https://api.example.com/function" },
+        assistantId: {
+          type: "string",
+          example: "123e4567-e89b-12d3-a456-426614174000",
+        },
+        webhookUrl: {
+          type: "string",
+          example: "https://api.example.com/function",
+        },
         timeout: { type: "number", example: 20 },
         isAsync: { type: "boolean", example: true },
         isStrict: { type: "boolean", example: true },
@@ -415,7 +654,9 @@ export class AssistantController {
 
       if (dbTool) {
         // Update existing tool
-        console.log(`📝 Updating existing tool in DB: ${newToolConfig.toolName}`);
+        console.log(
+          `📝 Updating existing tool in DB: ${newToolConfig.toolName}`,
+        );
         dbTool.description = newToolConfig.description;
         dbTool.webhookUrl = newToolConfig.webhookUrl;
         dbTool.timeout = newToolConfig.timeout;
@@ -517,7 +758,7 @@ export class AssistantController {
     } catch (error) {
       console.error("❌ Error loading tool config from DB:", error);
       throw new NotFoundException(
-        `Failed to load configuration for assistant: ${assistantId}`
+        `Failed to load configuration for assistant: ${assistantId}`,
       );
     }
   }
@@ -525,7 +766,8 @@ export class AssistantController {
   @Post("tool-configs/bulk")
   @ApiOperation({
     summary: "Get tool configurations for multiple assistants (Bulk)",
-    description: "Retrieve all saved tools for multiple assistants in a single request",
+    description:
+      "Retrieve all saved tools for multiple assistants in a single request",
   })
   @ApiBody({
     schema: {
@@ -534,11 +776,14 @@ export class AssistantController {
         assistantIds: {
           type: "array",
           items: { type: "string" },
-          example: ["123e4567-e89b-12d3-a456-426614174000", "123e4567-e89b-12d3-a456-426614174001"],
-          description: "Array of assistant UUIDs"
+          example: [
+            "123e4567-e89b-12d3-a456-426614174000",
+            "123e4567-e89b-12d3-a456-426614174001",
+          ],
+          description: "Array of assistant UUIDs",
         },
       },
-      required: ["assistantIds"]
+      required: ["assistantIds"],
     },
   })
   @ApiResponse({
@@ -553,19 +798,27 @@ export class AssistantController {
           description: "Tool configurations grouped by assistant ID",
           additionalProperties: {
             type: "array",
-            description: "Array of tool configurations for each assistant"
-          }
+            description: "Array of tool configurations for each assistant",
+          },
         },
         totalTools: { type: "number", example: 5 },
       },
     },
   })
-  async getBulkToolConfigs(@Body() body: { assistantIds: string[] }): Promise<any> {
+  async getBulkToolConfigs(
+    @Body() body: { assistantIds: string[] },
+  ): Promise<any> {
     try {
       const { assistantIds } = body;
 
-      if (!assistantIds || !Array.isArray(assistantIds) || assistantIds.length === 0) {
-        throw new BadRequestException("assistantIds array is required and cannot be empty");
+      if (
+        !assistantIds ||
+        !Array.isArray(assistantIds) ||
+        assistantIds.length === 0
+      ) {
+        throw new BadRequestException(
+          "assistantIds array is required and cannot be empty",
+        );
       }
 
       console.log("=============================================");
@@ -580,11 +833,11 @@ export class AssistantController {
 
       // Group tools by assistant ID
       const groupedTools: Record<string, any[]> = {};
-      assistantIds.forEach(id => {
+      assistantIds.forEach((id) => {
         groupedTools[id] = [];
       });
 
-      tools.forEach(tool => {
+      tools.forEach((tool) => {
         if (groupedTools[tool.assistantId]) {
           groupedTools[tool.assistantId].push(tool);
         }
@@ -627,7 +880,7 @@ export class AssistantController {
   })
   async deleteToolConfig(
     @Param("assistantId") assistantId: string,
-    @Param("toolName") toolName: string
+    @Param("toolName") toolName: string,
   ): Promise<any> {
     try {
       const deleteResult = await this.toolConfigRepository.delete({
@@ -664,7 +917,8 @@ export class AssistantController {
   @Post("agent-webhook")
   @ApiOperation({
     summary: "Forward collected tool data to user-configured webhook",
-    description: "Endpoint called by AI agent to forward collected data to external hooks",
+    description:
+      "Endpoint called by AI agent to forward collected data to external hooks",
   })
   @ApiBody({
     schema: {
@@ -720,7 +974,9 @@ export class AssistantController {
       };
     } catch (error: any) {
       const statusCode = error.response?.status || "Unknown";
-      const errorData = error.response?.data ? JSON.stringify(error.response.data) : "No data";
+      const errorData = error.response?.data
+        ? JSON.stringify(error.response.data)
+        : "No data";
 
       console.error(
         `❌ Webhook forwarding failed for tool '${toolName}'. Target: ${tool?.webhookUrl || "Unknown"}. Status: ${statusCode}. Error: ${error.message}`,
@@ -729,7 +985,7 @@ export class AssistantController {
       return {
         success: false,
         message: `External webhook (${tool?.webhookUrl}) returned status ${statusCode}: ${error.message}`,
-        details: errorData
+        details: errorData,
       };
     }
   }

@@ -54,9 +54,10 @@ async function callLangfuseAPI(
 
     const options: AxiosRequestConfig = {
       method: "GET",
-      url: "https://cloud.langfuse.com/api/public/metrics",
-      headers: {
-        Authorization: `Basic ${process.env.LANGFUSE_BASIC_AUTH}`,
+      url: "http://3.109.60.31:3000/api/public/metrics",
+      auth: {
+        username: "pk-lf-ebbc73de-87ca-46d9-b584-2b4107d453df",
+        password: "sk-lf-9e0edcf3-056e-439d-b64b-6b7ccc9de19d",
       },
       params: {
         query: JSON.stringify({

@@ -7,6 +7,7 @@ import { LlmModule } from "../llm/llm.module";
 import { TranscriberModule } from "../transcriber/transcriber.module";
 import { SynthesizerModule } from "../synthesizer/synthesizer.module";
 import { RealtimeModule } from "../realtime/realtime.module";
+import { FileStorageModule } from "../file-storage/file-storage.module";
 
 @Module({
   imports: [
@@ -15,9 +16,10 @@ import { RealtimeModule } from "../realtime/realtime.module";
     TranscriberModule,
     SynthesizerModule,
     RealtimeModule,
+    FileStorageModule,
   ],
   providers: [AssistantService],
   controllers: [AssistantController],
   exports: [TypeOrmModule, AssistantService],
 })
-export class AssistantModule { }
+export class AssistantModule {}

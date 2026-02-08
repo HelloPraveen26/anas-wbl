@@ -23,6 +23,7 @@ import { ContactNumber } from "../contact-numbers/entities/contact-number.entity
 import { CallLog } from "../call-logs/entities/call-log.entity";
 import { Payment } from "../payment/entities/payment.entity";
 import { ToolConfig } from "../assistant/entities/tool-config.entity";
+import { File } from "../file-storage/entities/file.entity";
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -52,6 +53,7 @@ export const databaseConfig = (
     CallLog,
     Payment,
     ToolConfig,
+    File,
   ],
   synchronize: configService.get("NODE_ENV") === "development",
   logging: configService.get("NODE_ENV") === "development",

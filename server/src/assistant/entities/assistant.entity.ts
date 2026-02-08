@@ -9,6 +9,7 @@ import {
   JoinColumn,
 } from "typeorm";
 import { ToolConfig } from "./tool-config.entity";
+import { File } from "../../file-storage/entities/file.entity";
 
 @Entity("assistants")
 export class Assistant {
@@ -76,6 +77,9 @@ export class Assistant {
 
   @OneToMany("ToolConfig", (toolConfig: any) => toolConfig.assistant)
   toolConfigs: any[];
+
+  @OneToMany(() => File, (file) => file.assistant)
+  files: File[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -18,6 +18,7 @@ import { LlmModel } from "../llm/entities/llm-model.entity";
 import { TranscriberModel } from "../transcriber/entities/transcriber-model.entity";
 import { SynthesizerModel } from "../synthesizer/entities/synthesizer-model.entity";
 import { RealtimeModel } from "../realtime/entities/realtime-model.entity";
+import { FileStorageService } from "../file-storage/file-storage.service";
 
 @Injectable()
 export class AssistantService {
@@ -33,6 +34,7 @@ export class AssistantService {
     @InjectRepository(RealtimeModel)
     private realtimeModelRepository: Repository<RealtimeModel>,
     private configService: ConfigService,
+    private fileStorageService: FileStorageService,
   ) {}
 
   async findAll(userId: string): Promise<AssistantResponseDto[]> {
@@ -142,6 +144,9 @@ export class AssistantService {
     if (!assistant) {
       throw new NotFoundException("Assistant not found");
     }
+
+    // Delete all associated files
+    await this.fileStorageService.deleteFilesByAssistantId(id);
 
     // Soft delete by setting isActive to false
     await this.assistantRepository.update(id, { isActive: false });
