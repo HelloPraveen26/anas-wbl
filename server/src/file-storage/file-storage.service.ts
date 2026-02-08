@@ -99,15 +99,32 @@ export class FileStorageService {
       );
     }
 
-    // Generate unique filename
-    const fileExtension = path.extname(file.originalname);
-    const storedName = `${uuidv4()}${fileExtension}`;
+    // Use original filename and organize by assistant ID
+    let storedName = file.originalname;
 
-    // Upload to storage
+    // Check if file with same name already exists for this assistant
+    const existingFile = await this.fileRepository.findOne({
+      where: {
+        assistantId: assistantId,
+        originalName: file.originalname,
+        isActive: true,
+      },
+    });
+
+    // If duplicate exists, append timestamp to make it unique
+    if (existingFile) {
+      const fileExtension = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, fileExtension);
+      const timestamp = Date.now();
+      storedName = `${baseName}_${timestamp}${fileExtension}`;
+    }
+
+    // Upload to storage with assistant ID as subdirectory
     const filePath = await this.storageStrategy.upload(
       file.buffer,
       storedName,
       file.mimetype,
+      assistantId,
     );
 
     // Create file metadata record
@@ -119,7 +136,10 @@ export class FileStorageService {
       fileSize: file.size,
       storageType: this.storageStrategy.getStorageType(),
       assistantId: assistantId,
-      s3Key: this.storageStrategy.getStorageType() === "s3" ? storedName : null,
+      s3Key:
+        this.storageStrategy.getStorageType() === "s3"
+          ? `${assistantId}/${storedName}`
+          : null,
       s3Bucket:
         this.storageStrategy.getStorageType() === "s3"
           ? (this.s3StorageStrategy as any).getBucketName()

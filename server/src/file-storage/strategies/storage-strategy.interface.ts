@@ -4,9 +4,15 @@ export interface StorageStrategy {
    * @param file - The file buffer to upload
    * @param filename - The name to store the file as
    * @param mimetype - The MIME type of the file
+   * @param subdirectory - Optional subdirectory to organize files (e.g., assistantId)
    * @returns The path or key where the file is stored
    */
-  upload(file: Buffer, filename: string, mimetype: string): Promise<string>;
+  upload(
+    file: Buffer,
+    filename: string,
+    mimetype: string,
+    subdirectory?: string,
+  ): Promise<string>;
 
   /**
    * Delete a file from storage

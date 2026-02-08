@@ -30,6 +30,7 @@ import {
   PhoneOff,
   ArrowLeft,
   Radio,
+  Upload,
 } from "lucide-react";
 
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
@@ -353,6 +354,11 @@ export default function AssistantEditPage() {
   - Provide dates in a Month Day format (e.g., January 15).`,
   );
 
+  // File upload state
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [fileLoading, setFileLoading] = useState(false);
+
   // -------------------- Helpers --------------------
   const getAuthHeaders = () => {
     const token = authManager.getToken();
@@ -586,6 +592,27 @@ export default function AssistantEditPage() {
     }
   };
 
+  // File handling functions
+  const fetchFiles = async () => {
+    if (!assistantId || assistantId === "new") return;
+
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/assistants/${assistantId}/files`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setUploadedFiles(data);
+      }
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
+  };
+
   useEffect(() => {
     fetchAssistants();
     fetchProviders();
@@ -600,11 +627,15 @@ export default function AssistantEditPage() {
 
   useEffect(() => {
     if (assistantId && assistants.length > 0) {
-      const a = assistants.find((x) => x.id === assistantId);
+      const a = assistants.find((a) => a.id === assistantId);
+
       if (!a) {
         router.push("/dashboard/assistants");
         return;
       }
+
+      // Fetch files when assistantId changes
+      fetchFiles();
       setAssistantName(a.name);
       setFirstMessage(a.firstMessage);
       setSystemPrompt(a.systemPrompt);
@@ -682,20 +713,20 @@ export default function AssistantEditPage() {
 
   const filteredSynthesizerModels = selectedSynthesizerProvider
     ? synthesizerModels.filter(
-      (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
-    )
+        (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
+      )
     : synthesizerModels;
 
   const filteredTranscriberModels = selectedTranscriberProvider
     ? transcriberModels.filter(
-      (m) => m.transcriberProvider.id === selectedTranscriberProvider,
-    )
+        (m) => m.transcriberProvider.id === selectedTranscriberProvider,
+      )
     : transcriberModels;
 
   const filteredRealtimeModels = selectedRealtimeProvider
     ? realtimeModels.filter(
-      (m) => m.realtimeProvider.id === selectedRealtimeProvider,
-    )
+        (m) => m.realtimeProvider.id === selectedRealtimeProvider,
+      )
     : realtimeModels;
 
   // Update firstMessage based on mode
@@ -744,27 +775,63 @@ export default function AssistantEditPage() {
         : `${getApiBaseUrl()}/assistants`;
       const method = isUpdating ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
-        method,
-        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: assistantName,
-          firstMessage,
-          systemPrompt,
-          llmModelId: selectedModel,
-          transcriberModelId: selectedTranscriberModel,
-          synthesizerModelId: selectedSynthesizerModel,
-          realtimeModelId: selectedRealtimeModel || null,
-          sttConfig: sttConfigValues,
-          ttsConfig: synthesizerConfigValues,
-          realtimeConfig: realtimeConfigValues,
-          isActive: true,
-        }),
-      });
+      // Use FormData if files are selected, otherwise use JSON
+      if (selectedFiles.length > 0) {
+        const formData = new FormData();
+        formData.append("name", assistantName);
+        formData.append("firstMessage", firstMessage);
+        formData.append("systemPrompt", systemPrompt);
+        formData.append("llmModelId", selectedModel);
+        formData.append("transcriberModelId", selectedTranscriberModel);
+        formData.append("synthesizerModelId", selectedSynthesizerModel);
+        if (selectedRealtimeModel) {
+          formData.append("realtimeModelId", selectedRealtimeModel);
+        }
+        formData.append("sttConfig", JSON.stringify(sttConfigValues));
+        formData.append("ttsConfig", JSON.stringify(synthesizerConfigValues));
+        formData.append("realtimeConfig", JSON.stringify(realtimeConfigValues));
+        formData.append("isActive", "true");
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      alert("Assistant saved successfully!");
+        // Append files
+        selectedFiles.forEach((file) => {
+          formData.append("files", file);
+        });
+
+        const res = await fetch(url, {
+          method,
+          headers: { ...getAuthHeaders() },
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setSelectedFiles([]);
+        await fetchFiles();
+        alert("Assistant saved successfully!");
+      } else {
+        const res = await fetch(url, {
+          method,
+          headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: assistantName,
+            firstMessage,
+            systemPrompt,
+            llmModelId: selectedModel,
+            transcriberModelId: selectedTranscriberModel,
+            synthesizerModelId: selectedSynthesizerModel,
+            realtimeModelId: selectedRealtimeModel || null,
+            sttConfig: sttConfigValues,
+            ttsConfig: synthesizerConfigValues,
+            realtimeConfig: realtimeConfigValues,
+            isActive: true,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        alert("Assistant saved successfully!");
+      }
+
       await fetchAssistants();
     } catch (e) {
       console.error("Error saving assistant:", e);
@@ -880,7 +947,122 @@ export default function AssistantEditPage() {
     setShowEditTaskModal(false);
   };
 
-  // -------------------- UI --------------------
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    // Allowed file types (excluding audio, video, zip, tar, executables)
+    const allowedTypes = [
+      // Documents
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      // Text
+      "text/plain",
+      "text/csv",
+      "text/html",
+      "text/css",
+      "text/javascript",
+      "application/json",
+      "application/xml",
+      "text/xml",
+    ];
+
+    const allowedExtensions = [
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+      ".txt",
+      ".csv",
+      ".html",
+      ".css",
+      ".js",
+      ".json",
+      ".xml",
+    ];
+
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+
+    Array.from(files).forEach((file) => {
+      const fileExtension = file.name
+        .substring(file.name.lastIndexOf("."))
+        .toLowerCase();
+
+      // Check if file type is allowed and not audio/video/archive/executable
+      const isValidType =
+        allowedTypes.includes(file.type) ||
+        allowedExtensions.includes(fileExtension);
+      const isInvalidType =
+        file.type.startsWith("audio/") ||
+        file.type.startsWith("video/") ||
+        file.type.includes("zip") ||
+        file.type.includes("tar") ||
+        file.type.includes("rar") ||
+        file.type.includes("7z") ||
+        file.type.includes("executable") ||
+        fileExtension.match(/\.(exe|dmg|app|deb|rpm|sh|bat|cmd)$/i);
+
+      if (isValidType && !isInvalidType) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(file.name);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      alert(
+        `The following files are not allowed:\n${invalidFiles.join("\n")}\n\nOnly documents, text files, and spreadsheets are supported.`,
+      );
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...validFiles]);
+    }
+
+    // Reset input
+    e.target.value = "";
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!confirm("Are you sure you want to delete this file?")) return;
+
+    setFileLoading(true);
+    try {
+      const res = await fetch(
+        `${getApiBaseUrl()}/assistants/${assistantId}/files/${fileId}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        },
+      );
+
+      if (res.ok) {
+        await fetchFiles();
+        alert("File deleted successfully!");
+      } else {
+        throw new Error("Failed to delete file");
+      }
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      alert("Error deleting file. Please try again.");
+    } finally {
+      setFileLoading(false);
+    }
+  };
+
+  const handleRemoveSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const currentAssistant = assistants.find((a) => a.id === assistantId);
 
   return (
@@ -987,14 +1169,17 @@ export default function AssistantEditPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 py-1.5 md:py-3 px-1 md:px-4 rounded-lg md:rounded-xl transition-all font-medium text-[10px] md:text-sm ${activeTab === (tab.id as any)
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                    }`}
+                  className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 py-1.5 md:py-3 px-1 md:px-4 rounded-lg md:rounded-xl transition-all font-medium text-[10px] md:text-sm ${
+                    activeTab === (tab.id as any)
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
                 >
                   <Icon className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden text-[9px] leading-tight">{tab.label}</span>
+                  <span className="sm:hidden text-[9px] leading-tight">
+                    {tab.label}
+                  </span>
                 </button>
               );
             })}
@@ -1132,6 +1317,110 @@ export default function AssistantEditPage() {
                         className="w-full bg-gray-100 text-gray-800 p-5 rounded-xl text-sm font-mono min-h-[130px] border border-gray-300 resize-none shadow-inner"
                         placeholder="Enter system prompt..."
                       />
+                    </div>
+
+                    {/* File Upload Section */}
+                    <div className="space-y-3">
+                      <Label className="text-sm font-semibold text-gray-700">
+                        Upload Files
+                      </Label>
+                      <div className="space-y-3">
+                        {/* File Input */}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            id="file-upload"
+                            multiple
+                            onChange={handleFileSelect}
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.html,.css,.js,.json,.xml"
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="file-upload"
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg border border-emerald-200 hover:bg-emerald-100 cursor-pointer transition-colors text-sm font-medium"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Select Files
+                          </label>
+                          <span className="text-xs text-gray-500">
+                            PDF, Word, Excel, Text files only
+                          </span>
+                        </div>
+
+                        {/* Selected Files (not yet uploaded) */}
+                        {selectedFiles.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-gray-600">
+                              Files to upload ({selectedFiles.length}):
+                            </p>
+                            <div className="space-y-1">
+                              {selectedFiles.map((file, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm"
+                                >
+                                  <span className="text-blue-900 truncate flex-1">
+                                    {file.name}
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      handleRemoveSelectedFile(index)
+                                    }
+                                    className="text-red-600 hover:text-red-800 ml-2"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-500 italic">
+                              Click "Update Assistant" to upload these files
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Uploaded Files */}
+                        {uploadedFiles.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-gray-600">
+                              Uploaded files ({uploadedFiles.length}):
+                            </p>
+                            <div className="space-y-1 max-h-48 overflow-y-auto">
+                              {uploadedFiles.map((file) => (
+                                <div
+                                  key={file.id}
+                                  className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm"
+                                >
+                                  <div className="flex-1 truncate">
+                                    <p className="text-emerald-900 font-medium">
+                                      {file.originalName}
+                                    </p>
+                                    <p className="text-xs text-emerald-700">
+                                      {(file.fileSize / 1024).toFixed(2)} KB
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteFile(file.id)}
+                                    disabled={fileLoading}
+                                    className="text-red-600 hover:text-red-800 ml-2 disabled:opacity-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {uploadedFiles.length === 0 &&
+                          selectedFiles.length === 0 && (
+                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                              <p className="text-xs text-gray-500">
+                                No files uploaded yet
+                              </p>
+                            </div>
+                          )}
+                      </div>
                     </div>
                   </CardContent>
                 )}
@@ -1324,26 +1613,26 @@ export default function AssistantEditPage() {
 
                             {(config.type === "string" ||
                               config.type === "number") && (
-                                <Input
-                                  type={
-                                    config.type === "number" ? "number" : "text"
-                                  }
-                                  value={
-                                    synthesizerConfigValues[config.key] ||
-                                    config.defaultValue
-                                  }
-                                  onChange={(e) =>
-                                    setSynthesizerConfigValues((prev) => ({
-                                      ...prev,
-                                      [config.key]:
-                                        config.type === "number"
-                                          ? Number(e.target.value)
-                                          : e.target.value,
-                                    }))
-                                  }
-                                  className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
-                                />
-                              )}
+                              <Input
+                                type={
+                                  config.type === "number" ? "number" : "text"
+                                }
+                                value={
+                                  synthesizerConfigValues[config.key] ||
+                                  config.defaultValue
+                                }
+                                onChange={(e) =>
+                                  setSynthesizerConfigValues((prev) => ({
+                                    ...prev,
+                                    [config.key]:
+                                      config.type === "number"
+                                        ? Number(e.target.value)
+                                        : e.target.value,
+                                  }))
+                                }
+                                className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                              />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1468,27 +1757,27 @@ export default function AssistantEditPage() {
 
                           {(config.type === "string" ||
                             config.type === "number") && (
-                              <Input
-                                type={
-                                  config.type === "number" ? "number" : "text"
-                                }
-                                value={
-                                  sttConfigValues[config.key] ||
-                                  config.defaultValue
-                                }
-                                onChange={(e) =>
-                                  setSttConfigValues((prev) => ({
-                                    ...prev,
-                                    [config.key]:
-                                      config.type === "number"
-                                        ? Number(e.target.value)
-                                        : e.target.value,
-                                  }))
-                                }
-                                placeholder={config.defaultValue}
-                                className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                              />
-                            )}
+                            <Input
+                              type={
+                                config.type === "number" ? "number" : "text"
+                              }
+                              value={
+                                sttConfigValues[config.key] ||
+                                config.defaultValue
+                              }
+                              onChange={(e) =>
+                                setSttConfigValues((prev) => ({
+                                  ...prev,
+                                  [config.key]:
+                                    config.type === "number"
+                                      ? Number(e.target.value)
+                                      : e.target.value,
+                                }))
+                              }
+                              placeholder={config.defaultValue}
+                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1612,27 +1901,27 @@ export default function AssistantEditPage() {
 
                           {(config.type === "string" ||
                             config.type === "number") && (
-                              <Input
-                                type={
-                                  config.type === "number" ? "number" : "text"
-                                }
-                                value={
-                                  realtimeConfigValues[config.key] ||
-                                  config.defaultValue
-                                }
-                                onChange={(e) =>
-                                  setRealtimeConfigValues((prev) => ({
-                                    ...prev,
-                                    [config.key]:
-                                      config.type === "number"
-                                        ? Number(e.target.value)
-                                        : e.target.value,
-                                  }))
-                                }
-                                placeholder={config.defaultValue}
-                                className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                              />
-                            )}
+                            <Input
+                              type={
+                                config.type === "number" ? "number" : "text"
+                              }
+                              value={
+                                realtimeConfigValues[config.key] ||
+                                config.defaultValue
+                              }
+                              onChange={(e) =>
+                                setRealtimeConfigValues((prev) => ({
+                                  ...prev,
+                                  [config.key]:
+                                    config.type === "number"
+                                      ? Number(e.target.value)
+                                      : e.target.value,
+                                }))
+                              }
+                              placeholder={config.defaultValue}
+                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                            />
+                          )}
                         </div>
                       ))}
                     </div>

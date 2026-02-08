@@ -10,6 +10,7 @@ client/out/
 ui/node_modules
 
 server/node_modules/
+server/uploads/
 server/dist/
 server/.env
 

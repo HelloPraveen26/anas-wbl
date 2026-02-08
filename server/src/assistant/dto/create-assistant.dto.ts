@@ -6,6 +6,7 @@ import {
   MaxLength,
   IsObject,
 } from "class-validator";
+import { Transform } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class CreateAssistantDto {
@@ -64,6 +65,33 @@ export class CreateAssistantDto {
     example: { language: "hi-IN" },
     type: "object",
   })
+  @Transform(({ value }) => {
+    // Handle string (from FormData)
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        // If parsed to null or empty object, return undefined
+        if (
+          parsed === null ||
+          (typeof parsed === "object" && Object.keys(parsed).length === 0)
+        ) {
+          return undefined;
+        }
+        return parsed;
+      } catch {
+        return undefined;
+      }
+    }
+    // Handle null or empty object (from JSON)
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === "object" && Object.keys(value).length === 0)
+    ) {
+      return undefined;
+    }
+    return value;
+  })
   @IsOptional()
   @IsObject()
   sttConfig?: Record<string, any>;
@@ -72,6 +100,33 @@ export class CreateAssistantDto {
     description: "TTS (Text-to-Speech) configuration for synthesizer",
     example: { speaker: "anushka" },
     type: "object",
+  })
+  @Transform(({ value }) => {
+    // Handle string (from FormData)
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        // If parsed to null or empty object, return undefined
+        if (
+          parsed === null ||
+          (typeof parsed === "object" && Object.keys(parsed).length === 0)
+        ) {
+          return undefined;
+        }
+        return parsed;
+      } catch {
+        return undefined;
+      }
+    }
+    // Handle null or empty object (from JSON)
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === "object" && Object.keys(value).length === 0)
+    ) {
+      return undefined;
+    }
+    return value;
   })
   @IsOptional()
   @IsObject()
@@ -89,6 +144,33 @@ export class CreateAssistantDto {
     description: "Realtime configuration for realtime model",
     example: { temperature: 0.7, voice: "alloy" },
     type: "object",
+  })
+  @Transform(({ value }) => {
+    // Handle string (from FormData)
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        // If parsed to null or empty object, return undefined
+        if (
+          parsed === null ||
+          (typeof parsed === "object" && Object.keys(parsed).length === 0)
+        ) {
+          return undefined;
+        }
+        return parsed;
+      } catch {
+        return undefined;
+      }
+    }
+    // Handle null or empty object (from JSON)
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === "object" && Object.keys(value).length === 0)
+    ) {
+      return undefined;
+    }
+    return value;
   })
   @IsOptional()
   @IsObject()

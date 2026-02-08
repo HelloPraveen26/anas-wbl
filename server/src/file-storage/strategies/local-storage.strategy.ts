@@ -30,15 +30,26 @@ export class LocalStorageStrategy implements StorageStrategy {
     file: Buffer,
     filename: string,
     mimetype: string,
+    subdirectory?: string,
   ): Promise<string> {
     try {
       await this.ensureUploadDir();
 
-      const filePath = path.join(this.uploadDir, filename);
-      await fs.writeFile(filePath, file);
+      // Create subdirectory if provided (e.g., assistantId)
+      let targetDir = this.uploadDir;
+      if (subdirectory) {
+        targetDir = path.join(this.uploadDir, subdirectory);
+        await fs.mkdir(targetDir, { recursive: true });
+      }
+
+      const relativePath = subdirectory
+        ? path.join(subdirectory, filename)
+        : filename;
+      const fullPath = path.join(this.uploadDir, relativePath);
+      await fs.writeFile(fullPath, file);
 
       // Return relative path from upload directory
-      return filename;
+      return relativePath;
     } catch (error) {
       throw new InternalServerErrorException(
         `Failed to upload file: ${error.message}`,

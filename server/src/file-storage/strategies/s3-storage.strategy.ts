@@ -44,9 +44,13 @@ export class S3StorageStrategy implements StorageStrategy {
     file: Buffer,
     filename: string,
     mimetype: string,
+    subdirectory?: string,
   ): Promise<string> {
     this.ensureConfigured();
     try {
+      // Create S3 key with subdirectory if provided
+      const s3Key = subdirectory ? `${subdirectory}/${filename}` : filename;
+
       // TODO: Implement AWS S3 SDK upload
       // This is a placeholder that will be implemented when AWS SDK is installed
       //
@@ -61,13 +65,13 @@ export class S3StorageStrategy implements StorageStrategy {
       //
       // const command = new PutObjectCommand({
       //   Bucket: this.bucketName,
-      //   Key: filename,
+      //   Key: s3Key,
       //   Body: file,
       //   ContentType: mimetype,
       // });
       //
       // await s3.send(command);
-      // return filename;
+      // return s3Key;
 
       throw new InternalServerErrorException(
         "S3 storage is not yet implemented. Please install @aws-sdk/client-s3 and implement upload logic.",
