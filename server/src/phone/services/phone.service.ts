@@ -297,6 +297,10 @@ After collecting all required information, the system will automatically process
           sipHeaders = {
             "X-Piopiy-Username": "shreemadam",
           };
+        } else if (["+917943446701"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "guptaanimation",
+          };
         } else {
           sipHeaders = {
             "X-Piopiy-Username": "zenaisip",
