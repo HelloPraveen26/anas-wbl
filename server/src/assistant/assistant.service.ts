@@ -68,6 +68,7 @@ export class AssistantService {
         "synthesizerModel.synthesizerProvider",
         "realtimeModel",
         "realtimeModel.realtimeProvider",
+        "files",
       ],
     });
 

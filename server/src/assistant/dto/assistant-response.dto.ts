@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Assistant } from "../entities/assistant.entity";
+import { File } from "../../file-storage/entities/file.entity";
 
 export class AssistantResponseDto {
   @ApiProperty({
@@ -189,6 +190,24 @@ export class AssistantResponseDto {
   })
   updatedAt: Date;
 
+  @ApiPropertyOptional({
+    description: "List of knowledgebase files associated with the assistant",
+    type: "array",
+    items: {
+      type: "object",
+      properties: {
+        id: { type: "string" },
+        originalName: { type: "string" },
+        storedName: { type: "string" },
+        filePath: { type: "string" },
+        mimeType: { type: "string" },
+        fileSize: { type: "number" },
+        isActive: { type: "boolean" },
+      },
+    },
+  })
+  files?: File[];
+
   constructor(assistant: Assistant) {
     this.id = assistant.id;
     this.name = assistant.name;
@@ -248,6 +267,10 @@ export class AssistantResponseDto {
           name: assistant.realtimeModel.realtimeProvider?.name,
         },
       };
+    }
+
+    if (assistant.files) {
+      this.files = assistant.files;
     }
   }
 }

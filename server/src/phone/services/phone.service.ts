@@ -10,6 +10,7 @@ import { AssistantService } from "../../assistant/assistant.service";
 import { RegisteredNumbersService } from "../../registered-numbers/registered-numbers.service";
 import { CallLogsService } from "../../call-logs/call-logs.service";
 import { renderTemplate } from "../../common/utils/template.util";
+import * as path from "path";
 
 @Injectable()
 export class PhoneService {
@@ -90,6 +91,7 @@ export class PhoneService {
       let ttsConfig: Record<string, any> | undefined;
       let toolConfig: any = null;
       let webhookUrl = "http://127.0.0.1:9005/";
+      let knowledgebaseFilePaths: string[] = [];
 
       if (dto.selectedAssistant) {
         this.logger.log(
@@ -102,6 +104,20 @@ export class PhoneService {
             userId,
           );
           systemPrompt = assistant.systemPrompt;
+
+          // Fetch assistant files for knowledgebase
+          if (assistant.files && assistant.files.length > 0) {
+            const fileUploadDir =
+              this.configService.get<string>("FILE_UPLOAD_DIR") || "./uploads";
+            knowledgebaseFilePaths = assistant.files
+              .filter((file) => file.isActive)
+              .map((file) =>
+                path.resolve(process.cwd(), fileUploadDir, file.filePath),
+              );
+            this.logger.log(
+              `📁 Loaded ${knowledgebaseFilePaths.length} knowledgebase files`,
+            );
+          }
 
           if (dto.metadata && systemPrompt) {
             systemPrompt = renderTemplate(systemPrompt, dto.metadata);
@@ -311,6 +327,9 @@ After collecting all required information, the system will automatically process
           metadata: customMetadata,
         }),
         ...(Object.keys(sipHeaders).length > 0 && { sip_headers: sipHeaders }),
+        ...(knowledgebaseFilePaths.length > 0 && {
+          knowledgebase_file_path: knowledgebaseFilePaths,
+        }),
       };
 
       // 🔍 DEBUG: Log final payload
