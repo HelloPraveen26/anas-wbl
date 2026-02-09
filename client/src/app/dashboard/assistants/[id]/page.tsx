@@ -955,38 +955,32 @@ export default function AssistantEditPage() {
     const allowedTypes = [
       // Documents
       "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-powerpoint",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      // "application/msword",
+      // "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      // "application/vnd.ms-excel",
+      // "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // "application/vnd.ms-powerpoint",
+      // "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       // Text
-      "text/plain",
-      "text/csv",
-      "text/html",
-      "text/css",
-      "text/javascript",
-      "application/json",
-      "application/xml",
-      "text/xml",
+      // "text/plain",
+      // "text/csv",
     ];
 
     const allowedExtensions = [
       ".pdf",
-      ".doc",
-      ".docx",
-      ".xls",
-      ".xlsx",
-      ".ppt",
-      ".pptx",
-      ".txt",
-      ".csv",
-      ".html",
-      ".css",
-      ".js",
-      ".json",
-      ".xml",
+      // ".doc",
+      // ".docx",
+      // ".xls",
+      // ".xlsx",
+      // ".ppt",
+      // ".pptx",
+      // ".txt",
+      // ".csv",
+      // ".html",
+      // ".css",
+      // ".js",
+      // ".json",
+      // ".xml",
     ];
 
     const validFiles: File[] = [];
@@ -1020,7 +1014,7 @@ export default function AssistantEditPage() {
 
     if (invalidFiles.length > 0) {
       alert(
-        `The following files are not allowed:\n${invalidFiles.join("\n")}\n\nOnly documents, text files, and spreadsheets are supported.`,
+        `The following files are not allowed:\n${invalidFiles.join("\n")}\n\nOnly pdf documents are supported.`,
       );
     }
 
@@ -1343,7 +1337,7 @@ export default function AssistantEditPage() {
                             Select Files
                           </label>
                           <span className="text-xs text-gray-500">
-                            PDF, Word, Excel, Text files only
+                            PDF files only
                           </span>
                         </div>
 

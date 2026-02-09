@@ -46,35 +46,16 @@ export class FileStorageService {
 
     // Allowed MIME types (excluding audio and video)
     this.allowedMimeTypes = [
-      // Documents
       "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-powerpoint",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      // "application/msword",
+      // "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      // "application/vnd.ms-excel",
+      // "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      // "application/vnd.ms-powerpoint",
+      // "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       // Text
-      "text/plain",
-      "text/csv",
-      "text/html",
-      "text/css",
-      "text/javascript",
-      "application/json",
-      "application/xml",
-      "text/xml",
-      // Images
-      "image/jpeg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-      "image/svg+xml",
-      "image/bmp",
-      // Archives
-      "application/zip",
-      "application/x-zip-compressed",
-      "application/x-rar-compressed",
-      "application/x-7z-compressed",
+      // "text/plain",
+      // "text/csv",
     ];
   }
 
