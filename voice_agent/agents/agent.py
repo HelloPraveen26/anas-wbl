@@ -6,8 +6,8 @@ import os
 import time
 from datetime import datetime, timezone
 
-import httpx
 import aiohttp
+import httpx
 from dotenv import load_dotenv
 from livekit import api, rtc
 from livekit.agents import (
@@ -63,7 +63,7 @@ class DynamicToolHandler:
         self.assistant_id = assistant_id
         self.collected_data = {}
         self.metadata = metadata or {}
-        self.transcript = [] # Keep track of conversation for summary
+        self.transcript = []  # Keep track of conversation for summary
 
     async def prepopulate_from_metadata(self):
         """Pre-populate collected_data with values from metadata that match tool parameters"""
@@ -76,39 +76,43 @@ class DynamicToolHandler:
 
         logger.info(f"🔍 [{self.tool_name}] Checking metadata for pre-population...")
         prepopulated_count = 0
-        
+
         for param_name in params.keys():
             metadata_value = None
-            
+
             # Try exact match first
             if param_name in self.metadata:
                 metadata_value = self.metadata[param_name]
             # Try lowercase match
             elif param_name.lower() in {k.lower(): v for k, v in self.metadata.items()}:
-                matching_keys = [k for k in self.metadata.keys() if k.lower() == param_name.lower()]
+                matching_keys = [
+                    k for k in self.metadata.keys() if k.lower() == param_name.lower()
+                ]
                 if matching_keys:
                     metadata_value = self.metadata[matching_keys[0]]
-            
+
             if metadata_value is not None and metadata_value != "":
                 self.collected_data[param_name] = str(metadata_value)
                 prepopulated_count += 1
                 logger.info(f"✅ [{self.tool_name}] PRE-POPULATED: {param_name}")
 
         if prepopulated_count > 0:
-            logger.info(f"🎯 [{self.tool_name}] Pre-populated {prepopulated_count} parameter(s)!")
+            logger.info(
+                f"🎯 [{self.tool_name}] Pre-populated {prepopulated_count} parameter(s)!"
+            )
 
     async def collect_data(self, key: str, value: str):
         """Store user-provided information with flexible key matching"""
         normalized_key = key.strip().lower()
         actual_key = key
-        
+
         if self.tool_config and self.tool_config.get("parameters"):
             params = self.tool_config.get("parameters", {})
             for p_name in params.keys():
                 if p_name.strip().lower() == normalized_key:
                     actual_key = p_name
                     break
-        
+
         self.collected_data[actual_key] = value
         logger.info(f"✅ [{self.tool_name}] STORED: {actual_key} = {value}")
 
@@ -135,7 +139,7 @@ class DynamicToolHandler:
         """Generate a concise summary from the call data and transcript"""
         has_user_speech = any("User:" in line for line in self.transcript)
         has_agent_speech = any("Assistant:" in line for line in self.transcript)
-        
+
         if not self.transcript and not self.collected_data:
             return "Call disconnected immediately after connection."
 
@@ -144,17 +148,21 @@ class DynamicToolHandler:
 
         summary_parts = []
         if self.collected_data:
-            summary_parts.append(f"User provided: {', '.join(self.collected_data.keys())}")
-        
+            summary_parts.append(
+                f"User provided: {', '.join(self.collected_data.keys())}"
+            )
+
         missing = self.get_missing_parameters()
         missing = [p for p in missing if "summary" not in p.lower()]
-        
+
         if not self.collected_data:
             return "Call ended early. Conversation occurred but no data collected."
         elif missing:
             return f"{'. '.join(summary_parts)}. Missing: {', '.join(missing)}. Abrupt hang-up."
         else:
-            return f"{'. '.join(summary_parts)}. All information collected successfully."
+            return (
+                f"{'. '.join(summary_parts)}. All information collected successfully."
+            )
 
     async def send_to_webhook(self, is_final: bool = False):
         """Send collected data to backend for webhook routing"""
@@ -165,22 +173,25 @@ class DynamicToolHandler:
                 for param_name in params.keys():
                     found_value = "not available"
                     normalized_param = param_name.strip().lower()
-                    
+
                     for collected_key, value in self.collected_data.items():
                         if collected_key.strip().lower() == normalized_param:
                             found_value = value
                             break
-                    
-                    if found_value == "not available" and ("summary" in normalized_param or "call_summary" in normalized_param):
+
+                    if found_value == "not available" and (
+                        "summary" in normalized_param
+                        or "call_summary" in normalized_param
+                    ):
                         if is_final:
                             found_value = self.get_auto_summary()
                         else:
                             found_value = "Summary pending end of call"
-                        
+
                     complete_data[param_name] = found_value
             else:
                 complete_data = self.collected_data
-            
+
             payload = {
                 "assistantId": self.assistant_id,
                 "toolName": self.tool_name,
@@ -200,20 +211,29 @@ class DynamicToolHandler:
 
     def get_tool_instructions(self):
         """Generate LLM instructions for this specific tool"""
-        if not self.tool_config: return ""
+        if not self.tool_config:
+            return ""
         params = self.tool_config.get("parameters", {})
-        
+
         needed = []
         for p_name, cfg in params.items():
-            if "summary" in p_name.lower(): continue
+            if "summary" in p_name.lower():
+                continue
             if p_name not in self.collected_data:
                 status = "REQUIRED" if cfg.get("required") else "OPTIONAL"
-                needed.append(f" - {p_name} ({status}): {cfg.get('description', p_name)}")
+                needed.append(
+                    f" - {p_name} ({status}): {cfg.get('description', p_name)}"
+                )
 
-        if not needed: return ""
-        
+        if not needed:
+            return ""
+
         prompt = f"\n\n🔧 TOOL: {self.tool_name}\n"
-        prompt += "ALREADY COLLECTED (DO NOT ASK): " + ", ".join(self.collected_data.keys()) + "\n"
+        prompt += (
+            "ALREADY COLLECTED (DO NOT ASK): "
+            + ", ".join(self.collected_data.keys())
+            + "\n"
+        )
         prompt += "STILL NEED TO COLLECT:\n" + "\n".join(needed)
         prompt += f"\n👉 RULE: Call collect_{self.tool_name}(key, value) immediately when user provides these details.\n"
         return prompt
@@ -238,6 +258,7 @@ async def load_all_tools(assistant_id: str) -> list:
         logger.error(f"❌ Error loading tools: {e}")
         return []
 
+
 async def hangup_call():
     """Hang up the call by deleting the room for all participants."""
     ctx = get_job_context()
@@ -247,6 +268,7 @@ async def hangup_call():
 
     logger.info(f"Hanging up call for room: {ctx.room.name}")
     await ctx.api.room.delete_room(api.DeleteRoomRequest(room=ctx.room.name))
+
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
@@ -286,11 +308,11 @@ DEFAULT_PERSONALITY = """You are a helpful voice AI assistant.
             If the user clearly wants to end the conversation, call the end_call function.
             You are curious, friendly, and have a sense of humor."""
 
+
 class Assistant(Agent):
     def __init__(self, instructions: str | None = None, tools: list = None) -> None:
         super().__init__(
-            instructions=instructions or DEFAULT_PERSONALITY,
-            tools=tools or []
+            instructions=instructions or DEFAULT_PERSONALITY, tools=tools or []
         )
 
     @function_tool
@@ -317,7 +339,9 @@ class Assistant(Agent):
                     timeout=3.0,
                 )
                 try:
-                    await asyncio.wait_for(goodbye_handle.wait_for_playout(), timeout=3.0)
+                    await asyncio.wait_for(
+                        goodbye_handle.wait_for_playout(), timeout=3.0
+                    )
                     goodbye_said = True
                     logger.info("Goodbye message delivered via generate_reply()")
                 except asyncio.TimeoutError:
@@ -386,7 +410,9 @@ async def entrypoint(ctx: JobContext):
     phone_number = metadata.get("phone_number")
     outbound_trunk_id = metadata.get("outbound_trunk_id")
     custom_instructions = metadata.get("instructions")
-    custom_first_message = metadata.get("first_message", "Hello! How can I help you today?")
+    custom_first_message = metadata.get(
+        "first_message", "Hello! How can I help you today?"
+    )
     realtime_provider_name = metadata.get("realtime_provider_name")
     llm_provider_name = metadata.get("llm_provider_name")
     stt_provider_name = metadata.get("stt_provider_name")
@@ -396,6 +422,7 @@ async def entrypoint(ctx: JobContext):
     stt_config = metadata.get("stt_config")
     tts_config = metadata.get("tts_config")
     assistant_id = metadata.get("assistant_id")
+    knowledgebase_content = metadata.get("knowledgebase_content")
 
     # Setup telemetry background
     async def setup_telemetry_async():
@@ -404,22 +431,33 @@ async def entrypoint(ctx: JobContext):
                 "langfuse.session.id": ctx.room.name,
                 "langfuse.trace.name": f"Voice Agent Session - {ctx.room.name}",
             }
-            if user_id: langfuse_metadata["langfuse.user.id"] = user_id
-            
+            if user_id:
+                langfuse_metadata["langfuse.user.id"] = user_id
+
             trace_provider = setup_langfuse(metadata=langfuse_metadata)
             if trace_provider:
+
                 async def flush_trace_provider():
                     trace_provider.force_flush()
+
                 ctx.add_shutdown_callback(flush_trace_provider)
         except Exception:
             pass
+
     asyncio.create_task(setup_telemetry_async())
 
     # --- 3. MERGE INSTRUCTIONS (Personality + Metadata + Tools) ---
     final_instructions = DEFAULT_PERSONALITY
     if custom_instructions:
-        final_instructions += f"\n\nAdditional contexts and instructions:\n{custom_instructions}"
-        
+        final_instructions += (
+            f"\n\nAdditional contexts and instructions:\n{custom_instructions}"
+        )
+    if knowledgebase_content:
+        logger.info(
+            f"📚 Knowledge base found ({len(knowledgebase_content)} chars), injecting into instructions"
+        )
+        final_instructions += f"\n\n## Knowledge Base\nUse the following information to answer user questions:\n\n{knowledgebase_content}"
+
     tool_handlers = {}
     if assistant_id:
         logger.info("🔧 Loading tools for assistant...")
@@ -447,10 +485,12 @@ async def entrypoint(ctx: JobContext):
         model = (realtime_model_config or {}).get(
             "model"
         ) or "gemini-2.5-flash-native-audio-preview-12-2025"
-        
+
         # ⚠️ Safety: If metadata passes the failing model name, override it to the working preview
         if model == "gemini-2.0-flash-live-001":
-            logger.warning(f"⚠️ Model '{model}' failed previously. Overriding to preview version.")
+            logger.warning(
+                f"⚠️ Model '{model}' failed previously. Overriding to preview version."
+            )
             model = "gemini-2.5-flash-native-audio-preview-12-2025"
 
         logger.info("Realtime Model: %s", model)
@@ -461,8 +501,11 @@ async def entrypoint(ctx: JobContext):
             instructions=final_instructions,
         )
 
-    def _create_groq_llm(): return groq.LLM(model="llama3-8b-8192")
-    def _create_openai_llm(): return openai.LLM(model="gpt-4.1-mini")
+    def _create_groq_llm():
+        return groq.LLM(model="llama3-8b-8192")
+
+    def _create_openai_llm():
+        return openai.LLM(model="gpt-4.1-mini")
 
     def _create_sarvam_stt():
         language_code = (stt_config or {}).get("language") or "en_IN"
@@ -477,43 +520,66 @@ async def entrypoint(ctx: JobContext):
     def _create_azure_stt():
         return azure.STT(speech_key=azure_speech_key, speech_region=azure_speech_region)
 
-    def _create_deepgram_stt(): return deepgram.STT(model="nova-3", language="multi")
+    def _create_deepgram_stt():
+        return deepgram.STT(model="nova-3", language="multi")
 
     def _create_sarvam_tts():
         speaker = (tts_config or {}).get("speaker") or "anushka"
         logger.info("Speaker: %s", speaker)
         language_code = (tts_config or {}).get("target_language_code") or "en_IN"
         logger.info("Language Code: %s", language_code)
-        return sarvam.TTS(target_language_code=language_code, model="bulbul:v2", speaker=speaker)
+        return sarvam.TTS(
+            target_language_code=language_code, model="bulbul:v2", speaker=speaker
+        )
 
     def _create_gemini_tts():
         voice = (tts_config or {}).get("voice_name") or "Zephyr"
         logger.info("Voice Name: %s", voice)
         return google.beta.GeminiTTS(voice_name=voice)
-    def _create_groq_tts(): return groq.TTS(model="playai-tts", voice=(tts_config or {}).get("voice", "Arista-PlayAI"))
-    def _create_azure_tts(): return azure.TTS(speech_key=azure_speech_key, speech_region=azure_speech_region)
-    def _create_lmnt_tts(): return lmnt.TTS(voice=(tts_config or {}).get("voice", "leah"))
-    def _create_deepgram_tts(): return deepgram.TTS()
+
+    def _create_groq_tts():
+        return groq.TTS(
+            model="playai-tts", voice=(tts_config or {}).get("voice", "Arista-PlayAI")
+        )
+
+    def _create_azure_tts():
+        return azure.TTS(speech_key=azure_speech_key, speech_region=azure_speech_region)
+
+    def _create_lmnt_tts():
+        return lmnt.TTS(voice=(tts_config or {}).get("voice", "leah"))
+
+    def _create_deepgram_tts():
+        return deepgram.TTS()
 
     # Initialization Logic
     async def _init_llm():
         provider = realtime_provider_name or llm_provider_name
-        if provider == "Gemini Realtime": return _create_gemini_realtime_llm()
-        if provider == "Groq": return _create_groq_llm()
+        if provider == "Gemini Realtime":
+            return _create_gemini_realtime_llm()
+        if provider == "Groq":
+            return _create_groq_llm()
         return _create_openai_llm()
 
     async def _init_stt():
-        if stt_provider_name == "Sarvam": return _create_sarvam_stt()
-        if stt_provider_name == "Groq": return _create_groq_stt()
-        if stt_provider_name == "Azure": return _create_azure_stt()
+        if stt_provider_name == "Sarvam":
+            return _create_sarvam_stt()
+        if stt_provider_name == "Groq":
+            return _create_groq_stt()
+        if stt_provider_name == "Azure":
+            return _create_azure_stt()
         return _create_deepgram_stt()
 
     async def _init_tts():
-        if tts_provider_name == "Sarvam": return _create_sarvam_tts()
-        if tts_provider_name == "Gemini": return _create_gemini_tts()
-        if tts_provider_name == "Groq": return _create_groq_tts()
-        if tts_provider_name == "Azure": return _create_azure_tts()
-        if tts_provider_name == "lmnt": return _create_lmnt_tts()
+        if tts_provider_name == "Sarvam":
+            return _create_sarvam_tts()
+        if tts_provider_name == "Gemini":
+            return _create_gemini_tts()
+        if tts_provider_name == "Groq":
+            return _create_groq_tts()
+        if tts_provider_name == "Azure":
+            return _create_azure_tts()
+        if tts_provider_name == "lmnt":
+            return _create_lmnt_tts()
         return _create_deepgram_tts()
 
     if realtime_provider_name is None:
@@ -529,19 +595,26 @@ async def entrypoint(ctx: JobContext):
             logger.info(f"🔧 Tool Call: {fn_name}({key}={value})")
             await handler.collect_data(key, value)
             missing = handler.get_missing_parameters()
-            return f"✅ Stored {key}." + (f" Still need: {', '.join(missing)}" if missing else " All information collected!")
+            return f"✅ Stored {key}." + (
+                f" Still need: {', '.join(missing)}"
+                if missing
+                else " All information collected!"
+            )
+
         return tool_fn
 
-    all_tools = [make_tool_function(h, f"collect_{n}") for n, h in tool_handlers.items()]
+    all_tools = [
+        make_tool_function(h, f"collect_{n}") for n, h in tool_handlers.items()
+    ]
 
     # Setup Session
     if realtime_provider_name is None:
         session = AgentSession(
-            llm=llm, 
-            stt=stt, 
-            tts=tts, 
+            llm=llm,
+            stt=stt,
+            tts=tts,
             vad=ctx.proc.userdata["vad"],
-            preemptive_generation=True
+            preemptive_generation=True,
         )
     else:
         session = AgentSession(llm=llm)
@@ -568,14 +641,17 @@ async def entrypoint(ctx: JobContext):
     # Transcript Sync
     @session.on("agent_state_changed")
     def _on_state_change(state):
-        chat = getattr(session, 'chat_ctx', None)
-        messages = getattr(chat, 'messages', [])
+        chat = getattr(session, "chat_ctx", None)
+        messages = getattr(chat, "messages", [])
         if messages:
             last = messages[-1]
             role = "Assistant" if last.role == "assistant" else "User"
             content = str(last.content)
             for handler in tool_handlers.values():
-                if not handler.transcript or handler.transcript[-1] != f"{role}: {content}":
+                if (
+                    not handler.transcript
+                    or handler.transcript[-1] != f"{role}: {content}"
+                ):
                     asyncio.create_task(handler.add_to_transcript(role, content))
 
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
@@ -583,27 +659,34 @@ async def entrypoint(ctx: JobContext):
         logger.info("📞 Call ending - syncing webhooks...")
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
-        
+
         # 2. PR-Specific Persistence (Transcript and Call Completion)
         try:
             if hasattr(session, "history"):
                 fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8003")
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     # Transcript
-                    await client.post(f"{fastapi_url}/transcript/{ctx.room.name}", json={
-                        "room_name": ctx.room.name,
-                        "history": session.history.to_dict(),
-                        "captured_at": datetime.now(timezone.utc).isoformat(),
-                    })
+                    await client.post(
+                        f"{fastapi_url}/transcript/{ctx.room.name}",
+                        json={
+                            "room_name": ctx.room.name,
+                            "history": session.history.to_dict(),
+                            "captured_at": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
                     # Call Completion Webhook
-                    await client.post(f"{fastapi_url}/webhook", json={
-                        "room_name": ctx.room.name,
-                        "event_type": "call_completed"
-                    })
+                    await client.post(
+                        f"{fastapi_url}/webhook",
+                        json={
+                            "room_name": ctx.room.name,
+                            "event_type": "call_completed",
+                        },
+                    )
         except Exception as e:
             logger.error(f"Persistence error: {e}")
 
-        if tool_tasks: await asyncio.gather(*tool_tasks, return_exceptions=True)
+        if tool_tasks:
+            await asyncio.gather(*tool_tasks, return_exceptions=True)
 
     ctx.add_shutdown_callback(shutdown_cleanup)
 
@@ -612,7 +695,7 @@ async def entrypoint(ctx: JobContext):
     await session.start(
         agent=Assistant(instructions=final_instructions, tools=all_tools),
         room=ctx.room,
-        room_input_options=RoomInputOptions(close_on_disconnect=True)
+        room_input_options=RoomInputOptions(close_on_disconnect=True),
     )
     logger.info(f"Session started in {time.time() - session_start_time:.2f}s")
 
@@ -620,12 +703,14 @@ async def entrypoint(ctx: JobContext):
     await _wait_for_participant(ctx.room)
     try:
         await asyncio.wait_for(
-            session.generate_reply(instructions=f"Start by saying: '{custom_first_message}'"),
-            timeout=5.0
+            session.generate_reply(
+                instructions=f"Start by saying: '{custom_first_message}'"
+            ),
+            timeout=5.0,
         )
     except Exception as e:
         logger.warning(f"Initial greeting timed out or failed: {e}")
-    
+
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
 
 

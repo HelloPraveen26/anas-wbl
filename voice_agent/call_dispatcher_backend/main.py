@@ -4,9 +4,10 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+import pymupdf4llm
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,6 +83,10 @@ class CallRequest(BaseModel):
     metadata: Optional[Dict[str, Any]] = Field(
         None,
         description="Additional metadata for tool pre-population (e.g., name, email, company, etc.)",
+    )
+    knowledgebase_file_path: Optional[List[str]] = Field(
+        None,
+        description="Path to knowledgebase file for agent",
     )
 
     @validator("phone_number")
@@ -260,25 +265,31 @@ app.add_middleware(
 def cleanup_expired_data():
     """Cleanup expired in-memory data periodically"""
     now = datetime.now(timezone.utc)
-    
+
     # Cleanup transcripts
     expired_transcripts = [
-        room for room, data in transcript_buffer.items()
-        if (now - datetime.fromisoformat(data["created_at"])).total_seconds() > TTL_SECONDS
+        room
+        for room, data in transcript_buffer.items()
+        if (now - datetime.fromisoformat(data["created_at"])).total_seconds()
+        > TTL_SECONDS
     ]
     for room in expired_transcripts:
         del transcript_buffer[room]
-        
+
     # Cleanup webhooks
     expired_webhooks = [
-        room for room, data in webhook_buffer.items()
-        if (now - datetime.fromisoformat(data["created_at"])).total_seconds() > TTL_SECONDS
+        room
+        for room, data in webhook_buffer.items()
+        if (now - datetime.fromisoformat(data["created_at"])).total_seconds()
+        > TTL_SECONDS
     ]
     for room in expired_webhooks:
         del webhook_buffer[room]
 
     if expired_transcripts or expired_webhooks:
-        logger.info(f"Cleaned up {len(expired_transcripts)} transcripts and {len(expired_webhooks)} webhooks from memory.")
+        logger.info(
+            f"Cleaned up {len(expired_transcripts)} transcripts and {len(expired_webhooks)} webhooks from memory."
+        )
 
 
 async def notify_call_completed(room_name: str, webhook_data: Dict[str, Any]):
@@ -420,6 +431,7 @@ async def make_call_endpoint(request: CallRequest):
     webhook_url = request.webhook_url
     user_id = request.user_id
     custom_metadata = request.metadata or {}  # 🆕 Extract custom metadata
+    knowledgebase_file_path = request.knowledgebase_file_path or []
     sip_headers = request.sip_headers
 
     if not phone_number:
@@ -455,8 +467,34 @@ async def make_call_endpoint(request: CallRequest):
             "user_id": user_id,
         }
 
+        # 🆕 Process knowledgebase files if provided
+        concatenated_content = ""
+        if knowledgebase_file_path:
+            logger.info(
+                f"📚 Processing {len(knowledgebase_file_path)} knowledgebase file(s)"
+            )
+            for path in knowledgebase_file_path:
+                try:
+                    markdown_content = pymupdf4llm.to_markdown(path)
+                    if isinstance(markdown_content, str):
+                        concatenated_content += markdown_content + "\n\n"
+                    else:
+                        concatenated_content += str(markdown_content) + "\n\n"
+                    logger.info(f"✅ Successfully processed: {path}")
+                except Exception as e:
+                    logger.error(f"❌ Failed to process {path}: {str(e)}")
+
+            if concatenated_content:
+                logger.info(
+                    f"📄 Total knowledgebase content length: {len(concatenated_content)} characters"
+                )
+
         # 🆕 MERGE CUSTOM METADATA - This allows pre-population of tool parameters
         metadata = {**base_metadata, **custom_metadata}
+
+        # Add concatenated knowledgebase content to metadata if available
+        if concatenated_content:
+            metadata["knowledgebase_content"] = concatenated_content
 
         # Log the metadata for debugging
         logger.info("=============================================")
@@ -584,7 +622,7 @@ async def receive_transcript(room_name: str, transcript_data: TranscriptRequest)
     try:
         transcript_buffer[room_name] = {
             "data": transcript_data.model_dump(),
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
         logger.info(f"Transcript stored in memory for room {room_name}")
 
@@ -640,7 +678,7 @@ async def webhook_handler(
         # Store webhook data in memory buffer
         webhook_buffer[room_name] = {
             "data": final_webhook_data,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
         logger.info(f"Webhook data buffered in memory for room {room_name}")
 
@@ -693,7 +731,7 @@ async def get_webhook_data(room_name: str):
         # One-time read: delete from memory after retrieval
         del webhook_buffer[room_name]
         logger.info(f"Webhook memory data retrieved and cleared for room {room_name}")
-        
+
         return data
 
     except HTTPException:
