@@ -1,0 +1,43 @@
+# === Build Stage ===
+FROM python:3.13-slim AS builder
+
+WORKDIR /app
+
+# Install uv (build tool)
+RUN pip install --no-cache-dir uv
+
+# Copy the project files
+COPY . .
+
+# Install ONLY dispatcher dependencies (not the full project with livekit-agents plugins)
+RUN python -m venv /opt/venv \
+  && uv pip install --no-cache --python /opt/venv/bin/python \
+     "fastapi[all]" \
+     "livekit-api" \
+     "python-dotenv" \
+     "pymupdf4llm>=0.0.17" \
+  && find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; \
+     find /opt/venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null; \
+     find /opt/venv -type d -name "test" -exec rm -rf {} + 2>/dev/null; \
+     find /opt/venv -type f -name "*.pyc" -delete 2>/dev/null; \
+     find /opt/venv -type f -name "*.pyo" -delete 2>/dev/null; \
+     true
+
+# === Runtime Stage ===
+FROM python:3.13-slim AS final
+
+WORKDIR /app
+
+# Only copy the source directory needed at runtime
+COPY --from=builder /app/call_dispatcher_backend ./call_dispatcher_backend
+
+# Copy virtual environment
+COPY --from=builder /opt/venv /opt/venv
+
+# Set the environment path to use the venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+EXPOSE 8000
+
+# --- Default Production Command ---
+CMD ["uvicorn", "call_dispatcher_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

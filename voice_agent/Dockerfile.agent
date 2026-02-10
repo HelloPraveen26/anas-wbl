@@ -1,0 +1,41 @@
+# === Build Stage ===
+FROM python:3.13-slim AS builder
+
+WORKDIR /app
+
+# Install uv (build tool)
+RUN pip install --no-cache-dir uv
+
+# Copy the project files
+COPY . .
+
+# Install binutils (for strip) and dependencies, then strip bloat
+RUN apt-get update && apt-get install -y --no-install-recommends binutils \
+  && rm -rf /var/lib/apt/lists/* \
+  && python -m venv /opt/venv \
+  && uv pip install --no-cache --python /opt/venv/bin/python . \
+  && find /opt/venv -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; \
+     find /opt/venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null; \
+     find /opt/venv -type d -name "test" -exec rm -rf {} + 2>/dev/null; \
+     find /opt/venv -type f -name "*.pyc" -delete 2>/dev/null; \
+     find /opt/venv -type f -name "*.pyo" -delete 2>/dev/null; \
+     find /opt/venv -type f -name "*.so" -exec strip --strip-debug {} + 2>/dev/null; \
+     true
+
+# === Runtime Stage ===
+FROM python:3.13-slim AS final
+
+WORKDIR /app
+
+# Only copy the source directories needed at runtime
+COPY --from=builder /app/agents ./agents
+COPY --from=builder /app/call_dispatcher_backend ./call_dispatcher_backend
+
+# Copy virtual environment
+COPY --from=builder /opt/venv /opt/venv
+
+# Set the environment path to use the venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# --- Default Production Command ---
+CMD ["python3", "agents/agent.py", "start"]
