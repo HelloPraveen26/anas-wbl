@@ -695,7 +695,10 @@ async def entrypoint(ctx: JobContext):
     await session.start(
         agent=Assistant(instructions=final_instructions, tools=all_tools),
         room=ctx.room,
-        room_input_options=RoomInputOptions(close_on_disconnect=True),
+        room_input_options=RoomInputOptions(
+            close_on_disconnect=True,
+            delete_room_on_close=True,
+        ),
     )
     logger.info(f"Session started in {time.time() - session_start_time:.2f}s")
 
@@ -712,6 +715,60 @@ async def entrypoint(ctx: JobContext):
         logger.warning(f"Initial greeting timed out or failed: {e}")
 
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
+
+    # ============== Call Safeguards ==============
+    # Prevent stuck calls (e.g. customer puts phone aside without hanging up)
+    MAX_CALL_DURATION = int(os.getenv("MAX_CALL_DURATION", 300))  # 5 minutes
+    INACTIVITY_TIMEOUT = int(os.getenv("INACTIVITY_TIMEOUT", 120))  # 2 minutes
+
+    last_user_activity = time.time()
+    call_ended = False
+
+    @session.on("user_input_transcribed")
+    def _on_user_activity(ev):
+        nonlocal last_user_activity
+        last_user_activity = time.time()
+
+    # Handle SIP participant disconnection
+    @ctx.room.on("participant_disconnected")
+    def _on_participant_disconnected(participant: rtc.RemoteParticipant):
+        nonlocal call_ended
+        if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
+            logger.info(f"SIP participant disconnected: {participant.identity}")
+            call_ended = True
+            # Force room deletion to ensure cleanup
+            # Note: ctx.delete_room() returns a Future/Task, not a coroutine
+            ctx.delete_room()
+
+    async def _watchdog_task():
+        """Watchdog: Terminate call if duration exceeded AND user inactive"""
+        call_start = time.time()
+        while not call_ended:
+            await asyncio.sleep(10)
+
+            call_duration = time.time() - call_start
+            inactive_duration = time.time() - last_user_activity
+
+            if (
+                call_duration > MAX_CALL_DURATION
+                and inactive_duration > INACTIVITY_TIMEOUT
+            ):
+                logger.warning(
+                    f"Call timeout triggered: duration={call_duration:.0f}s (max={MAX_CALL_DURATION}s), "
+                    f"inactive={inactive_duration:.0f}s (max={INACTIVITY_TIMEOUT}s). Terminating call."
+                )
+                try:
+                    await ctx.delete_room()
+                except Exception as e:
+                    logger.error(f"Failed to delete room on timeout: {e}")
+                break
+
+    watchdog = asyncio.create_task(_watchdog_task())
+
+    async def _cancel_watchdog():
+        watchdog.cancel()
+
+    ctx.add_shutdown_callback(_cancel_watchdog)
 
 
 if __name__ == "__main__":

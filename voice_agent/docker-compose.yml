@@ -1,0 +1,22 @@
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    container_name: voice-agent
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dispatcher
+    container_name: voice-backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
