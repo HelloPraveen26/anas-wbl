@@ -147,8 +147,6 @@ export default function PhoneNumbersPage() {
 
   // Telecmi form
   const [telecmiForm, setTelecmiForm] = useState({
-    accountSid: "",
-    authToken: "",
     address: "",
     authUsername: "",
     authPassword: "",
@@ -412,8 +410,6 @@ export default function PhoneNumbersPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            accountSid: telecmiForm.accountSid,
-            authToken: telecmiForm.authToken,
             address: telecmiForm.address,
             authUsername: telecmiForm.authUsername,
             authPassword: telecmiForm.authPassword,
@@ -431,8 +427,6 @@ export default function PhoneNumbersPage() {
       );
       setOpenModal(false);
       setTelecmiForm({
-        accountSid: "",
-        authToken: "",
         address: "",
         authUsername: "",
         authPassword: "",
@@ -542,7 +536,10 @@ export default function PhoneNumbersPage() {
   };
 
   const deleteRegisteredNumber = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this registered number?")) return;
+    if (
+      !window.confirm("Are you sure you want to delete this registered number?")
+    )
+      return;
 
     try {
       setLoading(true);
@@ -560,18 +557,21 @@ export default function PhoneNumbersPage() {
         setSelectedRegisteredNumber("");
       }
 
-      setRegisteredNumbers(prev => prev.filter(n => n.id !== id));
+      setRegisteredNumbers((prev) => prev.filter((n) => n.id !== id));
       alert("Registered number deleted successfully.");
     } catch (err) {
       console.error("deleteRegisteredNumber error:", err);
-      alert(`Failed to delete registered number: ${err instanceof Error ? err.message : "Unknown error"}`);
+      alert(
+        `Failed to delete registered number: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const deleteContactNumber = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this contact?")) return;
+    if (!window.confirm("Are you sure you want to delete this contact?"))
+      return;
 
     try {
       setLoading(true);
@@ -585,12 +585,13 @@ export default function PhoneNumbersPage() {
         throw new Error(d.message || `HTTP ${res.status}`);
       }
 
-
-      setContactNumbers(prev => prev.filter(c => c.id !== id));
+      setContactNumbers((prev) => prev.filter((c) => c.id !== id));
       alert("Contact deleted successfully.");
     } catch (err) {
       console.error("deleteContactNumber error:", err);
-      alert(`Failed to delete contact: ${err instanceof Error ? err.message : "Unknown error"}`);
+      alert(
+        `Failed to delete contact: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -779,7 +780,7 @@ export default function PhoneNumbersPage() {
     if (wsRef.current) {
       try {
         wsRef.current.close();
-      } catch (e) { }
+      } catch (e) {}
       wsRef.current = null;
     }
   };
@@ -976,7 +977,10 @@ export default function PhoneNumbersPage() {
                     Ready for Outbound Calls
                   </p>
                   <h4 className="text-lg font-bold text-gray-900">
-                    {selectedNumObj.friendlyName} <span className="text-gray-400 font-normal ml-1">({selectedNumObj.phoneNo})</span>
+                    {selectedNumObj.friendlyName}{" "}
+                    <span className="text-gray-400 font-normal ml-1">
+                      ({selectedNumObj.phoneNo})
+                    </span>
                   </h4>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 uppercase font-medium">
@@ -984,7 +988,10 @@ export default function PhoneNumbersPage() {
                     </span>
                     {selectedAssistantObj && (
                       <span className="text-sm text-gray-600 font-medium">
-                        • Assistant: <span className="text-emerald-700">{selectedAssistantObj.name}</span>
+                        • Assistant:{" "}
+                        <span className="text-emerald-700">
+                          {selectedAssistantObj.name}
+                        </span>
                       </span>
                     )}
                   </div>
@@ -1054,10 +1061,11 @@ export default function PhoneNumbersPage() {
                   <div
                     key={num.id}
                     onClick={() => handleSelectNumber(num.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-200 bg-white"
-                      }`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
+                      selectedRegisteredNumber === num.id
+                        ? "border-emerald-500 bg-emerald-50"
+                        : "border-gray-200 bg-white"
+                    }`}
                   >
                     <div>
                       <p className="font-medium text-sm text-gray-900">
@@ -1085,8 +1093,19 @@ export default function PhoneNumbersPage() {
                           className="p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors"
                           title="Delete Number"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                            className="w-5 h-5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -1162,10 +1181,11 @@ export default function PhoneNumbersPage() {
                     <div
                       key={a.id}
                       onClick={() => selectAssistant(a.id)}
-                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${selectedAssistant === a.id
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                        }`}
+                      className={`p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition flex items-start justify-between ${
+                        selectedAssistant === a.id
+                          ? "border-emerald-500 bg-emerald-50"
+                          : "border-gray-200 bg-white"
+                      }`}
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-semibold">
@@ -1288,8 +1308,19 @@ export default function PhoneNumbersPage() {
                           className="p-1.5 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                           title="Delete Contact"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                            stroke="currentColor"
+                            className="w-4 h-4"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -1447,24 +1478,6 @@ export default function PhoneNumbersPage() {
                 </>
               ) : (
                 <>
-                  <div>
-                    <InputField
-                      label="Account SID (Optional)"
-                      value={telecmiForm.accountSid}
-                      onChange={(v) =>
-                        setTelecmiForm((p) => ({ ...p, accountSid: v }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <InputField
-                      label="API Secret (Optional)"
-                      value={telecmiForm.authToken}
-                      onChange={(v) =>
-                        setTelecmiForm((p) => ({ ...p, authToken: v }))
-                      }
-                    />
-                  </div>
                   <div className="md:col-span-2">
                     <InputField
                       label="Address"
@@ -1616,10 +1629,11 @@ export default function PhoneNumbersPage() {
                     <div
                       key={num.id}
                       onClick={() => handleSelectNumber(num.id)}
-                      className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${selectedRegisteredNumber === num.id
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-gray-200 bg-white"
-                        }`}
+                      className={`p-4 border rounded-lg cursor-pointer transition-shadow hover:shadow-md flex items-center justify-between ${
+                        selectedRegisteredNumber === num.id
+                          ? "border-emerald-500 bg-emerald-50"
+                          : "border-gray-200 bg-white"
+                      }`}
                     >
                       <div>
                         <p className="font-medium text-sm text-gray-900">
@@ -1647,8 +1661,19 @@ export default function PhoneNumbersPage() {
                             className="p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors"
                             title="Delete Number"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.5}
+                              stroke="currentColor"
+                              className="w-5 h-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -1736,10 +1761,11 @@ export default function PhoneNumbersPage() {
               <button
                 onClick={handleAddContact}
                 disabled={loading}
-                className={`px-4 py-2 rounded-md text-white ${loading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-emerald-600 hover:bg-emerald-700"
-                  }`}
+                className={`px-4 py-2 rounded-md text-white ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
               >
                 {loading ? "Saving..." : "Save"}
               </button>
@@ -1769,15 +1795,37 @@ export default function PhoneNumbersPage() {
                   onClick={() => setShowAllNumbersModal(false)}
                   className="md:hidden p-2 text-gray-400 hover:text-emerald-600 transition-colors"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
                 </button>
               </div>
 
               <div className="flex items-center gap-3">
                 <div className="relative flex-1 md:w-80">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <svg
+                      className="h-4 w-4 text-emerald-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
                     </svg>
                   </div>
                   <input
@@ -1793,7 +1841,19 @@ export default function PhoneNumbersPage() {
                   onClick={() => setShowAllNumbersModal(false)}
                   className="hidden md:flex items-center justify-center p-2 text-gray-400 hover:text-emerald-600 bg-gray-50 rounded-xl border border-gray-100 hover:border-emerald-100 transition-all"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -1811,7 +1871,7 @@ export default function PhoneNumbersPage() {
                       >
                         <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-gray-900 truncate text-sm">
-                            {contact.name || 'Unnamed Contact'}
+                            {contact.name || "Unnamed Contact"}
                           </h4>
                           <p className="text-[11px] font-semibold text-gray-500 truncate mt-0.5">
                             {contact.phoneNo}
@@ -1831,16 +1891,24 @@ export default function PhoneNumbersPage() {
                             <button
                               onClick={() => {
                                 if (!selectedRegisteredNumber) {
-                                  alert("Please select a registered number to make calls from.");
+                                  alert(
+                                    "Please select a registered number to make calls from.",
+                                  );
                                   return;
                                 }
                                 if (!selectedAssistant) {
-                                  alert("Please select an assistant to handle the call.");
+                                  alert(
+                                    "Please select an assistant to handle the call.",
+                                  );
                                   return;
                                 }
                                 makeCall(contact);
                               }}
-                              disabled={!selectedRegisteredNumber || !selectedAssistant || isLoading}
+                              disabled={
+                                !selectedRegisteredNumber ||
+                                !selectedAssistant ||
+                                isLoading
+                              }
                               className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white h-8 px-4 rounded-xl text-[10px] font-bold shadow-md shadow-emerald-500/20 hover:shadow-lg active:scale-95 transition-all disabled:opacity-40"
                             >
                               {isLoading ? "..." : "Call"}
@@ -1855,8 +1923,19 @@ export default function PhoneNumbersPage() {
                             className="p-1.5 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                             title="Delete Contact"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                              />
                             </svg>
                           </button>
                         </div>

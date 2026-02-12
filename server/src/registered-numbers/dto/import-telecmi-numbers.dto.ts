@@ -10,26 +10,6 @@ import {
 
 export class ImportTelecmiNumbersDto {
   @ApiPropertyOptional({
-    description: "Telecmi Account SID (optional)",
-    example: "TExxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    maxLength: 255,
-  })
-  @IsOptional()
-  @IsString()
-  @Length(1, 255)
-  accountSid?: string;
-
-  @ApiPropertyOptional({
-    description: "Telecmi Auth Token (optional)",
-    example: "your_auth_token_here",
-    maxLength: 255,
-  })
-  @IsOptional()
-  @IsString()
-  @Length(1, 255)
-  authToken?: string;
-
-  @ApiPropertyOptional({
     description: "SIP trunk address (optional)",
     example: "telecmi-trunk.example.com",
     maxLength: 255,
