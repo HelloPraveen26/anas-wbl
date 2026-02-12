@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import aiohttp
 import httpx
 from dotenv import load_dotenv
-from livekit import api, rtc
+from livekit import rtc
 from livekit.agents import (
     NOT_GIVEN,
     Agent,
@@ -259,15 +259,6 @@ async def load_all_tools(assistant_id: str) -> list:
         return []
 
 
-async def hangup_call():
-    """Hang up the call by deleting the room for all participants."""
-    ctx = get_job_context()
-    if ctx is None:
-        logger.warning("Cannot hang up: not running in a job context")
-        return
-
-    logger.info(f"Hanging up call for room: {ctx.room.name}")
-    await ctx.api.room.delete_room(api.DeleteRoomRequest(room=ctx.room.name))
 
 
 def prewarm(proc: JobProcess):
@@ -717,9 +708,9 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
 
     # ============== Call Safeguards ==============
-    # Prevent stuck calls (e.g. customer puts phone aside without hanging up)
+    # Hard limit: call is cut no matter what after MAX_CALL_DURATION
     MAX_CALL_DURATION = int(os.getenv("MAX_CALL_DURATION", 300))  # 5 minutes
-    INACTIVITY_TIMEOUT = int(os.getenv("INACTIVITY_TIMEOUT", 120))  # 2 minutes
+    INACTIVITY_TIMEOUT = int(os.getenv("INACTIVITY_TIMEOUT", 60))  # 1 minute
 
     last_user_activity = time.time()
     call_ended = False
@@ -736,35 +727,40 @@ async def entrypoint(ctx: JobContext):
         if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
             logger.info(f"SIP participant disconnected: {participant.identity}")
             call_ended = True
-            # Force room deletion to ensure cleanup
-            # Note: ctx.delete_room() returns a Future/Task, not a coroutine
             ctx.delete_room()
 
     async def _watchdog_task():
-        """Watchdog: Terminate call if duration exceeded AND user inactive"""
+        """Hard watchdog: unconditionally terminates the call after MAX_CALL_DURATION"""
         call_start = time.time()
         while not call_ended:
             await asyncio.sleep(10)
 
-            call_duration = time.time() - call_start
-            inactive_duration = time.time() - last_user_activity
+            elapsed = time.time() - call_start
+            inactive = time.time() - last_user_activity
 
-            if (
-                call_duration > MAX_CALL_DURATION
-                and inactive_duration > INACTIVITY_TIMEOUT
-            ):
+            if elapsed >= MAX_CALL_DURATION:
                 logger.warning(
-                    f"Call timeout triggered: duration={call_duration:.0f}s (max={MAX_CALL_DURATION}s), "
-                    f"inactive={inactive_duration:.0f}s (max={INACTIVITY_TIMEOUT}s). Terminating call."
+                    f"Hard call limit reached: {elapsed:.0f}s >= {MAX_CALL_DURATION}s. Cutting call."
                 )
                 try:
                     await ctx.delete_room()
                 except Exception as e:
-                    logger.error(f"Failed to delete room on timeout: {e}")
+                    logger.error(f"Failed to delete room on hard timeout: {e}")
+                break
+
+            if inactive >= INACTIVITY_TIMEOUT:
+                logger.warning(
+                    f"Inactivity timeout: {inactive:.0f}s >= {INACTIVITY_TIMEOUT}s. Cutting call."
+                )
+                try:
+                    await ctx.delete_room()
+                except Exception as e:
+                    logger.error(f"Failed to delete room on inactivity: {e}")
                 break
 
     watchdog = asyncio.create_task(_watchdog_task())
 
+    # Cancel watchdog on normal shutdown
     async def _cancel_watchdog():
         watchdog.cancel()
 
