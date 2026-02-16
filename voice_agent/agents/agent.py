@@ -645,9 +645,27 @@ async def entrypoint(ctx: JobContext):
                 ):
                     asyncio.create_task(handler.add_to_transcript(role, content))
 
+    # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
+    call_timing = {"start_time": None, "end_time": None}
+
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
         logger.info("📞 Call ending - syncing webhooks...")
+
+        # Compute call timing
+        call_timing["end_time"] = datetime.now(timezone.utc)
+        call_duration_seconds = None
+        if call_timing["start_time"]:
+            call_duration_seconds = round(
+                (call_timing["end_time"] - call_timing["start_time"]).total_seconds(), 2
+            )
+            logger.info(
+                f"📊 Call duration: {call_duration_seconds}s "
+                f"(start={call_timing['start_time'].isoformat()}, "
+                f"end={call_timing['end_time'].isoformat()})"
+            )
+        else:
+            logger.warning("Call start time was never recorded (participant may not have connected)")
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
 
@@ -671,6 +689,9 @@ async def entrypoint(ctx: JobContext):
                         json={
                             "room_name": ctx.room.name,
                             "event_type": "call_completed",
+                            "start_time": call_timing["start_time"].isoformat() if call_timing["start_time"] else None,
+                            "end_time": call_timing["end_time"].isoformat() if call_timing["end_time"] else None,
+                            "call_duration": call_duration_seconds,
                         },
                     )
         except Exception as e:
@@ -695,6 +716,8 @@ async def entrypoint(ctx: JobContext):
 
     # Final Greet (with safety timeout)
     await _wait_for_participant(ctx.room)
+    call_timing["start_time"] = datetime.now(timezone.utc)
+    logger.info(f"📞 Call start time recorded: {call_timing['start_time'].isoformat()}")
     try:
         await asyncio.wait_for(
             session.generate_reply(

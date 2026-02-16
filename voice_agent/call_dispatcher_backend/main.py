@@ -204,6 +204,9 @@ class WebhookDataResponse(BaseModel):
     room_info: Dict[str, Any]
     participants: list[Dict[str, Any]]
     metadata: Optional[Dict[str, Any]] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    call_duration: Optional[float] = None
 
 
 def sip_parser(sip_details: str, phone_number: str) -> dict:
@@ -673,6 +676,9 @@ async def webhook_handler(
             "room_info": webhook_data.get("room_info", {"name": room_name}),
             "participants": webhook_data.get("participants", []),
             "metadata": webhook_data.get("metadata"),
+            "start_time": webhook_data.get("start_time"),
+            "end_time": webhook_data.get("end_time"),
+            "call_duration": webhook_data.get("call_duration"),
         }
 
         # Store webhook data in memory buffer
