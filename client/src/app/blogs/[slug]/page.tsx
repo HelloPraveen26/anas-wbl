@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       images: post.image ? [post.image] : [],
     },
     alternates: {
-      canonical: `/blogs/${params.slug}`,
+      canonical: `https://voice.zenxai.io/blogs/${params.slug}`,
     },
   };
 }
@@ -84,14 +84,14 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
 
       // H2 headings (e.g., "The Power of AI" or "Key Benefits") - Major sections
       if (
-        line.match(/^[A-Z][a-zA-Z\s&-]*$/) && 
+        line.match(/^[A-Z][a-zA-Z\s&-]*$/) &&
         line.length < 60 &&
         line.split(' ').length <= 10 &&
-        !line.endsWith('.') 
+        !line.endsWith('.')
       ) {
         elements.push(
-          <h2 
-            key={`h2-${key++}`} 
+          <h2
+            key={`h2-${key++}`}
             className="text-3xl font-extrabold text-gray-900 mt-10 mb-5 border-l-4 border-green-500 pl-4 transition-colors duration-300 hover:border-green-700"
           >
             {line}
@@ -103,10 +103,10 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
         line.match(/^\d+\./) ||
         (line.length < 70 && line.includes(':') && line.split(':').length === 2 && line.split(':')[0].length < 30)
       ) {
-        const parts = line.split(/:\s*(.*)/s); 
+        const parts = line.split(/:\s*(.*)/s);
         elements.push(
-          <h3 
-            key={`h3-${key++}`} 
+          <h3
+            key={`h3-${key++}`}
             className="text-2xl font-bold text-gray-900 mt-8 mb-4"
           >
             {parts[0].trim()}
@@ -118,8 +118,8 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
       else if (line.includes(':') && line.split(':')[0].length < 50 && line.split(' ').length > 4) {
         const [boldPart, ...rest] = line.split(':');
         elements.push(
-          <p 
-            key={`p-bold-${key++}`} 
+          <p
+            key={`p-bold-${key++}`}
             className="text-gray-700 leading-relaxed mb-4 text-lg"
           >
             <strong className="text-green-700">{boldPart.trim()}:</strong> {rest.join(':').trim()}
@@ -181,7 +181,7 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             '@type': 'BlogPosting',
             headline: post.title,
             description: post.excerpt,
-            image: post.image,
+            image: `https://voice.zenxai.io${post.image}`,
             datePublished: post.date,
             author: {
               '@type': 'Organization',
@@ -190,6 +190,14 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
             publisher: {
               '@type': 'Organization',
               name: 'ZenVoice AI',
+              logo: {
+                '@type': 'ImageObject',
+                url: 'https://voice.zenxai.io/rounded-logo.png'
+              }
+            },
+            mainEntityOfPage: {
+              '@type': 'WebPage',
+              '@id': `https://voice.zenxai.io/blogs/${post.slug}`
             },
             keywords: post.keywords?.join(', ') || post.tags.join(', '),
           }),
@@ -198,31 +206,31 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
 
       {/* Main Container */}
       <div className="min-h-screen bg-white">
-        
+
         {/* Header/Hero Section */}
         <header className="pt-10 pb-16 bg-gray-50 border-b border-gray-100">
           <div className="container mx-auto px-4 max-w-5xl">
 
             {/* Back Link and Breadcrumb */}
             <div className="flex justify-between items-start mb-6">
-                <Link   
-                  href="/blogs"
-                  className="inline-flex items-center text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
-                  aria-label="Back to Blogs"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  All Blogs
-                </Link>
+              <Link
+                href="/blogs"
+                className="inline-flex items-center text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
+                aria-label="Back to Blogs"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                All Blogs
+              </Link>
 
-                <nav aria-label="Breadcrumb" className="hidden sm:block">
-                  <ol className="flex items-center space-x-1 text-xs text-gray-500">
-                    <li><Link href="/" className="hover:text-green-600">Home</Link></li>
-                    <li>/</li>
-                    <li><Link href="/blogs" className="hover:text-green-600">Blogs</Link></li>
-                    <li>/</li>
-                    <li className="text-gray-900 truncate max-w-xs" aria-current="page">{post.title}</li>
-                  </ol>
-                </nav>
+              <nav aria-label="Breadcrumb" className="hidden sm:block">
+                <ol className="flex items-center space-x-1 text-xs text-gray-500">
+                  <li><Link href="/" className="hover:text-green-600">Home</Link></li>
+                  <li>/</li>
+                  <li><Link href="/blogs" className="hover:text-green-600">Blogs</Link></li>
+                  <li>/</li>
+                  <li className="text-gray-900 truncate max-w-xs" aria-current="page">{post.title}</li>
+                </ol>
+              </nav>
             </div>
 
 
@@ -275,117 +283,117 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
 
         {/* Blog Content Section (Article) */}
         <main className="container mx-auto px-4 py-16 max-w-7xl">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Current Blog Content */}
-                <article className="lg:col-span-2" itemScope itemType="https://schema.org/Article">
-                    <div itemProp="articleBody" className="text-gray-900 font-serif leading-relaxed">
-                        {renderContent(post.content)}
-                    </div>
-                </article>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column: Current Blog Content */}
+            <article className="lg:col-span-2" itemScope itemType="https://schema.org/Article">
+              <div itemProp="articleBody" className="text-gray-900 font-serif leading-relaxed">
+                {renderContent(post.content)}
+              </div>
+            </article>
 
-                {/* Right Column: Suggested Blogs */}
-                <aside className="lg:col-span-1">
-                    <div className="sticky top-8">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6">Suggested Blogs</h3>
-                        <div className="max-h-[800px] overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                            {getAllBlogs()
-                                .filter(suggestedPost => suggestedPost.id !== post.id)
-                                .slice(0, 4)
-                                .map(suggestedPost => (
-                                    <Link key={suggestedPost.id} href={`/blogs/${suggestedPost.slug}`} className="block group">
-                                        <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-300">
-                                            {suggestedPost.image && (
-                                                <div className="h-32 mb-3 rounded-md overflow-hidden">
-                                                    <Image
-                                                        src={suggestedPost.image}
-                                                        alt={suggestedPost.title}
-                                                        width={300}
-                                                        height={200}
-                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                    />
-                                                </div>
-                                            )}
-                                            <h4 className="text-lg font-semibold text-gray-900 group-hover:text-green-600 transition-colors duration-300 line-clamp-2">
-                                                {suggestedPost.title}
-                                            </h4>
-                                            <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                                                {suggestedPost.excerpt}
-                                            </p>
-                                        </div>
-                                    </Link>
-                                ))}
+            {/* Right Column: Suggested Blogs */}
+            <aside className="lg:col-span-1">
+              <div className="sticky top-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Suggested Blogs</h3>
+                <div className="max-h-[800px] overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  {getAllBlogs()
+                    .filter(suggestedPost => suggestedPost.id !== post.id)
+                    .slice(0, 4)
+                    .map(suggestedPost => (
+                      <Link key={suggestedPost.id} href={`/blogs/${suggestedPost.slug}`} className="block group">
+                        <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow duration-300">
+                          {suggestedPost.image && (
+                            <div className="h-32 mb-3 rounded-md overflow-hidden">
+                              <Image
+                                src={suggestedPost.image}
+                                alt={suggestedPost.title}
+                                width={300}
+                                height={200}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            </div>
+                          )}
+                          <h4 className="text-lg font-semibold text-gray-900 group-hover:text-green-600 transition-colors duration-300 line-clamp-2">
+                            {suggestedPost.title}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                            {suggestedPost.excerpt}
+                          </p>
                         </div>
-                    </div>
-                </aside>
-            </div>
+                      </Link>
+                    ))}
+                </div>
+              </div>
+            </aside>
+          </div>
         </main>
 
 
         {/* FAQs Section with Schema (REFINED STYLING) */}
         {post.content.includes('FAQ') && (
-            <section className="bg-gray-50 py-12 border-t border-b font-sans" itemScope itemType="https://schema.org/FAQPage">
-                <div className="container mx-auto px-4 max-w-3xl">
-                    {/* Title */}
-                    <h2 className="text-2xl font-extrabold text-gray-900 mb-8 text-center">
-                        Frequently Asked Questions
-                    </h2>
-                    
-                    {/* MODIFIED: Using smaller sizes, bolder question, lighter answer, and a separator */}
-                    <div className="space-y-4">
-                        {/* Example FAQ Item 1 */}
-                        <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" className="pb-4 border-b border-gray-200">
-                            {/* Question: Increased font-weight, reduced size for clean look */}
-                            <h3 itemProp="name" className="text-lg font-bold text-gray-900 mb-1">
-                                1. What is the main benefit of using ZenVoice AI?
-                            </h3>
-                            <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
-                                {/* Answer: text-sm for a tighter, less "thick" appearance, using lighter text-gray-700 */}
-                                <p itemProp="text" className="text-gray-700 leading-normal text-sm">
-                                    The core benefit is **enhanced business automation** through natural, human-like voice communication, drastically reducing operational costs and improving customer satisfaction.
-                                </p>
-                            </div>
-                        </div>
+          <section className="bg-gray-50 py-12 border-t border-b font-sans" itemScope itemType="https://schema.org/FAQPage">
+            <div className="container mx-auto px-4 max-w-3xl">
+              {/* Title */}
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-8 text-center">
+                Frequently Asked Questions
+              </h2>
 
-                        {/* Example FAQ Item 2 */}
-                        <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" className="pb-4 border-b border-gray-200">
-                            <h3 itemProp="name" className="text-lg font-bold text-gray-900 mb-1">
-                                2. How long does the setup process take?
-                            </h3>
-                            <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
-                                <p itemProp="text" className="text-gray-700 leading-normal text-sm">
-                                    Setup typically takes **less than an hour** for basic integration, thanks to our streamlined API and comprehensive documentation. Custom integrations may take longer depending on complexity.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Example FAQ Item 3 */}
-                        <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" className="pb-4 border-gray-200">
-                            <h3 itemProp="name" className="text-lg font-bold text-gray-900 mb-1">
-                                3. How does ZenVoice ensure call quality?
-                            </h3>
-                            <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
-                                <p itemProp="text" className="text-gray-700 leading-normal text-sm">
-                                    ZenVoice employs lifelike AI intonation, emotional comprehensibility, and accurate speech processing to ensure every interaction feels natural and professional, maintaining the highest level of call quality.
-                                </p>
-                            </div>
-                        </div>
-
-                        <p className="text-center text-xs text-gray-500 pt-4">
-                            *Note: Actual FAQ content should be dynamically rendered here from a structured data source.*
-                        </p>
-                    </div>
+              {/* MODIFIED: Using smaller sizes, bolder question, lighter answer, and a separator */}
+              <div className="space-y-4">
+                {/* Example FAQ Item 1 */}
+                <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" className="pb-4 border-b border-gray-200">
+                  {/* Question: Increased font-weight, reduced size for clean look */}
+                  <h3 itemProp="name" className="text-lg font-bold text-gray-900 mb-1">
+                    1. What is the main benefit of using ZenVoice AI?
+                  </h3>
+                  <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                    {/* Answer: text-sm for a tighter, less "thick" appearance, using lighter text-gray-700 */}
+                    <p itemProp="text" className="text-gray-700 leading-normal text-sm">
+                      The core benefit is **enhanced business automation** through natural, human-like voice communication, drastically reducing operational costs and improving customer satisfaction.
+                    </p>
+                  </div>
                 </div>
-            </section>
+
+                {/* Example FAQ Item 2 */}
+                <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" className="pb-4 border-b border-gray-200">
+                  <h3 itemProp="name" className="text-lg font-bold text-gray-900 mb-1">
+                    2. How long does the setup process take?
+                  </h3>
+                  <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                    <p itemProp="text" className="text-gray-700 leading-normal text-sm">
+                      Setup typically takes **less than an hour** for basic integration, thanks to our streamlined API and comprehensive documentation. Custom integrations may take longer depending on complexity.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Example FAQ Item 3 */}
+                <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" className="pb-4 border-gray-200">
+                  <h3 itemProp="name" className="text-lg font-bold text-gray-900 mb-1">
+                    3. How does ZenVoice ensure call quality?
+                  </h3>
+                  <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
+                    <p itemProp="text" className="text-gray-700 leading-normal text-sm">
+                      ZenVoice employs lifelike AI intonation, emotional comprehensibility, and accurate speech processing to ensure every interaction feels natural and professional, maintaining the highest level of call quality.
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-center text-xs text-gray-500 pt-4">
+                  *Note: Actual FAQ content should be dynamically rendered here from a structured data source.*
+                </p>
+              </div>
+            </div>
+          </section>
         )}
 
         {/* Footer/CTA Section */}
         <footer className="py-16">
           <div className="container mx-auto px-4 max-w-5xl text-center border-t pt-8">
             <h2 className="text-3xl font-extrabold text-gray-900 mb-4">
-                Ready to Learn More?
+              Ready to Learn More?
             </h2>
             <p className="text-lg text-gray-600 mb-8">
-                Explore more cutting-edge insights about AI voice technology and business automation.
+              Explore more cutting-edge insights about AI voice technology and business automation.
             </p>
             <Link
               href="/blogs"
