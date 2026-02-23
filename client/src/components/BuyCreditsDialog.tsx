@@ -184,164 +184,162 @@ export function BuyCreditsDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-none bg-white/95 backdrop-blur-xl shadow-2xl">
-        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500" />
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[600px] p-0 overflow-hidden border-none bg-white/95 backdrop-blur-xl shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 shrink-0" />
 
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/50">
-              <Wallet className="w-6 h-6" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-bold tracking-tight text-gray-900">
-                Top Up Wallet
-              </DialogTitle>
-              {/* <DialogDescription className="text-gray-500 text-sm">
-                Add credits to your account instantly
-              </DialogDescription> */}
-            </div>
-          </div>
-        </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="amount" className="text-sm font-semibold text-gray-700">Amount (₹)</Label>
-              <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider">INR Currency</span>
-            </div>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <span className="text-gray-400 font-medium text-lg group-focus-within:text-emerald-500 transition-colors">₹</span>
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100/50">
+                <Wallet className="w-6 h-6" />
               </div>
-              <Input
-                id="amount"
-                type="text"
-                placeholder="0.00"
-                value={amount}
-                onChange={handleAmountChange}
-                disabled={isLoading}
-                className="pl-8 text-2xl font-bold h-14 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all bg-gray-50/30"
-                autoFocus
-              />
+              <div>
+                <DialogTitle className="text-xl font-bold tracking-tight text-gray-900">
+                  Top Up Wallet
+                </DialogTitle>
+              </div>
             </div>
-            <AnimatePresence mode="wait">
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  className="text-xs font-medium text-red-500 bg-red-50 p-2 rounded-lg border border-red-100 flex items-center gap-2"
-                >
-                  <span className="w-1 h-1 rounded-full bg-red-500" />
-                  {error}
-                </motion.p>
-              )}
-            </AnimatePresence>
+          </DialogHeader>
 
-            {amountValue > 0 && !error && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="bg-gray-50 rounded-xl p-3 space-y-2 border border-dashed border-gray-200"
-              >
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500 font-medium">Base Amount:</span>
-                  <span className="font-semibold text-gray-700">₹{amountValue.toLocaleString()}</span>
+          <form onSubmit={handleSubmit} className="px-6 py-4 space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="amount" className="text-sm font-semibold text-gray-700">Amount (₹)</Label>
+                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider">INR Currency</span>
+              </div>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-gray-400 font-medium text-lg group-focus-within:text-emerald-500 transition-colors">₹</span>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-gray-500 font-medium">GST (18%):</span>
-                    <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Tax</span>
-                  </div>
-                  <span className="font-semibold text-gray-700">₹{gst.toLocaleString()}</span>
-                </div>
-                <div className="h-px bg-gray-200 my-1" />
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-emerald-700 font-bold">Total Payable:</span>
-                  <span className="font-bold text-xl text-emerald-700">₹{total.toLocaleString()}</span>
-                </div>
-                <p className="text-[11px] text-gray-400 text-right pt-1">
-                  Includes 18% Goods and Services Tax (Government Mandated)
-                </p>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-              Quick Top Up
-            </div>
-            <div className="grid grid-cols-5 gap-2">
-              {quickAmounts.map((quickAmount) => (
-                <button
-                  key={quickAmount}
-                  type="button"
-                  onClick={() => {
-                    setAmount(quickAmount.toString());
-                    setError("");
-                  }}
+                <Input
+                  id="amount"
+                  type="text"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={handleAmountChange}
                   disabled={isLoading}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-2 rounded-xl border text-[13px] font-bold transition-all duration-200",
-                    amount === quickAmount.toString()
-                      ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-200"
-                      : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:bg-emerald-50/50"
-                  )}
+                  className="pl-8 text-2xl font-bold h-14 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20 transition-all bg-gray-50/30"
+                  autoFocus
+                />
+              </div>
+              <AnimatePresence mode="wait">
+                {error && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="text-xs font-medium text-red-500 bg-red-50 p-2 rounded-lg border border-red-100 flex items-center gap-2"
+                  >
+                    <span className="w-1 h-1 rounded-full bg-red-500" />
+                    {error}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+
+              {amountValue > 0 && !error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="bg-gray-50 rounded-xl p-3 space-y-2 border border-dashed border-gray-200"
                 >
-                  <span className="text-[20px] opacity-80 font-small leading-none mb-0.5">₹</span>
-                  {quickAmount}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100/50">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5">
-                <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-emerald-900 uppercase tracking-wide">Secure Payment</p>
-                <p className="text-[11px] text-emerald-700/80 leading-relaxed font-medium">
-                  Your transaction is encrypted and secured by PayU. Credits are added instantly after success.
-                </p>
-              </div>
-            </div>
-          </div>
-
-
-          <DialogFooter className="px-0 pt-2 pb-6 flex flex-col-reverse sm:flex-row gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-              className="flex-1 h-12 font-semibold text-gray-500 hover:text-gray-900 hover:bg-gray-100/50 border-none"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !amount || parseInt(amount, 10) < 2000}
-              className="flex-[2] h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/20 group transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Processing Transaction...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
-                  Proceed to Pay
-                  {amountValue > 0 && <span className="ml-1 opacity-90">(₹{total.toLocaleString()})</span>}
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform opacity-50" />
-                </>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 font-medium">Base Amount:</span>
+                    <span className="font-semibold text-gray-700">₹{amountValue.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-500 font-medium">GST (18%):</span>
+                      <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded">Tax</span>
+                    </div>
+                    <span className="font-semibold text-gray-700">₹{gst.toLocaleString()}</span>
+                  </div>
+                  <div className="h-px bg-gray-200 my-1" />
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-emerald-700 font-bold">Total Payable:</span>
+                    <span className="font-bold text-xl text-emerald-700">₹{total.toLocaleString()}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 text-right pt-1">
+                    Includes 18% Goods and Services Tax (Government Mandated)
+                  </p>
+                </motion.div>
               )}
-            </Button>
-          </DialogFooter>
-        </form>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                Quick Top Up
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {quickAmounts.map((quickAmount) => (
+                  <button
+                    key={quickAmount}
+                    type="button"
+                    onClick={() => {
+                      setAmount(quickAmount.toString());
+                      setError("");
+                    }}
+                    disabled={isLoading}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-2 rounded-xl border text-[13px] font-bold transition-all duration-200",
+                      amount === quickAmount.toString()
+                        ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-200"
+                        : "bg-white border-gray-200 text-gray-600 hover:border-emerald-300 hover:bg-emerald-50/50"
+                    )}
+                  >
+                    <span className="text-[20px] opacity-80 font-small leading-none mb-0.5">₹</span>
+                    {quickAmount}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100/50">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-emerald-900 uppercase tracking-wide">Secure Payment</p>
+                  <p className="text-[11px] text-emerald-700/80 leading-relaxed font-medium">
+                    Your transaction is encrypted and secured by PayU. Credits are added instantly after success.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="px-0 pt-2 pb-6 flex flex-col-reverse sm:flex-row gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+                disabled={isLoading}
+                className="flex-1 h-12 font-semibold text-gray-500 hover:text-gray-900 hover:bg-gray-100/50 border-none"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !amount || parseInt(amount, 10) < 2000}
+                className="flex-[2] h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/20 group transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
+                    Proceed to Pay
+                    {amountValue > 0 && <span className="ml-1 opacity-90">(₹{total.toLocaleString()})</span>}
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform opacity-50" />
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
