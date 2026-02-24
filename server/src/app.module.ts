@@ -20,6 +20,7 @@ import { ContactNumbersModule } from "./contact-numbers/contact-numbers.module";
 import { CallLogsModule } from "./call-logs/call-logs.module";
 import { PaymentModule } from "./payment/payment.module";
 import { FileStorageModule } from "./file-storage/file-storage.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 import { winstonConfig } from "./config/winston.config";
 import { databaseConfig } from "./config/database.config";
 import { throttlerConfig } from "./config/throttler.config";
@@ -71,6 +72,7 @@ import { throttlerConfig } from "./config/throttler.config";
     CallLogsModule,
     PaymentModule,
     FileStorageModule,
+    WebhooksModule,
   ],
 })
 export class AppModule {}

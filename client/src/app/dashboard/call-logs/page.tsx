@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { FileText, Download } from "lucide-react";
 import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
+
+// Global request cache to prevent duplicate requests across all instances
+const globalRequestCache = new Map<
+  string,
+  { timestamp: number; promise: Promise<any> }
+>();
+const CACHE_DURATION = 1000; // 1 second cache
 
 interface Assistant {
   id: string;
@@ -59,6 +66,11 @@ export default function CallLogsPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(false);
+  const lastRequestRef = useRef<string>("");
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isRequestInFlightRef = useRef(false);
 
   // Helper function to get authenticated headers
   const getAuthHeaders = () => {
@@ -69,56 +81,123 @@ export default function CallLogsPage() {
     };
   };
 
-  // Fetch call logs from backend
-  const fetchCallLogs = async (
-    page: number = 1,
-    filters: { type?: string; callStatus?: string } = {},
-  ) => {
-    try {
-      const token = authManager.getToken();
-      if (!token) {
-        console.error("No authentication token found");
-        setError("Authentication token not found. Please log in again.");
+  // Fetch call logs from backend with global deduplication
+  const fetchCallLogs = useCallback(
+    async (
+      page: number = 1,
+      filters: { type?: string; callStatus?: string } = {},
+    ) => {
+      // Build request key for deduplication
+      const requestKey = `call-logs-${page}-${filters.type || ""}-${filters.callStatus || ""}`;
+      const now = Date.now();
+
+      // Check global cache first
+      const cached = globalRequestCache.get(requestKey);
+      if (cached && now - cached.timestamp < CACHE_DURATION) {
+        console.log("[CallLogs] Using cached request:", requestKey);
+        try {
+          await cached.promise;
+          return;
+        } catch (e) {
+          // If cached promise failed, continue to make new request
+          globalRequestCache.delete(requestKey);
+        }
+      }
+
+      // Skip if this exact request is already in flight locally
+      if (
+        isRequestInFlightRef.current ||
+        lastRequestRef.current === requestKey
+      ) {
+        console.log("[CallLogs] Skipping duplicate local request:", requestKey);
         return;
       }
 
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: itemsPerPage.toString(),
+      console.log("[CallLogs] Making new request:", requestKey);
+      isRequestInFlightRef.current = true;
+      lastRequestRef.current = requestKey;
+
+      const requestPromise = (async () => {
+        try {
+          // Cancel any pending requests
+          if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+          }
+
+          // Create new abort controller for this request
+          abortControllerRef.current = new AbortController();
+
+          const token = authManager.getToken();
+          if (!token) {
+            console.error("No authentication token found");
+            setError("Authentication token not found. Please log in again.");
+            isRequestInFlightRef.current = false;
+            return;
+          }
+
+          // Build query parameters
+          const params = new URLSearchParams({
+            page: page.toString(),
+            limit: itemsPerPage.toString(),
+          });
+
+          if (filters.type) {
+            params.append("type", filters.type);
+          }
+          if (filters.callStatus) {
+            params.append("callStatus", filters.callStatus);
+          }
+
+          const url = `${getApiBaseUrl()}/call-logs?${params.toString()}`;
+          console.log("[CallLogs] Fetching:", url);
+
+          const response = await fetch(url, {
+            headers: getAuthHeaders(),
+            signal: abortControllerRef.current.signal,
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data: CallLogsResponse = await response.json();
+          setCallLogs(data.data);
+          setPagination(data.pagination);
+          setError(null);
+          console.log("[CallLogs] Request successful:", requestKey);
+        } catch (error) {
+          // Ignore abort errors
+          if (error instanceof Error && error.name === "AbortError") {
+            console.log("[CallLogs] Request aborted:", requestKey);
+            return;
+          }
+          console.error("Error fetching call logs:", error);
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch call logs",
+          );
+          setCallLogs([]);
+          setPagination(null);
+        } finally {
+          isRequestInFlightRef.current = false;
+          // Clean up cache after delay
+          setTimeout(() => {
+            globalRequestCache.delete(requestKey);
+          }, CACHE_DURATION);
+        }
+      })();
+
+      // Store in global cache
+      globalRequestCache.set(requestKey, {
+        timestamp: now,
+        promise: requestPromise,
       });
 
-      if (filters.type) {
-        params.append("type", filters.type);
-      }
-      if (filters.callStatus) {
-        params.append("callStatus", filters.callStatus);
-      }
-
-      const response = await fetch(
-        `${getApiBaseUrl()}/call-logs?${params.toString()}`,
-        {
-          headers: getAuthHeaders(),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: CallLogsResponse = await response.json();
-      setCallLogs(data.data);
-      setPagination(data.pagination);
-      setError(null);
-    } catch (error) {
-      console.error("Error fetching call logs:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to fetch call logs",
-      );
-      setCallLogs([]);
-      setPagination(null);
-    }
-  };
+      await requestPromise;
+    },
+    [itemsPerPage],
+  );
 
   // Helper function to get current filters
   const getCurrentFilters = () => {
@@ -131,35 +210,40 @@ export default function CallLogsPage() {
     return filters;
   };
 
+  // Consolidated effect for fetching data with debouncing
   useEffect(() => {
-    const initializeData = async () => {
+    // Clear any pending debounce
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Skip the first render to avoid duplicate initial load
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      console.log("[CallLogs] Initial mount");
       setLoading(true);
-      try {
-        await fetchCallLogs(1, getCurrentFilters());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load data");
-      } finally {
+      fetchCallLogs(currentPage, getCurrentFilters()).finally(() => {
         setLoading(false);
+      });
+      return;
+    }
+
+    // Debounce subsequent requests by 500ms
+    console.log("[CallLogs] Scheduling request after debounce");
+    debounceTimerRef.current = setTimeout(() => {
+      fetchCallLogs(currentPage, getCurrentFilters());
+    }, 500);
+
+    // Cleanup function
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
-
-    initializeData();
-  }, []);
-
-  // Fetch data when filters change
-  useEffect(() => {
-    if (!loading) {
-      setCurrentPage(1);
-      fetchCallLogs(1, getCurrentFilters());
-    }
-  }, [statusFilter]);
-
-  // Handle page changes
-  useEffect(() => {
-    if (currentPage > 1) {
-      fetchCallLogs(currentPage, getCurrentFilters());
-    }
-  }, [currentPage]);
+  }, [currentPage, statusFilter, fetchCallLogs]);
 
   // Filter calls client-side by evaluation (since this isn't a server filter)
   const filteredCalls = callLogs.filter((call) => {
@@ -167,8 +251,8 @@ export default function CallLogsPage() {
       !evaluationFilter ||
       (call.successEvaluation
         ? call.successEvaluation
-          .toLowerCase()
-          .includes(evaluationFilter.toLowerCase())
+            .toLowerCase()
+            .includes(evaluationFilter.toLowerCase())
         : false);
     return evaluationMatch;
   });
@@ -177,10 +261,13 @@ export default function CallLogsPage() {
   const totalPages = pagination?.totalPages || 1;
   const paginatedCalls = filteredCalls;
 
-  // Reset to first page when filters change
+  // Reset to first page when status filter changes (evaluation filter is client-side only)
   useEffect(() => {
-    setCurrentPage(1);
-  }, [statusFilter, evaluationFilter]);
+    if (isMountedRef.current && currentPage !== 1) {
+      console.log("[CallLogs] Resetting to page 1 due to filter change");
+      setCurrentPage(1);
+    }
+  }, [statusFilter, currentPage]);
 
   const formatDuration = (duration: string) => {
     if (!duration) return "00:00";
@@ -313,7 +400,9 @@ export default function CallLogsPage() {
             <FileText className="h-6 w-6 text-gray-700" />
           </div>
           <div>
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Call Logs</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+              Call Logs
+            </h2>
             <p className="text-xs md:text-sm text-gray-600">
               View and manage call logs for your assistants.
             </p>
