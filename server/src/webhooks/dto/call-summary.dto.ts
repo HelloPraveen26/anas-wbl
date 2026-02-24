@@ -146,21 +146,22 @@ export class CallSummaryDto {
     example: "2026-02-23T17:15:39.339795+00:00",
   })
   @IsString()
-  captured_at: string;
+  @IsOptional()
+  captured_at?: string;
 
   @ApiProperty({
     description: "Timestamp when the call started",
     example: "2026-02-23T17:14:34.870660+00:00",
   })
   @IsString()
-  call_start_time: string;
+  start_time: string;
 
   @ApiProperty({
     description: "Timestamp when the call ended",
     example: "2026-02-23T17:15:39.319380+00:00",
   })
   @IsString()
-  call_end_time: string;
+  end_time: string;
 
   @ApiProperty({
     description: "Total duration of the call in seconds",
