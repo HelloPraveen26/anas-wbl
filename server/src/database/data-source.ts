@@ -22,6 +22,7 @@ import { Assistant } from "../assistant/entities";
 import { RegisteredNumber } from "../registered-numbers/entities/registered-number.entity";
 import { ContactNumber } from "../contact-numbers/entities/contact-number.entity";
 import { CallLog } from "../call-logs/entities/call-log.entity";
+import { ChatLog } from "../chat-logs/entities/chat-log.entity";
 import { Payment } from "../payment/entities/payment.entity";
 import { ToolConfig } from "../assistant/entities/tool-config.entity";
 import { File } from "../file-storage/entities/file.entity";
@@ -54,6 +55,7 @@ export const AppDataSource = new DataSource({
     RegisteredNumber,
     ContactNumber,
     CallLog,
+    ChatLog,
     Payment,
     ToolConfig,
     File,

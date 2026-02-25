@@ -9,13 +9,17 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from "@nestjs/swagger";
 import { CallSummaryDto } from "./dto/call-summary.dto";
 import { CallLogsService } from "../call-logs/call-logs.service";
+import { ChatLogsService } from "../chat-logs/chat-logs.service";
 
 @ApiTags("webhooks")
 @Controller("webhooks")
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
 
-  constructor(private readonly callLogsService: CallLogsService) {}
+  constructor(
+    private readonly callLogsService: CallLogsService,
+    private readonly chatLogsService: ChatLogsService,
+  ) {}
 
   @Post("call-summary")
   @HttpCode(HttpStatus.OK)
@@ -160,6 +164,44 @@ export class WebhooksController {
         this.logger.log(
           `✅ Updated call log ${callLog.id} with duration and status`,
         );
+
+        // Save chat history to chat_logs table
+        try {
+          // Filter and process history items
+          const historyItems = callSummary.history?.items || [];
+          const processedHistory = historyItems
+            .filter(
+              (item) =>
+                item.role !== undefined &&
+                item.content !== undefined &&
+                item.interrupted !== undefined,
+            )
+            .map((item) => ({
+              role: item.role,
+              content: Array.isArray(item.content)
+                ? item.content.join(" ")
+                : item.content,
+              interrupted: item.interrupted,
+            }));
+
+          if (processedHistory.length > 0) {
+            await this.chatLogsService.create({
+              callLogId: callLog.id,
+              roomName: callSummary.room_name,
+              history: processedHistory,
+            });
+            this.logger.log(
+              `✅ Saved ${processedHistory.length} chat messages to chat log`,
+            );
+          } else {
+            this.logger.log(`ℹ️ No valid chat messages to save`);
+          }
+        } catch (chatLogError) {
+          this.logger.error(
+            `❌ Error saving chat log: ${chatLogError.message}`,
+            chatLogError.stack,
+          );
+        }
       } else {
         this.logger.warn(
           `⚠️ No call log found for session ID: ${callSummary.room_name}`,

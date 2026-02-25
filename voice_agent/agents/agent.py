@@ -687,9 +687,10 @@ async def entrypoint(ctx: JobContext):
                         "http://localhost:8000/api/v1/webhooks/call-summary",
                         json={
                             "room_name": ctx.room.name,
+                            "history": session.history.to_dict(),
                             "start_time": call_timing["start_time"].isoformat() if call_timing["start_time"] else None,
                             "end_time": call_timing["end_time"].isoformat() if call_timing["end_time"] else None,
-                            "call_duration": call_duration_seconds,
+                            "call_duration_seconds": call_duration_seconds,
                         },
                     )
                     # Call Completion Webhook

@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToOne,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
@@ -10,6 +11,7 @@ import {
 } from "typeorm";
 import { Assistant } from "../../assistant/entities/assistant.entity";
 import { User } from "../../users/entities/user.entity";
+import { ChatLog } from "../../chat-logs/entities/chat-log.entity";
 
 @Entity("call_logs")
 export class CallLog {
@@ -69,4 +71,7 @@ export class CallLog {
 
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
+
+  @OneToOne(() => ChatLog, (chatLog) => chatLog.callLog)
+  chatLog: ChatLog;
 }
