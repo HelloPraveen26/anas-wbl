@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Menu,
   X,
+  MessageSquare,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { authManager } from "@/lib/auth";
@@ -125,6 +126,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       icon: PhoneIncoming,
       path: "/call-logs",
     },
+    {
+      id: "chat-logs",
+      label: "Chat Logs",
+      icon: MessageSquare,
+      path: "/chat-logs",
+    },
   ];
 
   const renderNavItem = (item: any, isActive: boolean) => {
@@ -133,16 +140,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <button
         key={item.id}
         onClick={() => handleNavigation(item.path)}
-        className={`group relative w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all rounded-xl ${isActive
-          ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30"
-          : "text-gray-700 hover:bg-emerald-50 hover:text-emerald-700"
-          }`}
+        className={`group relative w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all rounded-xl ${
+          isActive
+            ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30"
+            : "text-gray-700 hover:bg-emerald-50 hover:text-emerald-700"
+        }`}
       >
         <div
-          className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${isActive
-            ? "bg-white/20"
-            : "bg-gray-100 text-emerald-600 group-hover:bg-emerald-100"
-            }`}
+          className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+            isActive
+              ? "bg-white/20"
+              : "bg-gray-100 text-emerald-600 group-hover:bg-emerald-100"
+          }`}
         >
           <Icon className="w-5 h-5" />
         </div>
@@ -199,18 +208,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Sidebar */}
       <div
-        className={`${sidebarCollapsed ? "w-20" : "w-72"
-          } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl
+        className={`${
+          sidebarCollapsed ? "w-20" : "w-72"
+        } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl
         ${isMobileSidebarOpen ? "fixed inset-y-0 left-0 z-50" : "hidden"} md:flex`}
       >
         {/* Header */}
         <div className="h-20 flex items-center justify-between px-4 border-b border-emerald-100">
           <div className="flex-1">
-            <img
-              src={cristy.src}
-              alt="Company Logo"
-              className="h-10 w-auto"
-            />
+            <img src={cristy.src} alt="Company Logo" className="h-10 w-auto" />
           </div>
           {/* Mobile Close Button */}
           <button
@@ -422,11 +428,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          <img
-            src={cristy.src}
-            alt="ZenVoice Logo"
-            className="h-8 w-auto"
-          />
+          <img src={cristy.src} alt="ZenVoice Logo" className="h-8 w-auto" />
         </div>
 
         {/* Page Content */}
