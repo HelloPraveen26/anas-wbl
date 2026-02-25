@@ -19,6 +19,7 @@ import { RegisteredNumbersModule } from "./registered-numbers/registered-numbers
 import { ContactNumbersModule } from "./contact-numbers/contact-numbers.module";
 import { CallLogsModule } from "./call-logs/call-logs.module";
 import { ChatLogsModule } from "./chat-logs/chat-logs.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
 import { PaymentModule } from "./payment/payment.module";
 import { FileStorageModule } from "./file-storage/file-storage.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
@@ -72,6 +73,7 @@ import { throttlerConfig } from "./config/throttler.config";
     ContactNumbersModule,
     CallLogsModule,
     ChatLogsModule,
+    DashboardModule,
     PaymentModule,
     FileStorageModule,
     WebhooksModule,

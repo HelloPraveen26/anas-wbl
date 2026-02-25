@@ -167,6 +167,10 @@ async function bootstrap() {
       "Call logs management - Retrieve call history with pagination and filtering",
     )
     .addTag(
+      "dashboard",
+      "Dashboard metrics - Get aggregated statistics from call logs",
+    )
+    .addTag(
       "payment",
       "Payment endpoints - PayU integration for payment processing",
     )
