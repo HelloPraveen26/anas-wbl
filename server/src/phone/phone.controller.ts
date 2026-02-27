@@ -6,6 +6,7 @@ import {
   HttpStatus,
   UseGuards,
   Request,
+  HttpException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -42,7 +43,19 @@ export class PhoneController {
     status: HttpStatus.BAD_REQUEST,
     description: "Invalid input data",
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "Insufficient credits to make a call",
+  })
   async makeCall(@Body() makeCallDto: MakeCallDto, @Request() req) {
+    // Check if user has sufficient credits
+    if (req.user.credits <= 0) {
+      throw new HttpException(
+        "Insufficient credits. Please recharge your account to make calls.",
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     const result = await this.phoneService.makeCall(makeCallDto, req.user.id);
     return result;
   }

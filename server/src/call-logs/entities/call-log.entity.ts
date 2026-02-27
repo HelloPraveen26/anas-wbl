@@ -46,7 +46,7 @@ export class CallLog {
   type: string; // inbound | outbound
 
   @Column({ name: "call_status", nullable: true })
-  callStatus: string; // completed | failed | missed
+  callStatus: string; // completed | failed | missed | In Progress
 
   @Column({ name: "success_evaluation", nullable: true })
   successEvaluation: string;

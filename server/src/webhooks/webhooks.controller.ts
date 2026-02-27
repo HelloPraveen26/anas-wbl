@@ -157,12 +157,16 @@ export class WebhooksController {
       );
 
       if (callLog) {
+        const durationInSeconds = Math.round(callSummary.call_duration_seconds);
+        const costInRupees = (durationInSeconds * 3.85) / 60;
+
         await this.callLogsService.updateBySessionId(callSummary.room_name, {
-          duration: Math.round(callSummary.call_duration_seconds),
+          duration: durationInSeconds,
+          cost: costInRupees,
           callStatus: "completed",
         });
         this.logger.log(
-          `✅ Updated call log ${callLog.id} with duration and status`,
+          `✅ Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees.toFixed(4)}, status: completed`,
         );
 
         // Save chat history to chat_logs table

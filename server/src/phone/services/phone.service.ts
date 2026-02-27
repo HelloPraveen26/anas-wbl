@@ -357,6 +357,7 @@ After collecting all required information, the system will automatically process
       if (data.room_name && callLogId) {
         await this.callLogsService.update(callLogId, {
           sessionId: data.room_name,
+          callStatus: "In Progress",
         });
       }
       return {
