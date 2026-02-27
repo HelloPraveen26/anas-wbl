@@ -5,11 +5,11 @@ import logging
 import os
 import time
 from datetime import datetime, timezone
-
 import aiohttp
 import httpx
+
 from dotenv import load_dotenv
-from livekit import rtc
+from livekit import api, rtc
 from livekit.agents import (
     NOT_GIVEN,
     Agent,
@@ -30,10 +30,8 @@ from livekit.agents import (
 from livekit.agents import llm as agent_llm
 from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
-    aws,
     azure,
     deepgram,
-    elevenlabs,
     google,
     groq,
     lmnt,
@@ -46,8 +44,7 @@ from opentelemetry.util.types import AttributeValue
 
 logger = logging.getLogger("agent")
 
-_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-load_dotenv(_env_path, override=True)
+load_dotenv(".env", override=True)
 
 
 # -----------------------------------------------------------------------------
@@ -262,13 +259,22 @@ async def load_all_tools(assistant_id: str) -> list:
         return []
 
 
+async def hangup_call():
+    """Hang up the call by deleting the room for all participants."""
+    ctx = get_job_context()
+    if ctx is None:
+        logger.warning("Cannot hang up: not running in a job context")
+        return
+
+    logger.info(f"Hanging up call for room: {ctx.room.name}")
+    await ctx.api.room.delete_room(api.DeleteRoomRequest(room=ctx.room.name))
 
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
 
-async def _wait_for_participant(room: rtc.Room, timeout: float = 10.0):
+async def _wait_for_participant(room: rtc.Room, timeout: float = 1.0):
     """Wait for a remote participant to connect"""
     if room.remote_participants:
         logger.info("Participant already connected")
@@ -388,7 +394,7 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     logger.info(f"Connection established in {time.time() - connect_start:.2f}s")
 
-    # Parse metadata
+    # Parse metadatas
     metadata_start = time.time()
     metadata = {}
     raw_meta = ctx.job.metadata or ctx.room.metadata or "{}"
@@ -487,23 +493,75 @@ async def entrypoint(ctx: JobContext):
         except:
              json_content = json_str
         
-        # Condensed Flow Instructions
-        final_instructions = f"""You are a voice AI assistant following a STRICT conversation flow.
+        # Structured flow instructions
+        final_instructions = f"""You are a voice AI assistant that follows a STRICT conversation flow defined in JSON format. You MUST ONLY follow the flow. You are NOT a general-purpose assistant.
         
-## Your Core Persona:
+## Your Core Persona and Style:
+Tone: Warm, calm, respectful, professional.
 {other_text if other_text else DEFAULT_PERSONALITY}
 
-## STRICT RULES:
-1. **START**: Always start at 'welcome' node. Ask language (Tamil, English, Malayalam, or Hindi) first. Don't proceed until language is chosen.
-2. **LANGUAGE**: Once chosen, speak ONLY that language. Translate English JSON messages to the chosen language perfectly.
-   - *Tamil*: Use Chennai Tanglish (mix English/Tamil naturally). Fix: 'Con-duct', not 'Kan-duct'. 
-3. **OFF-TOPIC**: If user goes off-topic, acknowledge briefly (1 sentence) and IMMEDIATELY redirect back to the current flow question.
-4. **INTENT**: Match user input ('Yes', 'No', etc.) to buttons. If 'No', take the negative path.
-5. **LATENCY & SPEED**: 
-   - STOP immediately if user interrupts (Barge-in).
-   - Maintain <0.1s response latency. 
-   - Ask one question at a time. No AI disclosure.
-6. **OUTPUT**: Speak ONLY the translated 'message' from JSON. No extra filler.
+## STRICT Conversation & Language Rules:
+
+1. **NODE 1: START & LANGUAGE SELECTION**
+   - **Starting Node**: The conversation ALWAYS starts at the "welcome" node.
+   - **Mandatory Selection**: "language_rules.mandatory_language_selection" is TRUE.
+   - **Task**: Verify language BEFORE doing anything else.
+   - **Script**: "Hello welcome! Which language do you prefer? Tamil, English, Malayalam, or Hindi?"
+   - **Rule**: Do not answer other questions regardless of user input until a language is chosen.
+   - **TRANSITION**: As soon as language is confirmed, IMMEDIATELY jump to the "welcome" node and speak its message in the chosen language.
+
+2. **NODE 2+: LOCKED LANGUAGE EXECUTION**
+   - **Requirement**: Once a language is chosen (e.g., Tamil), you MUST speak **ONLY** in that language.
+   - **Strict Pathing**: If the user says **NO** (or negative), DO NOT explain the "Yes" option. Just take the "No" path.
+   - **Tamil Rule**: If Tamil is selected, use **Chennai Tanglish**. DO NOT speak full English sentences.
+     - *Bad*: "Okay, let's proceed."
+     - *Good*: "Sari, namma polam. Nandri! Welcome! Ungalukku eppadi help panna mudiyum?" (Translated welcome message).
+   - **PRONUNCIATION FIXES**:
+     - **"Conduct"**: When saying "we conduct class", say "**Naanga oru class Nadathurom**" (native) or "**Con-duct panrom**" (clear English). Do NOT say "Kan-duct".
+     - **General**: Ensure English words in Tanglish are pronounced with clear Indian English accent.
+   - **Consistency**: Maintain this language strictly for the entire call unless the user explicitly asks to switch.
+
+3. **CONVERSATION ETIQUETTE**:
+   - **One Question Only**: Ask only one question at a time.
+   - **No Filler Words**: No "um", "uh".
+   - **No AI Disclosure**: Do not say you are an AI.
+   - **Male**: "Sir", **Female**: "Ma'am", **Uncertain**: Neutral.
+
+4. **OFF-TOPIC / RANDOM REPLIES (CRITICAL)**:
+   - If the user asks a random question, gives an unrelated reply, or goes off-topic, you MUST:
+     1. **Briefly acknowledge** what they said in a warm, polite way (1 short sentence max). Do NOT give a detailed answer.
+     2. **Immediately redirect** back to the SAME current flow node by repeating the current question or message.
+   - **Examples**:
+     - User: "What's the weather today?" → You: "That's a good question! But right now, let me help you with [current flow question]."
+     - User: "Tell me a joke" → You: "Haha, sure some other time! So, [repeat current flow question]."
+     - User: "abcdef" / random gibberish → You: "I didn't quite get that. [Repeat current flow question]."
+   - **NEVER** give a full or detailed answer to off-topic questions. Keep acknowledgment to ONE short sentence, then redirect.
+   - **NEVER** skip or move to the next node because of a random reply. Stay on the SAME node until the user gives a valid response.
+   - Even if the user asks the same off-topic question repeatedly, keep redirecting back to the flow every time.
+
+5. **INTENT & BUTTON LOGIC**:
+   - **STRICT MATCHING**: Listen carefully to the user.
+   - **Negatives**: If user says "No", "Not interested", "Don't want", or "Cancel", you MUST trigger the button corresponding to that negative intent.
+     - *CRITICAL*: Do NOT force a "Yes" path if the user says "No".
+     - *Example*: User says "I don't have a laptop" -> Trigger the "no laptop" button. Do NOT say "That's okay, use a phone" unless the flow specifically has that response.
+   - **Positives**: If user says "Yes", "Interested", or "Okay", trigger the positive button.
+
+6. **INTERRUPTION & SPEED**:
+   - **Barge-In**: If the user speaks while you are talking, STOP immediately. Listen to them.
+   - **Latency**: Respond within 0.1 seconds. Keep answers short and direct.
+   - **Resume**: Calculate the new response based on their interruption, do not just repeat the old message.
+
+7. **FLOW TRANSITIONS & TRANSLATION**:
+   - **CRITICAL RULE**: The flow content (JSON) is in English. **YOU MUST TRANSLATE IT** to the selected language before speaking.
+   - **NO EXTRA TEXT**: Speak ONLY the translated content of the JSON message. Do NOT add generic phrases like "How can I help you?" unless they are in the JSON.
+   - **Example**: 
+     - JSON Message: "We conduct AI class on Monday."
+     - User Language: Tamil
+     - **YOU SAY**: "Naanga coming Monday oru AI class nadathurom." (Direct translation).
+     - **DO NOT SAY**: "Naanga class nadathurom. *Ungalukku eppadi help panna mudiyum?*" (Don't add the help question if it's not in the text).
+   - **Output**: Speak the *translated* version of the "message" field.
+   - **Input**: Listen for keywords/intents (in the user's language) to trigger the English button actions.
+   - **Ghost Node**: If the flow has a "welcome" message, do NOT speak it until language is selected. Speak the translated version AFTER selection.
 
 ## Flow Configuration (JSON):
 {json_content}
@@ -535,7 +593,7 @@ async def entrypoint(ctx: JobContext):
                 if tool_prompt:
                     final_instructions += tool_prompt
 
-    # Initialize models
+    # Initialize model
     models_start = time.time()
     azure_speech_key = os.getenv("AZURE_SPEECH_KEY")
     azure_speech_region = os.getenv("AZURE_SPEECH_REGION")
@@ -563,22 +621,15 @@ async def entrypoint(ctx: JobContext):
             instructions=final_instructions,
         )
 
-    def _create_nova_sonic_realtime_llm():
-        voice = (realtime_model_config or {}).get("voice") or "tiffany"
-        turn_detection = (realtime_model_config or {}).get("turn_detection") or "MEDIUM"
-        region = (realtime_model_config or {}).get("region") or os.getenv("AWS_DEFAULT_REGION", "ap-northeast-1")
-        logger.info("Nova Sonic Voice: %s, Turn Detection: %s, Region: %s", voice, turn_detection, region)
-        return aws.realtime.RealtimeModel.with_nova_sonic_2(
-            voice=voice,
-            turn_detection=turn_detection,
-            region=region,
-        )
+    puck_system_msg = final_instructions
 
     def _create_groq_llm():
-        return groq.LLM(model="llama3-8b-8192")
+        # Llama 3 on Groq is extremely fast
+        return groq.LLM(model="llama3-8b-8192", temperature=0.6)
 
     def _create_openai_llm():
-        return openai.LLM(model="gpt-4.1-mini")
+        # GPT-4o-mini is optimized for latency
+        return openai.LLM(model="gpt-4o-mini", temperature=0.6)
 
     def _create_sarvam_stt():
         language_code = (stt_config or {}).get("language") or "en_IN"
@@ -602,7 +653,10 @@ async def entrypoint(ctx: JobContext):
         language_code = (tts_config or {}).get("target_language_code") or "en_IN"
         logger.info("Language Code: %s", language_code)
         return sarvam.TTS(
-            target_language_code=language_code, model="bulbul:v2", speaker=speaker
+            target_language_code=language_code, 
+            model="bulbul:v2", 
+            speaker=speaker,
+            # Ensure chunk_size is small for faster streaming
         )
 
     def _create_gemini_tts():
@@ -621,12 +675,6 @@ async def entrypoint(ctx: JobContext):
     def _create_lmnt_tts():
         return lmnt.TTS(voice=(tts_config or {}).get("voice", "leah"))
 
-    def _create_elevenlabs_tts():
-        voice_id = (tts_config or {}).get("voice_id") or "EXAVITQu4vr4xnSDxMaL"
-        model = (tts_config or {}).get("model") or "eleven_flash_v2_5"
-        logger.info("ElevenLabs Voice ID: %s, Model: %s", voice_id, model)
-        return elevenlabs.TTS(voice_id=voice_id, model=model)
-
     def _create_deepgram_tts():
         return deepgram.TTS()
 
@@ -635,8 +683,6 @@ async def entrypoint(ctx: JobContext):
         provider = realtime_provider_name or llm_provider_name
         if provider == "Gemini Realtime":
             return _create_gemini_realtime_llm()
-        if provider == "Nova Sonic":
-            return _create_nova_sonic_realtime_llm()
         if provider == "Groq":
             return _create_groq_llm()
         return _create_openai_llm()
@@ -661,15 +707,31 @@ async def entrypoint(ctx: JobContext):
             return _create_azure_tts()
         if tts_provider_name == "lmnt":
             return _create_lmnt_tts()
-        if tts_provider_name == "ElevenLabs":
-            return _create_elevenlabs_tts()
         return _create_deepgram_tts()
 
-    if realtime_provider_name is None:
-        llm, stt, tts = await asyncio.gather(_init_llm(), _init_stt(), _init_tts())
+    # Parallel Initialization
+    models_start = time.time()
+    
+    # Initialize models concurrently
+    tasks = []
+    
+    if realtime_provider_name:
+        tasks.append(_init_llm())
+        tasks.append(asyncio.sleep(0)) # Placeholder for stt
+        tasks.append(asyncio.sleep(0)) # Placeholder for tts
     else:
-        llm, stt, tts = await _init_llm(), None, None
-    logger.info(f"All models initialized in {time.time() - models_start:.2f}s")
+        tasks.append(_init_llm())
+        tasks.append(_init_stt())
+        tasks.append(_init_tts())
+        
+    llm, stt, tts = await asyncio.gather(*tasks)
+    
+    # If realtime, stt/tts are None (handled by the provider)
+    if realtime_provider_name:
+        stt = None
+        tts = None
+        
+    logger.info(f"🚀 All models initialized in {time.time() - models_start:.2f}s")
 
     # Tool Factory
     def make_tool_function(handler, fn_name):
@@ -698,6 +760,8 @@ async def entrypoint(ctx: JobContext):
             tts=tts,
             vad=ctx.proc.userdata["vad"],
             preemptive_generation=True,
+            # TUNED FOR LOW LATENCY & INTERRUPTIBILITY
+            turn_detection_delay=0.3,  # Detect end of speech quickly (300ms) for fast response
         )
     else:
         session = AgentSession(llm=llm)
@@ -737,27 +801,9 @@ async def entrypoint(ctx: JobContext):
                 ):
                     asyncio.create_task(handler.add_to_transcript(role, content))
 
-    # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
-    call_timing = {"start_time": None, "end_time": None}
-
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
         logger.info("📞 Call ending - syncing webhooks...")
-
-        # Compute call timing
-        call_timing["end_time"] = datetime.now(timezone.utc)
-        call_duration_seconds = None
-        if call_timing["start_time"]:
-            call_duration_seconds = round(
-                (call_timing["end_time"] - call_timing["start_time"]).total_seconds(), 2
-            )
-            logger.info(
-                f"📊 Call duration: {call_duration_seconds}s "
-                f"(start={call_timing['start_time'].isoformat()}, "
-                f"end={call_timing['end_time'].isoformat()})"
-            )
-        else:
-            logger.warning("Call start time was never recorded (participant may not have connected)")
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
 
@@ -775,25 +821,12 @@ async def entrypoint(ctx: JobContext):
                             "captured_at": datetime.now(timezone.utc).isoformat(),
                         },
                     )
-                    await client.post(
-                        "http://localhost:8000/api/v1/webhooks/call-summary",
-                        json={
-                            "room_name": ctx.room.name,
-                            "history": session.history.to_dict(),
-                            "start_time": call_timing["start_time"].isoformat() if call_timing["start_time"] else None,
-                            "end_time": call_timing["end_time"].isoformat() if call_timing["end_time"] else None,
-                            "call_duration_seconds": call_duration_seconds,
-                        },
-                    )
                     # Call Completion Webhook
                     await client.post(
                         f"{fastapi_url}/webhook",
                         json={
                             "room_name": ctx.room.name,
                             "event_type": "call_completed",
-                            "start_time": call_timing["start_time"].isoformat() if call_timing["start_time"] else None,
-                            "end_time": call_timing["end_time"].isoformat() if call_timing["end_time"] else None,
-                            "call_duration": call_duration_seconds,
                         },
                     )
         except Exception as e:
@@ -818,24 +851,86 @@ async def entrypoint(ctx: JobContext):
 
     # Final Greet (with safety timeout)
     await _wait_for_participant(ctx.room)
-    call_timing["start_time"] = datetime.now(timezone.utc)
-    logger.info(f"📞 Call start time recorded: {call_timing['start_time'].isoformat()}")
+
+    # Safety: If it's a JSON flow, try to extract welcome message from instructions first
+    greet_text = custom_first_message
+    if is_json_instructions:
+        try:
+            trimmed = custom_instructions.strip()
+            start_idx = trimmed.find("{")
+            end_idx = trimmed.rfind("}")
+            if start_idx != -1 and end_idx != -1:
+                flow_json = json.loads(trimmed[start_idx : end_idx + 1])
+                # 1. Check for Language Rules first
+                lang_rules = flow_json.get("language_rules", {})
+                
+                # Default to TRUE if language_rules is missing completely (to support simple flows with mandatory lang selection)
+                # If language_rules exists but key is missing, default to False (standard get behavior)
+                if "language_rules" not in flow_json:
+                    is_mandatory_lang = True
+                else:
+                    is_mandatory_lang = lang_rules.get("mandatory_language_selection", False)
+                
+                # 2. Check for IRa call_flow structure
+                call_flow = flow_json.get("call_flow", {})
+                lang_selection_script = call_flow.get("language_selection", {}).get("script")
+                
+                if is_mandatory_lang and not lang_selection_script:
+                    # Auto-generate language question if mandatory but missing script
+                    supported = lang_rules.get("supported_languages", ["Tamil", "English", "Malayalam", "Hindi"])
+                    # Use a clean, direct first message to establish the language selection node
+                    welcome_msg = "Hello welcome! Which language do you prefer? Tamil, English, Malayalam, or Hindi?"
+                else:
+                    # Standard welcome extraction
+                    welcome_msg = (
+                        lang_selection_script or 
+                        flow_json.get("welcome", {}).get("message") or
+                        (flow_json.get("nodes", {}).get("welcome", {}).get("message") if "nodes" in flow_json else None) or
+                        (flow_json.get("nodes", {}).get("node_welcome", {}).get("message") if "nodes" in flow_json else None)
+                    )
+
+                if welcome_msg and (greet_text == "Hello!" or not greet_text or "help you today?" in greet_text):
+                    greet_text = welcome_msg
+                    logger.info(f"Using start message (Auto-Lang: {is_mandatory_lang}): {greet_text}")
+        except Exception as e:
+            logger.warning(f"Failed to extract structured flow start message: {e}")
+            pass
+
+    # Secondary check: If custom_first_message itself looks like JSON
     try:
-        await asyncio.wait_for(
-            session.generate_reply(
-                instructions=f"Start by saying: '{custom_first_message}'"
-            ),
-            timeout=5.0,
-        )
+        if isinstance(greet_text, str) and "{" in greet_text and "}" in greet_text:
+            trimmed = greet_text.strip()
+            start_idx = trimmed.find("{")
+            end_idx = trimmed.rfind("}")
+            mj = json.loads(trimmed[start_idx : end_idx + 1])
+            if isinstance(mj, dict):
+                greet_text = (
+                    mj.get("message")
+                    or mj.get("text")
+                    or mj.get("first_message")
+                    or mj.get("welcome", {}).get("message")
+                    or greet_text
+                )
+    except:
+        pass
+
+    # Always speak first - starting node is "welcome"
+    try:
+        if greet_text:
+            logger.info(f"🗣️ Speaking first message (welcome node): {greet_text}")
+            await asyncio.wait_for(
+                session.generate_reply(instructions=f"Start conversation immediately by saying exactly: '{greet_text}'"),
+                timeout=2.0,
+            )
     except Exception as e:
         logger.warning(f"Initial greeting timed out or failed: {e}")
 
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
 
     # ============== Call Safeguards ==============
-    # Hard limit: call is cut no matter what after MAX_CALL_DURATION
+    # Prevent stuck calls (e.g. customer puts phone aside without hanging up)
     MAX_CALL_DURATION = int(os.getenv("MAX_CALL_DURATION", 300))  # 5 minutes
-    INACTIVITY_TIMEOUT = int(os.getenv("INACTIVITY_TIMEOUT", 60))  # 1 minute
+    INACTIVITY_TIMEOUT = int(os.getenv("INACTIVITY_TIMEOUT", 120))  # 2 minutes
 
     last_user_activity = time.time()
     call_ended = False
@@ -852,40 +947,35 @@ async def entrypoint(ctx: JobContext):
         if participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
             logger.info(f"SIP participant disconnected: {participant.identity}")
             call_ended = True
+            # Force room deletion to ensure cleanup
+            # Note: ctx.delete_room() returns a Future/Task, not a coroutine
             ctx.delete_room()
 
     async def _watchdog_task():
-        """Hard watchdog: unconditionally terminates the call after MAX_CALL_DURATION"""
+        """Watchdog: Terminate call if duration exceeded AND user inactive"""
         call_start = time.time()
         while not call_ended:
             await asyncio.sleep(10)
 
-            elapsed = time.time() - call_start
-            inactive = time.time() - last_user_activity
+            call_duration = time.time() - call_start
+            inactive_duration = time.time() - last_user_activity
 
-            if elapsed >= MAX_CALL_DURATION:
+            if (
+                call_duration > MAX_CALL_DURATION
+                and inactive_duration > INACTIVITY_TIMEOUT
+            ):
                 logger.warning(
-                    f"Hard call limit reached: {elapsed:.0f}s >= {MAX_CALL_DURATION}s. Cutting call."
+                    f"Call timeout triggered: duration={call_duration:.0f}s (max={MAX_CALL_DURATION}s), "
+                    f"inactive={inactive_duration:.0f}s (max={INACTIVITY_TIMEOUT}s). Terminating call."
                 )
                 try:
                     await ctx.delete_room()
                 except Exception as e:
-                    logger.error(f"Failed to delete room on hard timeout: {e}")
-                break
-
-            if inactive >= INACTIVITY_TIMEOUT:
-                logger.warning(
-                    f"Inactivity timeout: {inactive:.0f}s >= {INACTIVITY_TIMEOUT}s. Cutting call."
-                )
-                try:
-                    await ctx.delete_room()
-                except Exception as e:
-                    logger.error(f"Failed to delete room on inactivity: {e}")
+                    logger.error(f"Failed to delete room on timeout: {e}")
                 break
 
     watchdog = asyncio.create_task(_watchdog_task())
 
-    # Cancel watchdog on normal shutdown
     async def _cancel_watchdog():
         watchdog.cancel()
 
@@ -893,6 +983,10 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
+    # Initialize the event loop to avoid RuntimeError in newer Python versions
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     cli.run_app(
         WorkerOptions(
             entrypoint_fnc=entrypoint,

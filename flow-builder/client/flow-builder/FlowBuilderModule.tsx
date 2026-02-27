@@ -1,0 +1,160 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Zap, Maximize2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { VisualFlowBuilder } from './VisualFlowBuilder';
+
+export interface TemplateData {
+    name: string;
+    description: string;
+    category: string;
+    visibility: string;
+    tags: string[];
+    flow: any;
+}
+
+interface FlowBuilderModalProps {
+    initialValue?: any;
+    onSave: (flow: any) => void;
+    onClose: () => void;
+}
+
+export default function FlowBuilderModule({ initialValue, onSave, onClose }: FlowBuilderModalProps) {
+    const [activeTab, setActiveTab] = useState<'visual' | 'json' | 'prompt'>('visual');
+    const [templateData, setTemplateData] = useState<TemplateData>({
+        name: '',
+        description: '',
+        category: 'Other',
+        visibility: 'Private',
+        tags: [],
+        flow: initialValue || {}
+    });
+
+    const handleSave = () => {
+        onSave(templateData.flow);
+        onClose();
+    };
+
+    return (
+        <div className="flex flex-col h-[85vh] w-full bg-white text-gray-900 rounded-xl overflow-hidden border border-emerald-100 shadow-2xl">
+            {/* Top Navigation */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+                <div className="flex items-center gap-4">
+                    <button onClick={onClose} className="p-2 hover:bg-emerald-100/50 rounded-full transition-colors text-emerald-700">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-bold text-emerald-900">Flow Builder</h1>
+                        <p className="text-sm text-emerald-700/70">Design your conversational flow</p>
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    <Button variant="ghost" onClick={onClose} className="text-gray-600 hover:text-emerald-700 hover:bg-emerald-50">
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-none shadow-md shadow-emerald-500/20 px-6"
+                    >
+                        Apply to Assistant
+                    </Button>
+                </div>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+                {/* Main Content - Visual Builder */}
+                <div className="flex-1 flex flex-col bg-gray-50/50">
+                    {/* Tabs area */}
+                    <div className="px-6 pt-4 flex items-center justify-between">
+                        <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+                            <button
+                                onClick={() => setActiveTab('visual')}
+                                className={cn(
+                                    "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                                    activeTab === 'visual'
+                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
+                                        : "text-gray-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                )}
+                            >
+                                Visual Builder
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('json')}
+                                className={cn(
+                                    "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                                    activeTab === 'json'
+                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
+                                        : "text-gray-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                )}
+                            >
+                                JSON Editor
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('prompt')}
+                                className={cn(
+                                    "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                                    activeTab === 'prompt'
+                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
+                                        : "text-gray-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                )}
+                            >
+                                System Prompt
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Editor Canvas */}
+                    <div className="flex-1 p-6 relative">
+                        <div className="w-full h-full rounded-xl overflow-hidden border border-gray-200 bg-[#f8f9fa] relative shadow-inner">
+                            {/* Dotted Grid Background Simulator */}
+                            <div className="absolute inset-0 opacity-10 pointer-events-none"
+                                style={{
+                                    backgroundImage: 'radial-gradient(#000000 1px, transparent 1px)',
+                                    backgroundSize: '24px 24px'
+                                }}
+                            />
+
+                            {activeTab === 'visual' && (
+                                <VisualFlowBuilder
+                                    value={templateData.flow}
+                                    onChange={(flow) => setTemplateData(prev => ({ ...prev, flow }))}
+                                />
+                            )}
+                            {activeTab === 'json' && (
+                                <div className="h-full w-full bg-emerald-50/20 p-6 font-mono text-sm text-emerald-800 overflow-auto">
+                                    <div className="bg-white rounded-lg border border-emerald-100 p-4 shadow-sm">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-sm font-bold text-emerald-900 uppercase tracking-wider">Flow JSON Structure</h3>
+                                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">READ ONLY</span>
+                                        </div>
+                                        <pre className="whitespace-pre-wrap">{JSON.stringify(templateData.flow, null, 2)}</pre>
+                                    </div>
+                                </div>
+                            )}
+                            {activeTab === 'prompt' && (
+                                <div className="h-full w-full bg-emerald-50/20 p-6 font-mono text-sm text-emerald-800 overflow-auto">
+                                    <div className="bg-white rounded-lg border border-emerald-100 p-6 shadow-md h-full flex flex-col">
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-bold text-emerald-900 border-b border-emerald-100 pb-2 mb-2">Resulting System Prompt</h3>
+                                            <p className="text-xs text-emerald-600/70 font-sans">This is how your flow will be represented in the agent's instructions.</p>
+                                        </div>
+                                        <Textarea
+                                            value={JSON.stringify(templateData.flow, null, 2)}
+                                            readOnly
+                                            className="flex-1 w-full bg-gray-50 border-emerald-100 text-emerald-900 font-mono text-sm p-4 focus:ring-emerald-500 rounded-lg shadow-inner resize-none"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

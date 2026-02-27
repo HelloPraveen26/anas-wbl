@@ -38,6 +38,7 @@ import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
 import LiveKitApplication from "@/app/livekit-talk-agent";
 import AIVOCOApplication from "@/app/aivoco-agent";
+import FlowBuilderModule from "@/components/flow-builder/FlowBuilderModule";
 
 // ...existing code...
 // (All interfaces and hooks/logic preserved exactly as in the original file)
@@ -324,6 +325,7 @@ export default function AssistantEditPage() {
 
   const [showLiveKitModal, setShowLiveKitModal] = useState(false);
   const [showAivocoModal, setShowAivocoModal] = useState(false);
+  const [showFlowBuilderModal, setShowFlowBuilderModal] = useState(false);
 
   // Prompt generation
   const [generateLoading, setGenerateLoading] = useState(false);
@@ -713,20 +715,20 @@ export default function AssistantEditPage() {
 
   const filteredSynthesizerModels = selectedSynthesizerProvider
     ? synthesizerModels.filter(
-        (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
-      )
+      (m) => m.synthesizerProvider.id === selectedSynthesizerProvider,
+    )
     : synthesizerModels;
 
   const filteredTranscriberModels = selectedTranscriberProvider
     ? transcriberModels.filter(
-        (m) => m.transcriberProvider.id === selectedTranscriberProvider,
-      )
+      (m) => m.transcriberProvider.id === selectedTranscriberProvider,
+    )
     : transcriberModels;
 
   const filteredRealtimeModels = selectedRealtimeProvider
     ? realtimeModels.filter(
-        (m) => m.realtimeProvider.id === selectedRealtimeProvider,
-      )
+      (m) => m.realtimeProvider.id === selectedRealtimeProvider,
+    )
     : realtimeModels;
 
   // Update firstMessage based on mode
@@ -1163,11 +1165,10 @@ export default function AssistantEditPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 py-1.5 md:py-3 px-1 md:px-4 rounded-lg md:rounded-xl transition-all font-medium text-[10px] md:text-sm ${
-                    activeTab === (tab.id as any)
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                  }`}
+                  className={`flex-1 flex flex-col md:flex-row items-center justify-center gap-0.5 md:gap-2 py-1.5 md:py-3 px-1 md:px-4 rounded-lg md:rounded-xl transition-all font-medium text-[10px] md:text-sm ${activeTab === (tab.id as any)
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
                 >
                   <Icon className="w-3 h-3 md:w-4 md:h-4" />
                   <span className="hidden sm:inline">{tab.label}</span>
@@ -1311,6 +1312,15 @@ export default function AssistantEditPage() {
                         className="w-full bg-gray-100 text-gray-800 p-5 rounded-xl text-sm font-mono min-h-[130px] border border-gray-300 resize-none shadow-inner"
                         placeholder="Enter system prompt..."
                       />
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={() => setShowFlowBuilderModal(true)}
+                          className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md shadow-emerald-500/20 h-11 px-6 mt-2"
+                        >
+                          <Zap className="w-4 h-4 mr-2" />
+                          Flow Template
+                        </Button>
+                      </div>
                     </div>
 
                     {/* File Upload Section */}
@@ -1607,26 +1617,26 @@ export default function AssistantEditPage() {
 
                             {(config.type === "string" ||
                               config.type === "number") && (
-                              <Input
-                                type={
-                                  config.type === "number" ? "number" : "text"
-                                }
-                                value={
-                                  synthesizerConfigValues[config.key] ||
-                                  config.defaultValue
-                                }
-                                onChange={(e) =>
-                                  setSynthesizerConfigValues((prev) => ({
-                                    ...prev,
-                                    [config.key]:
-                                      config.type === "number"
-                                        ? Number(e.target.value)
-                                        : e.target.value,
-                                  }))
-                                }
-                                className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
-                              />
-                            )}
+                                <Input
+                                  type={
+                                    config.type === "number" ? "number" : "text"
+                                  }
+                                  value={
+                                    synthesizerConfigValues[config.key] ||
+                                    config.defaultValue
+                                  }
+                                  onChange={(e) =>
+                                    setSynthesizerConfigValues((prev) => ({
+                                      ...prev,
+                                      [config.key]:
+                                        config.type === "number"
+                                          ? Number(e.target.value)
+                                          : e.target.value,
+                                    }))
+                                  }
+                                  className="w-full bg-gray-50 border-gray-200 text-gray-900 text-sm rounded-lg px-4 py-2.5 shadow-sm focus:border-emerald-500 focus:ring-emerald-500/20"
+                                />
+                              )}
                           </div>
                         ))}
                       </div>
@@ -1751,27 +1761,27 @@ export default function AssistantEditPage() {
 
                           {(config.type === "string" ||
                             config.type === "number") && (
-                            <Input
-                              type={
-                                config.type === "number" ? "number" : "text"
-                              }
-                              value={
-                                sttConfigValues[config.key] ||
-                                config.defaultValue
-                              }
-                              onChange={(e) =>
-                                setSttConfigValues((prev) => ({
-                                  ...prev,
-                                  [config.key]:
-                                    config.type === "number"
-                                      ? Number(e.target.value)
-                                      : e.target.value,
-                                }))
-                              }
-                              placeholder={config.defaultValue}
-                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                            />
-                          )}
+                              <Input
+                                type={
+                                  config.type === "number" ? "number" : "text"
+                                }
+                                value={
+                                  sttConfigValues[config.key] ||
+                                  config.defaultValue
+                                }
+                                onChange={(e) =>
+                                  setSttConfigValues((prev) => ({
+                                    ...prev,
+                                    [config.key]:
+                                      config.type === "number"
+                                        ? Number(e.target.value)
+                                        : e.target.value,
+                                  }))
+                                }
+                                placeholder={config.defaultValue}
+                                className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                              />
+                            )}
                         </div>
                       ))}
                     </div>
@@ -1895,27 +1905,27 @@ export default function AssistantEditPage() {
 
                           {(config.type === "string" ||
                             config.type === "number") && (
-                            <Input
-                              type={
-                                config.type === "number" ? "number" : "text"
-                              }
-                              value={
-                                realtimeConfigValues[config.key] ||
-                                config.defaultValue
-                              }
-                              onChange={(e) =>
-                                setRealtimeConfigValues((prev) => ({
-                                  ...prev,
-                                  [config.key]:
-                                    config.type === "number"
-                                      ? Number(e.target.value)
-                                      : e.target.value,
-                                }))
-                              }
-                              placeholder={config.defaultValue}
-                              className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
-                            />
-                          )}
+                              <Input
+                                type={
+                                  config.type === "number" ? "number" : "text"
+                                }
+                                value={
+                                  realtimeConfigValues[config.key] ||
+                                  config.defaultValue
+                                }
+                                onChange={(e) =>
+                                  setRealtimeConfigValues((prev) => ({
+                                    ...prev,
+                                    [config.key]:
+                                      config.type === "number"
+                                        ? Number(e.target.value)
+                                        : e.target.value,
+                                  }))
+                                }
+                                placeholder={config.defaultValue}
+                                className="bg-gray-50 border-gray-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                              />
+                            )}
                         </div>
                       ))}
                     </div>
@@ -1947,6 +1957,61 @@ export default function AssistantEditPage() {
         <AIVOCOApplication
           systemPrompt={systemPrompt}
           firstMessage={firstMessage}
+        />
+      </Modal>
+
+      {/* Flow Builder Modal */}
+      <Modal
+        open={showFlowBuilderModal}
+        onCancel={() => setShowFlowBuilderModal(false)}
+        footer={null}
+        width={1200}
+        centered
+        className="flow-builder-modal"
+        destroyOnClose
+      >
+        <FlowBuilderModule
+          initialValue={(() => {
+            if (!systemPrompt) return null;
+            try {
+              // Try direct parse first
+              return JSON.parse(systemPrompt);
+            } catch (e) {
+              // Try to find JSON block { ... }
+              const startIdx = systemPrompt.indexOf('{');
+              const endIdx = systemPrompt.lastIndexOf('}');
+              if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
+                try {
+                  const jsonStr = systemPrompt.substring(startIdx, endIdx + 1);
+                  return JSON.parse(jsonStr);
+                } catch (e2) {
+                  return null;
+                }
+              }
+              return null;
+            }
+          })()}
+          onSave={(flow) => {
+            // Keep original text prefix/suffix if it exists
+            const startIdx = systemPrompt.indexOf('{');
+            const endIdx = systemPrompt.lastIndexOf('}');
+
+            if (startIdx !== -1 && endIdx !== -1 && startIdx < endIdx) {
+              const prefix = systemPrompt.substring(0, startIdx).trim();
+              const suffix = systemPrompt.substring(endIdx + 1).trim();
+              const jsonStr = JSON.stringify(flow, null, 2);
+
+              let finalPrompt = "";
+              if (prefix) finalPrompt += prefix + "\n\n";
+              finalPrompt += jsonStr;
+              if (suffix) finalPrompt += "\n\n" + suffix;
+
+              setSystemPrompt(finalPrompt);
+            } else {
+              setSystemPrompt(JSON.stringify(flow, null, 2));
+            }
+          }}
+          onClose={() => setShowFlowBuilderModal(false)}
         />
       </Modal>
 
