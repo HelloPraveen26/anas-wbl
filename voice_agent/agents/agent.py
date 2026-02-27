@@ -30,8 +30,10 @@ from livekit.agents import (
 from livekit.agents import llm as agent_llm
 from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
+    aws,
     azure,
     deepgram,
+    elevenlabs,
     google,
     groq,
     lmnt,
@@ -44,7 +46,7 @@ from opentelemetry.util.types import AttributeValue
 
 logger = logging.getLogger("agent")
 
-load_dotenv(".env", override=True)
+load_dotenv("/Users/sumanpaudel/zenvoice/voice_agent/agents/.env", override=True)
 
 
 # -----------------------------------------------------------------------------
@@ -492,6 +494,17 @@ async def entrypoint(ctx: JobContext):
             instructions=final_instructions,
         )
 
+    def _create_nova_sonic_realtime_llm():
+        voice = (realtime_model_config or {}).get("voice") or "tiffany"
+        turn_detection = (realtime_model_config or {}).get("turn_detection") or "MEDIUM"
+        region = (realtime_model_config or {}).get("region") or os.getenv("AWS_DEFAULT_REGION", "ap-northeast-1")
+        logger.info("Nova Sonic Voice: %s, Turn Detection: %s, Region: %s", voice, turn_detection, region)
+        return aws.realtime.RealtimeModel.with_nova_sonic_2(
+            voice=voice,
+            turn_detection=turn_detection,
+            region=region,
+        )
+
     def _create_groq_llm():
         return groq.LLM(model="llama3-8b-8192")
 
@@ -539,6 +552,12 @@ async def entrypoint(ctx: JobContext):
     def _create_lmnt_tts():
         return lmnt.TTS(voice=(tts_config or {}).get("voice", "leah"))
 
+    def _create_elevenlabs_tts():
+        voice_id = (tts_config or {}).get("voice_id") or "EXAVITQu4vr4xnSDxMaL"
+        model = (tts_config or {}).get("model") or "eleven_flash_v2_5"
+        logger.info("ElevenLabs Voice ID: %s, Model: %s", voice_id, model)
+        return elevenlabs.TTS(voice_id=voice_id, model=model)
+
     def _create_deepgram_tts():
         return deepgram.TTS()
 
@@ -547,6 +566,8 @@ async def entrypoint(ctx: JobContext):
         provider = realtime_provider_name or llm_provider_name
         if provider == "Gemini Realtime":
             return _create_gemini_realtime_llm()
+        if provider == "Nova Sonic":
+            return _create_nova_sonic_realtime_llm()
         if provider == "Groq":
             return _create_groq_llm()
         return _create_openai_llm()
@@ -571,6 +592,8 @@ async def entrypoint(ctx: JobContext):
             return _create_azure_tts()
         if tts_provider_name == "lmnt":
             return _create_lmnt_tts()
+        if tts_provider_name == "ElevenLabs":
+            return _create_elevenlabs_tts()
         return _create_deepgram_tts()
 
     if realtime_provider_name is None:
@@ -805,6 +828,6 @@ if __name__ == "__main__":
         WorkerOptions(
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
-            agent_name="hexite-outbound-caller",
+            agent_name="outbound-caller",
         )
     )
