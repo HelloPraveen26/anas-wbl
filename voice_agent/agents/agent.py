@@ -46,8 +46,7 @@ from opentelemetry.util.types import AttributeValue
 
 logger = logging.getLogger("agent")
 
-load_dotenv("/Users/sumanpaudel/zenvoice/voice_agent/agents/.env", override=True)
-
+load_dotenv(".env", override=True)
 
 # -----------------------------------------------------------------------------
 # DynamicToolHandler: Advanced Multi-Tool Orchestration
