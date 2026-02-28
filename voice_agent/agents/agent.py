@@ -46,8 +46,7 @@ from opentelemetry.util.types import AttributeValue
 
 logger = logging.getLogger("agent")
 
-_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-load_dotenv(_env_path, override=True)
+load_dotenv(".env", override=True)
 
 
 # -----------------------------------------------------------------------------
@@ -262,8 +261,6 @@ async def load_all_tools(assistant_id: str) -> list:
         return []
 
 
-
-
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
@@ -452,11 +449,11 @@ async def entrypoint(ctx: JobContext):
                 potential_json = trimmed[start_idx : end_idx + 1]
                 parsed = json.loads(potential_json)
                 if isinstance(parsed, dict) and (
-                    "nodes" in parsed or 
-                    "welcome" in parsed or 
-                    "call_flow" in parsed or
-                    "language_rules" in parsed or
-                    "identity" in parsed
+                    "nodes" in parsed
+                    or "welcome" in parsed
+                    or "call_flow" in parsed
+                    or "language_rules" in parsed
+                    or "identity" in parsed
                 ):
                     is_json_instructions = True
                     # Keep the original instruction text but we know it's a flow
@@ -468,7 +465,7 @@ async def entrypoint(ctx: JobContext):
         trimmed = custom_instructions.strip()
         start_idx = trimmed.find("{")
         end_idx = trimmed.rfind("}")
-        
+
         json_str = trimmed[start_idx : end_idx + 1]
         other_text = (trimmed[:start_idx] + "\n" + trimmed[end_idx + 1 :]).strip()
 
@@ -478,30 +475,30 @@ async def entrypoint(ctx: JobContext):
             if "language_rules" not in parsed_flow:
                 parsed_flow["language_rules"] = {
                     "mandatory_language_selection": True,
-                    "supported_languages": ["Tamil", "English", "Malayalam", "Hindi"] 
+                    "supported_languages": ["Tamil", "English", "Malayalam", "Hindi"],
                 }
                 # Update json_content to include the injected rules
                 json_content = json.dumps(parsed_flow, indent=2)
             else:
                 json_content = json_str
         except:
-             json_content = json_str
-        
+            json_content = json_str
+
         # Condensed Flow Instructions
         final_instructions = f"""You are a voice AI assistant following a STRICT conversation flow.
-        
+
 ## Your Core Persona:
 {other_text if other_text else DEFAULT_PERSONALITY}
 
 ## STRICT RULES:
 1. **START**: Always start at 'welcome' node. Ask language (Tamil, English, Malayalam, or Hindi) first. Don't proceed until language is chosen.
 2. **LANGUAGE**: Once chosen, speak ONLY that language. Translate English JSON messages to the chosen language perfectly.
-   - *Tamil*: Use Chennai Tanglish (mix English/Tamil naturally). Fix: 'Con-duct', not 'Kan-duct'. 
+   - *Tamil*: Use Chennai Tanglish (mix English/Tamil naturally). Fix: 'Con-duct', not 'Kan-duct'.
 3. **OFF-TOPIC**: If user goes off-topic, acknowledge briefly (1 sentence) and IMMEDIATELY redirect back to the current flow question.
 4. **INTENT**: Match user input ('Yes', 'No', etc.) to buttons. If 'No', take the negative path.
-5. **LATENCY & SPEED**: 
+5. **LATENCY & SPEED**:
    - STOP immediately if user interrupts (Barge-in).
-   - Maintain <0.1s response latency. 
+   - Maintain <0.1s response latency.
    - Ask one question at a time. No AI disclosure.
 6. **OUTPUT**: Speak ONLY the translated 'message' from JSON. No extra filler.
 
@@ -566,8 +563,15 @@ async def entrypoint(ctx: JobContext):
     def _create_nova_sonic_realtime_llm():
         voice = (realtime_model_config or {}).get("voice") or "tiffany"
         turn_detection = (realtime_model_config or {}).get("turn_detection") or "MEDIUM"
-        region = (realtime_model_config or {}).get("region") or os.getenv("AWS_DEFAULT_REGION", "ap-northeast-1")
-        logger.info("Nova Sonic Voice: %s, Turn Detection: %s, Region: %s", voice, turn_detection, region)
+        region = (realtime_model_config or {}).get("region") or os.getenv(
+            "AWS_DEFAULT_REGION", "ap-northeast-1"
+        )
+        logger.info(
+            "Nova Sonic Voice: %s, Turn Detection: %s, Region: %s",
+            voice,
+            turn_detection,
+            region,
+        )
         return aws.realtime.RealtimeModel.with_nova_sonic_2(
             voice=voice,
             turn_detection=turn_detection,
@@ -757,7 +761,9 @@ async def entrypoint(ctx: JobContext):
                 f"end={call_timing['end_time'].isoformat()})"
             )
         else:
-            logger.warning("Call start time was never recorded (participant may not have connected)")
+            logger.warning(
+                "Call start time was never recorded (participant may not have connected)"
+            )
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
 
@@ -780,8 +786,12 @@ async def entrypoint(ctx: JobContext):
                         json={
                             "room_name": ctx.room.name,
                             "history": session.history.to_dict(),
-                            "start_time": call_timing["start_time"].isoformat() if call_timing["start_time"] else None,
-                            "end_time": call_timing["end_time"].isoformat() if call_timing["end_time"] else None,
+                            "start_time": call_timing["start_time"].isoformat()
+                            if call_timing["start_time"]
+                            else None,
+                            "end_time": call_timing["end_time"].isoformat()
+                            if call_timing["end_time"]
+                            else None,
                             "call_duration_seconds": call_duration_seconds,
                         },
                     )
@@ -791,8 +801,12 @@ async def entrypoint(ctx: JobContext):
                         json={
                             "room_name": ctx.room.name,
                             "event_type": "call_completed",
-                            "start_time": call_timing["start_time"].isoformat() if call_timing["start_time"] else None,
-                            "end_time": call_timing["end_time"].isoformat() if call_timing["end_time"] else None,
+                            "start_time": call_timing["start_time"].isoformat()
+                            if call_timing["start_time"]
+                            else None,
+                            "end_time": call_timing["end_time"].isoformat()
+                            if call_timing["end_time"]
+                            else None,
                             "call_duration": call_duration_seconds,
                         },
                     )

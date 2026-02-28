@@ -11,6 +11,7 @@ import { LmntSeed } from "../database/seeds/lmnt";
 import { DeepgramSeed } from "../database/seeds/deepgram";
 import { GroqSeed } from "../database/seeds/groq";
 import { GeminiRealtimeSeed } from "../database/seeds/gemini-realtime";
+import { NovaSonicSeed } from "../database/seeds/nova-sonic-realtime";
 
 async function runSeeds() {
   try {
@@ -57,6 +58,10 @@ async function runSeeds() {
     console.log("Running Gemini Realtime seed...");
     const geminiRealtimeSeed = new GeminiRealtimeSeed();
     await geminiRealtimeSeed.run(AppDataSource);
+
+    console.log("Running Nova Sonic seed...");
+    const novaSonicSeed = new NovaSonicSeed();
+    await novaSonicSeed.run(AppDataSource);
 
     console.log("Running Registered Numbers seed...");
     const registeredNumbersSeed = new RegisteredNumbersSeed();
