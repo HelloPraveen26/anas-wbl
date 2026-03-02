@@ -10,6 +10,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBody } from "@nestjs/swagger";
 import { CallSummaryDto } from "./dto/call-summary.dto";
 import { CallLogsService } from "../call-logs/call-logs.service";
 import { ChatLogsService } from "../chat-logs/chat-logs.service";
+import { UsersService } from "../users/users.service";
 
 @ApiTags("webhooks")
 @Controller("webhooks")
@@ -19,6 +20,7 @@ export class WebhooksController {
   constructor(
     private readonly callLogsService: CallLogsService,
     private readonly chatLogsService: ChatLogsService,
+    private readonly usersService: UsersService,
   ) {}
 
   @Post("call-summary")
@@ -168,6 +170,26 @@ export class WebhooksController {
         this.logger.log(
           `✅ Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees.toFixed(4)}, status: completed`,
         );
+
+        // Deduct cost from user's credits
+        try {
+          const user = await this.usersService.findById(callLog.userId);
+          const currentCredits = Number(user.credits);
+          const newCredits = currentCredits - costInRupees;
+
+          await this.usersService.update(callLog.userId, {
+            credits: newCredits,
+          });
+
+          this.logger.log(
+            `✅ Deducted ₹${costInRupees.toFixed(4)} from user ${callLog.userId}. Credits: ₹${currentCredits.toFixed(4)} → ₹${newCredits.toFixed(4)}`,
+          );
+        } catch (creditError) {
+          this.logger.error(
+            `❌ Error deducting credits from user ${callLog.userId}: ${creditError.message}`,
+            creditError.stack,
+          );
+        }
 
         // Save chat history to chat_logs table
         try {
