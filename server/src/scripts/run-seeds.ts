@@ -6,6 +6,7 @@ import { SynthesizerSeed } from "../database/seeds/synthesizer-seed";
 import { RegisteredNumbersSeed } from "../database/seeds/registered-numbers-seed";
 import { ContactNumbersSeed } from "../database/seeds/contact-numbers-seed";
 import { TtsConfigSeed } from "../database/seeds/sarvam-tts-config-seed";
+import { ElevenLabsTtsConfigSeed } from "../database/seeds/elevenlabs-tts-config-seed";
 import { GeminiSeed } from "../database/seeds/gemini";
 import { LmntSeed } from "../database/seeds/lmnt";
 import { DeepgramSeed } from "../database/seeds/deepgram";
@@ -38,6 +39,10 @@ async function runSeeds() {
     console.log("Running TTS Config seed...");
     const ttsConfigSeed = new TtsConfigSeed();
     await ttsConfigSeed.run(AppDataSource);
+
+    console.log("Running ElevenLabs TTS Config seed...");
+    const elevenLabsTtsConfigSeed = new ElevenLabsTtsConfigSeed();
+    await elevenLabsTtsConfigSeed.run(AppDataSource);
 
     console.log("Running Gemini seed...");
     const geminiSeed = new GeminiSeed();
