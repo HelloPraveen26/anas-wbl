@@ -175,7 +175,9 @@ export class WebhooksController {
         try {
           const user = await this.usersService.findById(callLog.userId);
           const currentCredits = Number(user.credits);
-          const newCredits = currentCredits - costInRupees;
+          const newCredits = parseFloat(
+            (currentCredits - costInRupees).toFixed(2),
+          );
 
           await this.usersService.update(callLog.userId, {
             credits: newCredits,

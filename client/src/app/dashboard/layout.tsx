@@ -309,7 +309,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </button>
               </div>
               <div className="text-2xl font-bold text-gray-900 mb-3">
-                {user?.credits || 0}
+                {(user?.credits || 0).toFixed(2)}
               </div>
               <BuyCreditsDialog />
             </div>
@@ -317,7 +317,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 shadow-sm border border-gray-200">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-gray-900">
-                  {user?.credits || 0}
+                  {(user?.credits || 0).toFixed(2)}
                 </span>
                 <button
                   onClick={async () => {
