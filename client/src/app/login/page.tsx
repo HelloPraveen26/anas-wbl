@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -29,7 +29,7 @@ interface FormErrors {
   general?: string;
 }
 
-export default function SignIn() {
+function SignInContent() {
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
@@ -437,5 +437,22 @@ export default function SignIn() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-screen w-full bg-white flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-green-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <SignInContent />
+    </Suspense>
   );
 }
