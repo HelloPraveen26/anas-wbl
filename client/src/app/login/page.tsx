@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Chrome, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { Chrome, Eye, EyeOff, AlertCircle, Loader2 } from "lucide-react";
 // Assuming '@/lib/api' and '@/lib/auth' are correctly set up
-import { api, ApiError, SignInRequest } from '@/lib/api';
-import { authManager } from '@/lib/auth';
+import { api, ApiError, SignInRequest } from "@/lib/api";
+import { authManager } from "@/lib/auth";
 
 // Import your logos
 // IMPORTANT: Replace these with your actual logo paths/components
@@ -29,20 +29,25 @@ interface FormErrors {
   general?: string;
 }
 
-
-
-
-
 export default function SignIn() {
   const [formData, setFormData] = useState<FormData>({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Handle OAuth errors from URL
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam) {
+      setErrors({ general: decodeURIComponent(errorParam) });
+    }
+  }, [searchParams]);
 
   // --- Form Logic (Keeping original logic for functionality) ---
 
@@ -51,13 +56,13 @@ export default function SignIn() {
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = "Please enter a valid email address";
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     }
 
     setErrors(newErrors);
@@ -66,10 +71,10 @@ export default function SignIn() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({ ...prev, [name]: undefined }));
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -93,14 +98,14 @@ export default function SignIn() {
 
       if (response.success && response.data) {
         authManager.setAuth(response.data.user, response.data.token);
-        router.push('/dashboard/assistants');
+        router.push("/dashboard/assistants");
       }
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error("Sign in error:", error);
 
       if (error instanceof ApiError) {
         if (error.statusCode === 401) {
-          setErrors({ general: 'Invalid email or password' });
+          setErrors({ general: "Invalid email or password" });
         } else if (error.statusCode === 400 && error.data?.errors) {
           const serverErrors: FormErrors = {};
           error.data.errors.forEach((err: any) => {
@@ -116,7 +121,7 @@ export default function SignIn() {
         }
       } else {
         setErrors({
-          general: 'An unexpected error occurred. Please try again.',
+          general: "An unexpected error occurred. Please try again.",
         });
       }
     } finally {
@@ -125,16 +130,30 @@ export default function SignIn() {
   };
 
   const handleGoogleSignIn = () => {
-    setErrors({
-      general: 'Google sign-in is not implemented yet. Please use email/password.',
-    });
+    // Clear any existing errors
+    setErrors({});
+
+    // Redirect to backend Google OAuth endpoint
+    const apiBaseUrl =
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:8000/api/v1"
+        : process.env.NEXT_PUBLIC_API_URL;
+
+    if (!apiBaseUrl) {
+      setErrors({
+        general: "API configuration error. Please contact support.",
+      });
+      return;
+    }
+
+    // Redirect to Google OAuth
+    window.location.href = `${apiBaseUrl}/auth/google`;
   };
 
   // --- Render Component ---
 
   return (
     <div className="h-screen w-full bg-white flex flex-col lg:flex-row overflow-hidden">
-
       {/* ========================================================= */}
       {/* LEFT SIDE - WELCOME SECTION (PREMIUM WHITE BACKGROUND)    */}
       {/* ========================================================= */}
@@ -143,7 +162,6 @@ export default function SignIn() {
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#4b5563_1px,transparent_3px)] [background-size:16px_16px]"></div>
 
         <div className="relative z-10 flex flex-col h-full">
-
           {/* Main Content: Value Proposition Showcase */}
           <div className="flex-grow flex items-center justify-center">
             <div className="space-y-12 w-full max-w-lg">
@@ -158,17 +176,22 @@ export default function SignIn() {
                 </div>
 
                 <h1 className="text-4xl font-extrabold text-gray-900 leading-snug">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">Unlock </span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">
+                    Unlock{" "}
+                  </span>
                   <span className="text-black-600">Powerful,</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"> ZenVoice Agents.</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">
+                    {" "}
+                    ZenVoice Agents.
+                  </span>
                 </h1>
                 <p className="text-gray-600 text-lg">
-                  Create your account to start managing your multilingual voice assistants instantly.
+                  Create your account to start managing your multilingual voice
+                  assistants instantly.
                 </p>
               </div>
 
               {/* Feature Grid (REPLICATED) */}
-
             </div>
           </div>
 
@@ -179,26 +202,27 @@ export default function SignIn() {
         </div>
       </div>
 
-
       {/* ========================================================= */}
       {/* RIGHT SIDE WRAPPER - HANDLES SCROLLING AND LAYOUT         */}
       {/* ========================================================= */}
       <div className="flex-1 w-full h-full p-4 lg:p-8 flex items-center justify-center bg-white lg:bg-transparent overflow-hidden">
         {/* RIGHT SIDE - SIGN IN FORM (WITH GRADIENT & DOTTED DESIGN) */}
         {/* Removed margin/sizing classes that caused overflow, handled by wrapper */}
-        <div className="w-full text-black relative flex flex-col items-center justify-center p-8 lg:p-12 -pt-12 rounded-2xl" style={{
-          backgroundImage: ` url(${wavewhite.src})`,
-          backgroundSize: '100% 100%, 100% 100%, cover',
-          backgroundPosition: 'center, center, center',
-          backgroundRepeat: 'no-repeat, no-repeat, no-repeat',
-          backgroundColor: '#FFFFFF'
-        }}>
+        <div
+          className="w-full text-black relative flex flex-col items-center justify-center p-8 lg:p-12 -pt-12 rounded-2xl"
+          style={{
+            backgroundImage: ` url(${wavewhite.src})`,
+            backgroundSize: "100% 100%, 100% 100%, cover",
+            backgroundPosition: "center, center, center",
+            backgroundRepeat: "no-repeat, no-repeat, no-repeat",
+            backgroundColor: "#FFFFFF",
+          }}
+        >
           {/* Abstract Gradient/Blob: Subtle tech aesthetic to break the flat background */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-700 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
           <div className="absolute bottom-10 left-10 w-48 h-48 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
 
           <div className="w-full max-w-md relative z-10 flex flex-col h-full justify-center">
-
             {/* Header */}
             <div className="mb-4 lg:mb-10 mt-4 lg:mt-0">
               {/* Mobile Logo */}
@@ -209,8 +233,12 @@ export default function SignIn() {
                   className="max-w-[200px] w-full h-auto"
                 />
               </div>
-              <h2 className="text-2xl lg:text-4xl font-extrabold text-black relative flex justify-center">Welcome Back !</h2>
-              <p className="text-gray-600 text-sm lg:text-lg relative flex justify-center mt-1 lg:mt-2">Log in to your dashboard</p>
+              <h2 className="text-2xl lg:text-4xl font-extrabold text-black relative flex justify-center">
+                Welcome Back !
+              </h2>
+              <p className="text-gray-600 text-sm lg:text-lg relative flex justify-center mt-1 lg:mt-2">
+                Log in to your dashboard
+              </p>
             </div>
 
             {/* Error Alert - Enhanced for better contrast/depth */}
@@ -233,18 +261,25 @@ export default function SignIn() {
 
             {/* Divider - Cleaned up */}
             <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-              </div>
+              <div className="absolute inset-0 flex items-center"></div>
               <div className="relative flex justify-center">
-                <span className="px-4 text-sm text-gray-500 bg-gray-150 font-medium">OR SIGN IN WITH EMAIL</span>
+                <span className="px-4 text-sm text-gray-500 bg-gray-150 font-medium">
+                  OR SIGN IN WITH EMAIL
+                </span>
               </div>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleEmailSignIn} className="space-y-3 lg:space-y-6">
+            <form
+              onSubmit={handleEmailSignIn}
+              className="space-y-3 lg:space-y-6"
+            >
               {/* Email */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-800 mb-2"
+                >
                   Email Address
                 </label>
                 <input
@@ -255,37 +290,44 @@ export default function SignIn() {
                   value={formData.email}
                   onChange={handleInputChange}
                   // Input styling: Deeper background, pronounced blue focus, rounded-xl
-                  className={`w-full h-12 px-4 shadow-lg rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${errors.email
-                    ? 'border-red-500 focus:border-green-500'
-                    : 'border-gray-700 focus:border-green-700  '
-                    }`}
+                  className={`w-full h-12 px-4 shadow-lg rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${
+                    errors.email
+                      ? "border-red-500 focus:border-green-500"
+                      : "border-gray-700 focus:border-green-700  "
+                  }`}
                   disabled={isLoading}
                   required
                 />
                 {errors.email && (
-
-                  <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.email}</p>
+                  <p className="text-red-400 text-xs mt-1 flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    {errors.email}
+                  </p>
                 )}
               </div>
 
               {/* Password */}
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-800 mb-2">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-800 mb-2"
+                >
                   Password
                 </label>
                 <div className="relative">
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleInputChange}
                     // Input styling: Deeper background, pronounced blue focus, rounded-xl
-                    className={`w-full h-12 px-4 shadow-lg border-1 rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${errors.password
-                      ? 'border-red-500 focus:border-green-500'
-                      : 'border-gray-700 focus:border-green-700  '
-                      }`}
+                    className={`w-full h-12 px-4 shadow-lg border-1 rounded-xl focus:outline-none  bg-gray-100 text-gray-800 placeholder-gray-500 shadow-inner ${
+                      errors.password
+                        ? "border-red-500 focus:border-green-500"
+                        : "border-gray-700 focus:border-green-700  "
+                    }`}
                     disabled={isLoading}
                     required
                   />
@@ -295,11 +337,18 @@ export default function SignIn() {
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400 transition-colors"
                     disabled={isLoading}
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-red-400 text-xs mt-1 flex items-center"><AlertCircle className='w-3 h-3 mr-1' />{errors.password}</p>
+                  <p className="text-red-400 text-xs mt-1 flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    {errors.password}
+                  </p>
                 )}
               </div>
 
@@ -311,7 +360,9 @@ export default function SignIn() {
                     // Checkbox styling adjusted
                     className="w-4 h-4 border-2 border-gray-600 rounded focus:ring-2 focus:ring-blue-500 bg-gray-800 checked:bg-blue-500 checked:border-blue-500 cursor-pointer transition-colors"
                   />
-                  <span className="ml-3 text-sm text-gray-800 font-medium">Remember me</span>
+                  <span className="ml-3 text-sm text-gray-800 font-medium">
+                    Remember me
+                  </span>
                 </label>
                 <Link
                   href="/forgot-password"
@@ -333,7 +384,7 @@ export default function SignIn() {
                     Authenticating...
                   </>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </button>
             </form>
@@ -341,8 +392,11 @@ export default function SignIn() {
             {/* Footer - Cleaned up */}
             <div className="mt-4 lg:mt-8 text-center">
               <p className="text-sm text-gray-800">
-                Don't have an account?{' '}
-                <Link href="/signup" className="text-blue-500 font-bold hover:text-blue-400 transition-colors">
+                Don't have an account?{" "}
+                <Link
+                  href="/signup"
+                  className="text-blue-500 font-bold hover:text-blue-400 transition-colors"
+                >
                   Create Account
                 </Link>
               </p>
