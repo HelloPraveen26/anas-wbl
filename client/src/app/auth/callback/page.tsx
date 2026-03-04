@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { api } from '@/lib/api';
-import { authManager } from '@/lib/auth';
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2, AlertCircle } from "lucide-react";
+import { api } from "@/lib/api";
+import { authManager } from "@/lib/auth";
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -16,8 +16,8 @@ export default function AuthCallback() {
     const handleCallback = async () => {
       try {
         // Get token from URL query parameters
-        const token = searchParams.get('token');
-        const errorParam = searchParams.get('error');
+        const token = searchParams.get("token");
+        const errorParam = searchParams.get("error");
 
         if (errorParam) {
           setError(decodeURIComponent(errorParam));
@@ -26,14 +26,14 @@ export default function AuthCallback() {
         }
 
         if (!token) {
-          setError('No authentication token received. Please try again.');
+          setError("No authentication token received. Please try again.");
           setIsProcessing(false);
           return;
         }
 
         // Validate token format
-        if (!token.includes('.')) {
-          setError('Invalid token format received. Please try again.');
+        if (!token.includes(".")) {
+          setError("Invalid token format received. Please try again.");
           setIsProcessing(false);
           return;
         }
@@ -46,17 +46,17 @@ export default function AuthCallback() {
           authManager.setAuth(response.data.user, token);
 
           // Redirect to dashboard
-          router.push('/dashboard/assistants');
+          router.push("/dashboard/assistants");
         } else {
-          setError('Failed to retrieve user information. Please try again.');
+          setError("Failed to retrieve user information. Please try again.");
           setIsProcessing(false);
         }
       } catch (err) {
-        console.error('Auth callback error:', err);
+        console.error("Auth callback error:", err);
         setError(
           err instanceof Error
             ? err.message
-            : 'Authentication failed. Please try again.'
+            : "Authentication failed. Please try again.",
         );
         setIsProcessing(false);
       }
@@ -78,7 +78,7 @@ export default function AuthCallback() {
             </h2>
             <p className="text-gray-600">{error}</p>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push("/login")}
               className="mt-4 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
             >
               Return to Login
@@ -95,7 +95,7 @@ export default function AuthCallback() {
         <div className="flex flex-col items-center text-center space-y-4">
           <Loader2 className="w-16 h-16 text-green-600 animate-spin" />
           <h2 className="text-2xl font-bold text-gray-900">
-            {isProcessing ? 'Completing Sign In...' : 'Redirecting...'}
+            {isProcessing ? "Completing Sign In..." : "Redirecting..."}
           </h2>
           <p className="text-gray-600">
             Please wait while we finish setting up your account.
@@ -103,5 +103,27 @@ export default function AuthCallback() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <Loader2 className="w-16 h-16 text-green-600 animate-spin" />
+              <h2 className="text-2xl font-bold text-gray-900">Loading...</h2>
+              <p className="text-gray-600">
+                Please wait while we process your authentication.
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
