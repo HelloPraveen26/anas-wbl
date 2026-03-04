@@ -178,13 +178,22 @@ export class AuthController {
     description: "Redirect to frontend with auth token",
   })
   async googleAuthCallback(@Request() req, @Response() res): Promise<void> {
-    const authResult = await this.authService.googleLogin(req.user);
+    try {
+      const authResult = await this.authService.googleLogin(req.user);
 
-    // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const redirectUrl = `${frontendUrl}/auth/callback?token=${authResult.data.token}`;
+      // Redirect to frontend with token
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8001";
+      const redirectUrl = `${frontendUrl}/auth/callback?token=${authResult.data.token}`;
 
-    res.redirect(redirectUrl);
+      res.redirect(redirectUrl);
+    } catch (error) {
+      // Handle authentication errors by redirecting to login with error message
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8001";
+      const errorMessage = encodeURIComponent(
+        error instanceof Error ? error.message : "Authentication failed",
+      );
+      res.redirect(`${frontendUrl}/login?error=${errorMessage}`);
+    }
   }
 
   @Get("profile")
