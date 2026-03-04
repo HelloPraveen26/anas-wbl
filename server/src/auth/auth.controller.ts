@@ -178,21 +178,44 @@ export class AuthController {
     description: "Redirect to frontend with auth token",
   })
   async googleAuthCallback(@Request() req, @Response() res): Promise<void> {
+    console.log("🔍 Google OAuth callback triggered");
+    console.log("📊 Request user data:", JSON.stringify(req.user, null, 2));
+    console.log("🌐 Environment - FRONTEND_URL:", process.env.FRONTEND_URL);
+
     try {
       const authResult = await this.authService.googleLogin(req.user);
+      console.log(
+        "✅ Google login successful for user:",
+        authResult.data.user.email,
+      );
 
       // Redirect to frontend with token
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8001";
       const redirectUrl = `${frontendUrl}/auth/callback?token=${authResult.data.token}`;
 
+      console.log("🔗 Redirecting to:", redirectUrl);
+      console.log(
+        "🎫 Token (first 20 chars):",
+        authResult.data.token.substring(0, 20) + "...",
+      );
+
       res.redirect(redirectUrl);
     } catch (error) {
+      console.error("❌ Google OAuth callback error:", error);
+      console.error(
+        "📋 Error stack:",
+        error instanceof Error ? error.stack : "No stack trace",
+      );
+
       // Handle authentication errors by redirecting to login with error message
       const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8001";
       const errorMessage = encodeURIComponent(
         error instanceof Error ? error.message : "Authentication failed",
       );
-      res.redirect(`${frontendUrl}/login?error=${errorMessage}`);
+      const errorRedirectUrl = `${frontendUrl}/login?error=${errorMessage}`;
+
+      console.log("🔗 Redirecting to error page:", errorRedirectUrl);
+      res.redirect(errorRedirectUrl);
     }
   }
 
