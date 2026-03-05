@@ -367,7 +367,7 @@ export class RegisteredNumbersService {
         auth_password: authPassword,
       };
 
-      const trunk = await sipClient.createSipOutboundTrunk(
+      const outboundTrunk = await sipClient.createSipOutboundTrunk(
         `Telecmi Trunk ${new Date().toISOString()}`,
         address,
         [phoneNumber],
@@ -375,7 +375,17 @@ export class RegisteredNumbersService {
       );
 
       this.logger.log(
-        `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for phone number: ${phoneNumber}`,
+        `Created LiveKit SIP outbound trunk with ID: ${outboundTrunk.sipTrunkId} for phone number: ${phoneNumber}`,
+      );
+
+      // Create SIP inbound trunk
+      const inboundTrunkId = await this.createSipInboundTrunk(
+        [phoneNumber],
+        "telecmi",
+      );
+
+      this.logger.log(
+        `Created LiveKit SIP inbound trunk with ID: ${inboundTrunkId} for phone number: ${phoneNumber}`,
       );
 
       // Import the phone number
@@ -385,7 +395,8 @@ export class RegisteredNumbersService {
         providerName: "telecmi",
         friendlyName: friendlyName,
         phoneNo: phoneNumber,
-        livekitOutboundTrunkId: trunk.sipTrunkId,
+        livekitOutboundTrunkId: outboundTrunk.sipTrunkId,
+        livekitInboundTrunkId: inboundTrunkId,
         active: true,
         userId,
       });
@@ -403,7 +414,7 @@ export class RegisteredNumbersService {
 
       const telecmiResponse: ImportTelecmiResponseDto = {
         importedCount: importedNumbers.length,
-        livekitOutboundTrunkId: trunk.sipTrunkId,
+        livekitOutboundTrunkId: outboundTrunk.sipTrunkId,
         importedNumbers,
         message: `Successfully imported ${importedNumbers.length} phone numbers from Telecmi`,
       };
