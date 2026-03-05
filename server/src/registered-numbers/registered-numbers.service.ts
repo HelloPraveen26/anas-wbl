@@ -378,30 +378,6 @@ export class RegisteredNumbersService {
         `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for phone number: ${phoneNumber}`,
       );
 
-      // Create SIP dispatch rule
-      const rule: SipDispatchRuleIndividual = {
-        roomPrefix: "call-",
-        type: "individual",
-      };
-      const options: CreateSipDispatchRuleOptions = {
-        name: "dispatch rule - telecmi from node",
-        trunkIds: [trunk.sipTrunkId],
-        roomConfig: new RoomConfiguration({
-          agents: [
-            new RoomAgentDispatch({
-              agentName: "hexite-outbound-caller",
-              metadata: "dispatch metadata",
-            }),
-          ],
-        }),
-      };
-
-      const dispatchRule = await sipClient.createSipDispatchRule(rule, options);
-      this.logger.log(
-        "created dispatch rule",
-        JSON.stringify(dispatchRule, null, 2),
-      );
-
       // Import the phone number
       const friendlyName = phoneNumber; // Use phone number as friendlyName
 
