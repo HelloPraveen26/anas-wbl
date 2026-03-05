@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
 import { HttpModule } from "@nestjs/axios";
+import { TypeOrmModule } from "@nestjs/typeorm";
 import { ApiTags } from "@nestjs/swagger";
 import { PhoneController } from "./phone.controller";
 import { PhoneService } from "./services/phone.service";
+import { Assistant } from "../assistant/entities/assistant.entity";
 import { AssistantModule } from "../assistant/assistant.module";
 import { RegisteredNumbersModule } from "../registered-numbers/registered-numbers.module";
 import { CallLogsModule } from "../call-logs/call-logs.module";
@@ -11,6 +13,7 @@ import { CallLogsModule } from "../call-logs/call-logs.module";
 @Module({
   imports: [
     HttpModule,
+    TypeOrmModule.forFeature([Assistant]),
     AssistantModule,
     RegisteredNumbersModule,
     CallLogsModule,

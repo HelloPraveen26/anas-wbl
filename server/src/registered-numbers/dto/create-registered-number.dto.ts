@@ -1,10 +1,17 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, Length, Matches } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+  Length,
+  Matches,
+} from "class-validator";
 
 export class CreateRegisteredNumberDto {
   @ApiProperty({
-    description: 'Provider name (e.g., Twilio)',
-    example: 'twilio',
+    description: "Provider name (e.g., Twilio)",
+    example: "twilio",
     maxLength: 100,
   })
   @IsString()
@@ -13,8 +20,8 @@ export class CreateRegisteredNumberDto {
   providerName: string;
 
   @ApiProperty({
-    description: 'Friendly name for the number',
-    example: 'Balaji k',
+    description: "Friendly name for the number",
+    example: "Balaji k",
     maxLength: 255,
   })
   @IsString()
@@ -23,20 +30,20 @@ export class CreateRegisteredNumberDto {
   friendlyName: string;
 
   @ApiProperty({
-    description: 'Phone number in E.164 format',
-    example: '+19282185402',
+    description: "Phone number in E.164 format",
+    example: "+19282185402",
     maxLength: 20,
   })
   @IsString()
   @IsNotEmpty()
   @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Phone number must be in E.164 format (e.g., +19282185402)',
+    message: "Phone number must be in E.164 format (e.g., +19282185402)",
   })
   phoneNo: string;
 
   @ApiProperty({
-    description: 'LiveKit outbound trunk ID',
-    example: 'ST_xn9xEW6gFR3R',
+    description: "LiveKit outbound trunk ID",
+    example: "ST_xn9xEW6gFR3R",
     maxLength: 255,
   })
   @IsString()
@@ -45,7 +52,17 @@ export class CreateRegisteredNumberDto {
   livekitOutboundTrunkId: string;
 
   @ApiPropertyOptional({
-    description: 'Whether the number is active',
+    description: "LiveKit inbound trunk ID",
+    example: "ST_7Y8zAB3cDT4U",
+    maxLength: 255,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  livekitInboundTrunkId?: string;
+
+  @ApiPropertyOptional({
+    description: "Whether the number is active",
     default: true,
   })
   @IsOptional()

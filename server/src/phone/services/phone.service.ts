@@ -3,10 +3,13 @@
 import { Injectable, Logger, HttpException, HttpStatus } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import { firstValueFrom } from "rxjs";
-import { MakeCallDto } from "../dto/make-call.dto";
+import { MakeCallDto, MakeInboundCallDto } from "../dto/make-call.dto";
 import { HangupDto } from "../dto/hangup.dto";
 import { AssistantService } from "../../assistant/assistant.service";
+import { Assistant } from "../../assistant/entities/assistant.entity";
 import { RegisteredNumbersService } from "../../registered-numbers/registered-numbers.service";
 import { CallLogsService } from "../../call-logs/call-logs.service";
 import { renderTemplate } from "../../common/utils/template.util";
@@ -22,6 +25,8 @@ export class PhoneService {
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly assistantService: AssistantService,
+    @InjectRepository(Assistant)
+    private readonly assistantRepository: Repository<Assistant>,
     private readonly registeredNumbersService: RegisteredNumbersService,
     private readonly callLogsService: CallLogsService,
   ) {
@@ -446,6 +451,358 @@ After collecting all required information, the system will automatically process
       );
       throw new HttpException(
         "Failed to retrieve active call",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async makeInboundCall(dto: MakeInboundCallDto): Promise<any> {
+    let callLogId: string | null = null;
+
+    this.logger.log("=".repeat(80));
+    this.logger.log("🔍 DEBUG: INCOMING MAKE INBOUND CALL DTO");
+    this.logger.log("=".repeat(80));
+    this.logger.log(`Phone Number: ${dto.phoneNumber}`);
+    this.logger.log(
+      `From Phone Number: ${dto.fromPhoneNumber || "+19282185402"}`,
+    );
+    this.logger.log(`Selected Assistant: ${dto.selectedAssistant}`);
+    this.logger.log("=".repeat(80));
+
+    try {
+      // Fetch assistant to get userId
+      let userId: string;
+      let systemPrompt = "";
+      let firstMessage = "";
+      let realtimeProviderName: string | undefined;
+      let llmProviderName: string | undefined;
+      let sttProviderName: string | undefined;
+      let ttsProviderName: string | undefined;
+      let llmConfig: Record<string, any> | undefined;
+      let realtimeModelConfig: Record<string, any> | undefined;
+      let sttConfig: Record<string, any> | undefined;
+      let ttsConfig: Record<string, any> | undefined;
+      let toolConfig: any = null;
+      let webhookUrl = "http://127.0.0.1:9005/";
+      let knowledgebaseFilePaths: string[] = [];
+
+      try {
+        // First, fetch the assistant directly from repository to get the userId
+        const assistant = await this.assistantRepository.findOne({
+          where: { id: dto.selectedAssistant, isActive: true },
+          relations: [
+            "user",
+            "llmModel",
+            "llmModel.llmProvider",
+            "transcriberModel",
+            "transcriberModel.transcriberProvider",
+            "synthesizerModel",
+            "synthesizerModel.synthesizerProvider",
+            "realtimeModel",
+            "realtimeModel.realtimeProvider",
+            "files",
+          ],
+        });
+
+        if (!assistant) {
+          this.logger.error(`❌ Assistant not found: ${dto.selectedAssistant}`);
+          throw new HttpException(
+            "Assistant not found",
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        // Extract userId from assistant's user relationship
+        userId = assistant.user?.id;
+
+        if (!userId) {
+          this.logger.error(
+            `❌ User ID not found for assistant: ${dto.selectedAssistant}`,
+          );
+          throw new HttpException(
+            "User ID not found for the selected assistant",
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        this.logger.log(`📞 Making inbound call for user: ${userId}`);
+
+        systemPrompt = assistant.systemPrompt;
+
+        // Fetch assistant files for knowledgebase
+        if (assistant.files && assistant.files.length > 0) {
+          const fileUploadDir =
+            this.configService.get<string>("FILE_UPLOAD_DIR") || "./uploads";
+          knowledgebaseFilePaths = assistant.files
+            .filter((file) => file.isActive)
+            .map((file) =>
+              path.resolve(process.cwd(), fileUploadDir, file.filePath),
+            );
+          this.logger.log(
+            `📁 Loaded ${knowledgebaseFilePaths.length} knowledgebase files`,
+          );
+        }
+
+        firstMessage = assistant.firstMessage;
+
+        if (assistant.realtimeModel?.realtimeProvider) {
+          realtimeProviderName =
+            assistant.realtimeModel?.realtimeProvider?.name;
+          realtimeModelConfig = {
+            ...assistant.realtimeConfig,
+            model: assistant.realtimeModel?.name,
+          };
+          this.logger.log(`Realtime Provider Name: ${realtimeProviderName}`);
+        }
+
+        if (assistant.llmModel?.llmProvider) {
+          llmProviderName = assistant.llmModel?.llmProvider?.name;
+          llmConfig = { model_name: assistant.llmModel?.name };
+          this.logger.log(`LLM Provider Name: ${llmProviderName}`);
+        }
+
+        if (assistant.transcriberModel?.transcriberProvider) {
+          sttProviderName = assistant.transcriberModel.transcriberProvider.name;
+          this.logger.log(`🎤 STT Provider: ${sttProviderName}`);
+        }
+
+        if (assistant.synthesizerModel?.synthesizerProvider) {
+          ttsProviderName = assistant.synthesizerModel.synthesizerProvider.name;
+          this.logger.log(`🔊 TTS Provider: ${ttsProviderName}`);
+        }
+
+        if (assistant.sttConfig) {
+          sttConfig = assistant.sttConfig;
+        }
+
+        if (assistant.ttsConfig) {
+          ttsConfig = assistant.ttsConfig;
+        }
+
+        toolConfig = await this.getToolConfig(dto.selectedAssistant);
+
+        if (toolConfig) {
+          this.logger.log(
+            `🔧 Tool configured: ${toolConfig.toolName} with ${Object.keys(toolConfig.parameters || {}).length} parameters`,
+          );
+          webhookUrl = toolConfig.webhookUrl || webhookUrl;
+
+          this.logger.log("🔍 Tool Parameters:");
+          Object.keys(toolConfig.parameters || {}).forEach((param) => {
+            this.logger.log(
+              `   • ${param} (required: ${toolConfig.parameters[param].required})`,
+            );
+          });
+        }
+      } catch (error) {
+        this.logger.error(
+          `❌ Failed to fetch assistant details:`,
+          error instanceof Error ? error.message : error,
+        );
+        throw new HttpException(
+          "Failed to fetch assistant details",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const fromPhoneNumber = dto.fromPhoneNumber || "+19282185402";
+
+      // Create initial call log with type "inbound" and callStatus "In Progress"
+      const initialCallLog = await this.callLogsService.create({
+        assistantId: dto.selectedAssistant,
+        userId: userId,
+        assistantPhone: fromPhoneNumber,
+        customerPhone: dto.phoneNumber,
+        type: "inbound",
+        callStatus: "In Progress",
+        startTime: new Date(),
+      });
+      callLogId = initialCallLog.id;
+
+      const registeredNumbers =
+        await this.registeredNumbersService.findAllByUser(userId);
+      const registeredNumber = registeredNumbers.find(
+        (num) => num.phoneNo === fromPhoneNumber,
+      );
+
+      if (!registeredNumber || !registeredNumber.livekitOutboundTrunkId) {
+        this.logger.error(
+          `❌ Outbound trunk ID missing for phone number: ${fromPhoneNumber}`,
+        );
+        throw new HttpException(
+          "Outbound trunk ID missing for the selected phone number",
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      let instructions = systemPrompt;
+      if (toolConfig) {
+        const toolsArray = Array.isArray(toolConfig)
+          ? toolConfig
+          : [toolConfig];
+        let toolInstructions = `
+
+IMPORTANT - TOOLS ACTIVATED:`;
+
+        toolsArray.forEach((tool, index) => {
+          const requiredFields = Object.keys(tool.parameters || {})
+            .filter((k) => tool.parameters[k].required)
+            .join(", ");
+
+          toolInstructions += `
+${index + 1}. DATA COLLECTION (${tool.toolName}): You have a tool named 'collect_${tool.toolName}'.
+   Primary mission: Collect ${requiredFields || "information"}.
+   Call this tool IMMEDIATELY when the user provides this info.`;
+        });
+
+        toolInstructions += `
+${toolsArray.length + 1}. END CALL: When the user wants to end the conversation, ALWAYS call the 'end_call' tool to say goodbye and disconnect gracefully.
+
+After collecting all required information, the system will automatically process the data.`;
+
+        instructions = instructions
+          ? instructions + toolInstructions
+          : toolInstructions;
+      }
+
+      // Determine sip_headers based on provider_name and from_phone_number
+      let sipHeaders = {};
+      if (registeredNumber.providerName === "telecmi") {
+        if (["+917943446693"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "agarwalpackers",
+          };
+        } else if (["+917943446695"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "vidhuacademy",
+          };
+        } else if (["+917943446690"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "gnsolutions",
+          };
+        } else if (
+          [
+            "+917943446694",
+            "+917943446703",
+            "+917943446704",
+            "+917943446705",
+            "+917943446706",
+            "+917943446707",
+            "+917943446708",
+            "+917943446709",
+            "+917943446710",
+          ].includes(fromPhoneNumber)
+        ) {
+          sipHeaders = {
+            "X-Piopiy-Username": "manjugroups",
+          };
+        } else if (["+917943446696"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "excelecobag",
+          };
+        } else if (["+917943446699"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "avroofings",
+          };
+        } else if (["+917943446700"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "kaizen",
+          };
+        } else if (["+917943446698"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "shreemadam",
+          };
+        } else if (["+917943446701"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "guptaanimation",
+          };
+        } else if (["+917943446712"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "drmaria",
+          };
+        } else if (["+917943446714"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "harvel",
+          };
+        } else if (["+917943446715"].includes(fromPhoneNumber)) {
+          sipHeaders = {
+            "X-Piopiy-Username": "GRDcollege",
+          };
+        } else {
+          sipHeaders = {
+            "X-Piopiy-Username": "zenaisip",
+          };
+        }
+      }
+
+      const payload = {
+        user_id: userId,
+        phone_number: dto.phoneNumber,
+        from_phone_number: fromPhoneNumber,
+        outbound_trunk_id: registeredNumber.livekitOutboundTrunkId,
+        ...(instructions && { instructions }),
+        ...(firstMessage && { first_message: firstMessage }),
+        ...(realtimeProviderName && {
+          realtime_provider_name: realtimeProviderName,
+        }),
+        ...(sttProviderName && { stt_provider_name: sttProviderName }),
+        ...(ttsProviderName && { tts_provider_name: ttsProviderName }),
+        ...(realtimeModelConfig && {
+          realtime_model_config: realtimeModelConfig,
+        }),
+        ...(sttConfig && { stt_config: sttConfig }),
+        ...(ttsConfig && { tts_config: ttsConfig }),
+        ...(dto.selectedAssistant && { assistant_id: dto.selectedAssistant }),
+        ...(webhookUrl && { webhook_url: webhookUrl }),
+        ...(Object.keys(sipHeaders).length > 0 && { sip_headers: sipHeaders }),
+        ...(knowledgebaseFilePaths.length > 0 && {
+          knowledgebase_file_path: knowledgebaseFilePaths,
+        }),
+      };
+
+      this.logger.log("=".repeat(80));
+      this.logger.log("🔍 DEBUG: FINAL PAYLOAD TO PHONE SERVICE (INBOUND)");
+      this.logger.log("=".repeat(80));
+      this.logger.log(`Full payload:\n${JSON.stringify(payload, null, 2)}`);
+      this.logger.log("=".repeat(80));
+
+      const { data } = await firstValueFrom(
+        this.httpService.post(`${this.baseUrl}/make_call`, payload),
+      );
+
+      this.logger.log(
+        `✅ Inbound call initiated successfully. Call ID: ${data.call_id || "N/A"}`,
+      );
+
+      // Note: We don't update sessionId for inbound calls as per requirements
+      // callStatus remains "In Progress"
+
+      return {
+        ...data,
+        payload,
+        toolConfig,
+      };
+    } catch (error) {
+      this.logger.error(
+        "❌ makeInboundCall failed",
+        error instanceof Error ? error.stack : error,
+      );
+
+      if (callLogId) {
+        try {
+          await this.callLogsService.update(callLogId, {
+            callStatus: "fail",
+          });
+        } catch (logError) {
+          this.logger.error(
+            "Failed to update call log with failure status",
+            logError,
+          );
+        }
+      }
+
+      throw new HttpException(
+        "Failed to initiate inbound call",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
