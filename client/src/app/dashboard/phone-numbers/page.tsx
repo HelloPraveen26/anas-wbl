@@ -129,11 +129,12 @@ export default function PhoneNumbersPage() {
 
   // Twilio form
   const [twilioForm, setTwilioForm] = useState({
-    accountSid: "",
-    authToken: "",
+    phoneNumber: "",
     address: "",
     authUsername: "",
     authPassword: "",
+    inboundEnabled: true,
+    outboundEnabled: true,
   });
 
   // Plivo form
@@ -271,13 +272,16 @@ export default function PhoneNumbersPage() {
         return;
       }
       if (
-        !twilioForm.accountSid ||
-        !twilioForm.authToken ||
+        !twilioForm.phoneNumber ||
         !twilioForm.address ||
         !twilioForm.authUsername ||
         !twilioForm.authPassword
       ) {
         alert("Please fill in all required fields");
+        return;
+      }
+      if (!twilioForm.inboundEnabled && !twilioForm.outboundEnabled) {
+        alert("At least one option (inbound or outbound) must be enabled");
         return;
       }
       const res = await fetch(
@@ -289,11 +293,12 @@ export default function PhoneNumbersPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            accountSid: twilioForm.accountSid,
-            authToken: twilioForm.authToken,
+            phoneNumber: twilioForm.phoneNumber,
             address: twilioForm.address,
             authUsername: twilioForm.authUsername,
             authPassword: twilioForm.authPassword,
+            inboundEnabled: twilioForm.inboundEnabled,
+            outboundEnabled: twilioForm.outboundEnabled,
           }),
         },
       );
@@ -307,11 +312,12 @@ export default function PhoneNumbersPage() {
       );
       setOpenModal(false);
       setTwilioForm({
-        accountSid: "",
-        authToken: "",
+        phoneNumber: "",
         address: "",
         authUsername: "",
         authPassword: "",
+        inboundEnabled: true,
+        outboundEnabled: true,
       });
       await fetchRegisteredNumbers();
     } catch (err) {
@@ -1390,24 +1396,6 @@ export default function PhoneNumbersPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
               {activeTab === "twilio" ? (
                 <>
-                  <div>
-                    <InputField
-                      label="Account SID"
-                      value={twilioForm.accountSid}
-                      onChange={(v) =>
-                        setTwilioForm((p) => ({ ...p, accountSid: v }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <InputField
-                      label="API Secret"
-                      value={twilioForm.authToken}
-                      onChange={(v) =>
-                        setTwilioForm((p) => ({ ...p, authToken: v }))
-                      }
-                    />
-                  </div>
                   <div className="md:col-span-2">
                     <InputField
                       label="Address"
@@ -1435,6 +1423,61 @@ export default function PhoneNumbersPage() {
                         setTwilioForm((p) => ({ ...p, authPassword: v }))
                       }
                     />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Phone Number"
+                      value={twilioForm.phoneNumber}
+                      onChange={(v) =>
+                        setTwilioForm((p) => ({ ...p, phoneNumber: v }))
+                      }
+                      placeholder="+1234567890"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Call Direction
+                    </label>
+                    <div className="flex gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={twilioForm.inboundEnabled}
+                          onChange={(e) =>
+                            setTwilioForm((p) => ({
+                              ...p,
+                              inboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Inbound Calls
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={twilioForm.outboundEnabled}
+                          onChange={(e) =>
+                            setTwilioForm((p) => ({
+                              ...p,
+                              outboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Outbound Calls
+                        </span>
+                      </label>
+                    </div>
+                    {!twilioForm.inboundEnabled &&
+                      !twilioForm.outboundEnabled && (
+                        <p className="text-sm text-red-600 mt-1">
+                          At least one option must be enabled
+                        </p>
+                      )}
                   </div>
                 </>
               ) : activeTab === "plivo" ? (
@@ -1593,9 +1636,12 @@ export default function PhoneNumbersPage() {
                 disabled={
                   loading ||
                   (activeTab === "twilio" &&
-                    (!twilioForm.accountSid ||
-                      !twilioForm.authToken ||
-                      !twilioForm.address)) ||
+                    (!twilioForm.phoneNumber ||
+                      !twilioForm.address ||
+                      !twilioForm.authUsername ||
+                      !twilioForm.authPassword ||
+                      (!twilioForm.inboundEnabled &&
+                        !twilioForm.outboundEnabled))) ||
                   (activeTab === "plivo" &&
                     (!plivoForm.accountSid ||
                       !plivoForm.authToken ||

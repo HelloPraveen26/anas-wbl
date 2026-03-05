@@ -116,8 +116,14 @@ export class RegisteredNumbersService {
   ): Promise<ImportTwilioResponseDto> {
     this.logger.log(`Starting Twilio number import for user: ${userId}`);
 
-    const { accountSid, authToken, address, authUsername, authPassword } =
-      importDto;
+    const {
+      phoneNumber,
+      address,
+      authUsername,
+      authPassword,
+      inboundEnabled,
+      outboundEnabled,
+    } = importDto;
     const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
     const LIVEKIT_API_SECRET =
       this.configService.get<string>("LIVEKIT_API_SECRET");
@@ -127,57 +133,102 @@ export class RegisteredNumbersService {
       throw new BadRequestException("LiveKit configuration is missing");
     }
 
+    // Validate that at least one direction is enabled
+    if (!inboundEnabled && !outboundEnabled) {
+      throw new BadRequestException(
+        "At least one of inbound or outbound must be enabled",
+      );
+    }
+
+    this.logger.log(
+      `Twilio import configuration - Inbound: ${inboundEnabled}, Outbound: ${outboundEnabled}`,
+    );
+
     try {
       const sipClient = new SipClient(
         LIVEKIT_URL,
         LIVEKIT_API_KEY,
         LIVEKIT_API_SECRET,
       );
-      const client = twilio(accountSid, authToken);
-      const numbers = await client.incomingPhoneNumbers.list({ limit: 20 });
-      if (numbers.length === 0) {
-        this.logger.warn("No phone numbers found in Twilio account");
+      if (!phoneNumber) {
+        this.logger.warn("No phone number provided for Twilio import");
         return {
           importedCount: 0,
           importedNumbers: [],
-          message: "No phone numbers found in Twilio account to import",
+          message: "No phone number provided for import",
         };
       }
+
       const importedNumbers = [];
-      const trunkOptions = {
-        transport: SIPTransport.SIP_TRANSPORT_AUTO,
-        auth_username: authUsername,
-        auth_password: authPassword,
-      };
-      for (const number of numbers) {
-        let trunk = await sipClient.createSipOutboundTrunk(
+
+      let outboundTrunkId: string | null = null;
+      let inboundTrunkId: string | null = null;
+
+      // Create outbound SIP trunk if enabled
+      if (outboundEnabled) {
+        const trunkOptions = {
+          transport: SIPTransport.SIP_TRANSPORT_AUTO,
+          auth_username: authUsername,
+          auth_password: authPassword,
+        };
+
+        const outboundTrunk = await sipClient.createSipOutboundTrunk(
           `Twilio Trunk ${new Date().toISOString()}`,
           address,
-          [number.phoneNumber], //TODO: pass all numbers into array
+          [phoneNumber],
           trunkOptions,
         );
+
+        outboundTrunkId = outboundTrunk.sipTrunkId;
+
         this.logger.log(
-          `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for ${number.phoneNumber}`,
+          `Created LiveKit SIP outbound trunk with ID: ${outboundTrunkId} for phone number: ${phoneNumber}`,
         );
-        const registeredNumber = this.registeredNumberRepository.create({
-          providerName: "twilio",
-          friendlyName: number.friendlyName || number.phoneNumber,
-          phoneNo: number.phoneNumber,
-          livekitOutboundTrunkId: trunk.sipTrunkId,
-          active: true,
-          userId,
-        });
-
-        const savedNumber =
-          await this.registeredNumberRepository.save(registeredNumber);
-
-        importedNumbers.push({
-          phoneNumber: number.phoneNumber,
-          friendlyName: number.friendlyName || number.phoneNumber,
-          registeredNumberId: savedNumber.id,
-        });
-        this.logger.log(`Imported phone number: ${number.phoneNumber}`);
+      } else {
+        this.logger.log(
+          `Skipping outbound trunk creation (outbound disabled) for phone number: ${phoneNumber}`,
+        );
       }
+
+      // Create inbound SIP trunk if enabled
+      if (inboundEnabled) {
+        inboundTrunkId = await this.createSipInboundTrunk(
+          [phoneNumber],
+          "twilio",
+        );
+
+        this.logger.log(
+          `Created LiveKit SIP inbound trunk with ID: ${inboundTrunkId} for phone number: ${phoneNumber}`,
+        );
+      } else {
+        this.logger.log(
+          `Skipping inbound trunk creation (inbound disabled) for phone number: ${phoneNumber}`,
+        );
+      }
+
+      // Import the phone number
+      const friendlyName = phoneNumber; // Use phone number as friendlyName
+
+      const registeredNumber = this.registeredNumberRepository.create({
+        providerName: "twilio",
+        friendlyName: friendlyName,
+        phoneNo: phoneNumber,
+        livekitOutboundTrunkId: outboundTrunkId,
+        livekitInboundTrunkId: inboundTrunkId,
+        active: true,
+        userId,
+      });
+
+      const savedNumber =
+        await this.registeredNumberRepository.save(registeredNumber);
+
+      importedNumbers.push({
+        phoneNumber: phoneNumber,
+        friendlyName: friendlyName,
+        registeredNumberId: savedNumber.id,
+      });
+
+      this.logger.log(`Imported phone number: ${phoneNumber}`);
 
       const response: ImportTwilioResponseDto = {
         importedCount: importedNumbers.length,
@@ -194,10 +245,6 @@ export class RegisteredNumbersService {
         `Error importing Twilio numbers: ${error.message}`,
         error.stack,
       );
-
-      if (error.code === 20003) {
-        throw new BadRequestException("Invalid Twilio credentials");
-      }
 
       if (error.message.includes("LiveKit")) {
         throw new BadRequestException(`LiveKit error: ${error.message}`);

@@ -80,9 +80,9 @@ export class RegisteredNumbersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
-    summary: "Import phone numbers from Twilio",
+    summary: "Import phone number for Twilio",
     description:
-      "Import phone numbers from Twilio account and create LiveKit SIP trunk",
+      "Import a single phone number for Twilio provider and create LiveKit SIP trunks (inbound/outbound) based on configuration",
   })
   @ApiBody({ type: ImportTwilioNumbersDto })
   @ApiResponse({
@@ -90,16 +90,15 @@ export class RegisteredNumbersController {
     description: "Phone numbers imported successfully",
     type: ImportTwilioResponseDto,
     example: {
-      importedCount: 3,
-      livekitOutboundTrunkId: "ST_YTGYHbEZ8PWm",
+      importedCount: 1,
       importedNumbers: [
         {
           phoneNumber: "+19282185402",
-          friendlyName: "My Phone Number",
+          friendlyName: "+19282185402",
           registeredNumberId: "uuid-here",
         },
       ],
-      message: "Successfully imported 3 phone numbers from Twilio",
+      message: "Successfully imported 1 phone numbers from Twilio",
     },
   })
   @ApiResponse({
