@@ -151,6 +151,8 @@ export default function PhoneNumbersPage() {
     authUsername: "",
     authPassword: "",
     phoneNumber: "",
+    inboundEnabled: true,
+    outboundEnabled: true,
   });
 
   // WS refs
@@ -401,6 +403,10 @@ export default function PhoneNumbersPage() {
         alert("Please fill in all required fields");
         return;
       }
+      if (!telecmiForm.inboundEnabled && !telecmiForm.outboundEnabled) {
+        alert("Please enable at least one option: Inbound or Outbound");
+        return;
+      }
       const res = await fetch(
         `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-telecmi`,
         {
@@ -414,6 +420,8 @@ export default function PhoneNumbersPage() {
             authUsername: telecmiForm.authUsername,
             authPassword: telecmiForm.authPassword,
             phoneNumber: telecmiForm.phoneNumber,
+            inboundEnabled: telecmiForm.inboundEnabled,
+            outboundEnabled: telecmiForm.outboundEnabled,
           }),
         },
       );
@@ -431,6 +439,8 @@ export default function PhoneNumbersPage() {
         authUsername: "",
         authPassword: "",
         phoneNumber: "",
+        inboundEnabled: true,
+        outboundEnabled: true,
       });
       await fetchRegisteredNumbers();
     } catch (err) {
@@ -1516,6 +1526,51 @@ export default function PhoneNumbersPage() {
                       placeholder="+911203134120"
                     />
                   </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Call Direction
+                    </label>
+                    <div className="flex gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={telecmiForm.inboundEnabled}
+                          onChange={(e) =>
+                            setTelecmiForm((p) => ({
+                              ...p,
+                              inboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Inbound Calls
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={telecmiForm.outboundEnabled}
+                          onChange={(e) =>
+                            setTelecmiForm((p) => ({
+                              ...p,
+                              outboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Outbound Calls
+                        </span>
+                      </label>
+                    </div>
+                    {!telecmiForm.inboundEnabled &&
+                      !telecmiForm.outboundEnabled && (
+                        <p className="text-sm text-red-600 mt-1">
+                          At least one option must be enabled
+                        </p>
+                      )}
+                  </div>
                 </>
               )}
             </div>
@@ -1551,7 +1606,9 @@ export default function PhoneNumbersPage() {
                     (!telecmiForm.address ||
                       !telecmiForm.authUsername ||
                       !telecmiForm.authPassword ||
-                      !telecmiForm.phoneNumber))
+                      !telecmiForm.phoneNumber ||
+                      (!telecmiForm.inboundEnabled &&
+                        !telecmiForm.outboundEnabled)))
                 }
                 className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
