@@ -455,4 +455,159 @@ export class RegisteredNumbersService {
       );
     }
   }
+
+  async createSipInboundTrunk(
+    phoneNumbers: string[],
+    providerName: string,
+  ): Promise<string> {
+    this.logger.log(
+      `Creating SIP inbound trunk for provider: ${providerName} with numbers: ${phoneNumbers.join(", ")}`,
+    );
+
+    const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+    const LIVEKIT_API_SECRET =
+      this.configService.get<string>("LIVEKIT_API_SECRET");
+    const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+    if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+      throw new BadRequestException("LiveKit configuration is missing");
+    }
+
+    try {
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      // Check for existing trunks with the same number(s) and delete them
+      this.logger.log(
+        "Checking for existing trunks with the same number(s)...",
+      );
+      const existingTrunks = await sipClient.listSipInboundTrunk();
+
+      for (const existingTrunk of existingTrunks) {
+        const hasMatchingNumber = phoneNumbers.some((num) =>
+          existingTrunk.numbers.includes(num),
+        );
+
+        if (hasMatchingNumber) {
+          this.logger.log(
+            `Found existing trunk "${existingTrunk.name}" (${existingTrunk.sipTrunkId}) with matching number(s). Deleting...`,
+          );
+          await sipClient.deleteSipTrunk(existingTrunk.sipTrunkId);
+          this.logger.log(`Deleted trunk: ${existingTrunk.sipTrunkId}`);
+        }
+      }
+
+      // Create trunk name: provider + phone numbers
+      const trunkName = `${providerName} | ${phoneNumbers.join(", ")}`;
+
+      // Default trunk options
+      const trunkOptions = {
+        krispEnabled: true,
+      };
+
+      this.logger.log("Creating new inbound trunk...");
+      const trunk = await sipClient.createSipInboundTrunk(
+        trunkName,
+        phoneNumbers,
+        trunkOptions,
+      );
+
+      this.logger.log(
+        `Successfully created inbound trunk with ID: ${trunk.sipTrunkId}`,
+      );
+
+      return trunk.sipTrunkId;
+    } catch (error) {
+      this.logger.error(
+        `Error creating SIP inbound trunk: ${error.message}`,
+        error.stack,
+      );
+
+      if (error.message.includes("LiveKit")) {
+        throw new BadRequestException(`LiveKit error: ${error.message}`);
+      }
+
+      throw new BadRequestException(
+        `Failed to create SIP inbound trunk: ${error.message}`,
+      );
+    }
+  }
+
+  async createSipDispatchRule(
+    assistantId: string,
+    phoneNumber: string,
+    trunkId: string,
+  ) {
+    this.logger.log(
+      `Creating SIP dispatch rule for assistant: ${assistantId}, phone: ${phoneNumber}, trunk: ${trunkId}`,
+    );
+
+    try {
+      const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+      const LIVEKIT_API_SECRET =
+        this.configService.get<string>("LIVEKIT_API_SECRET");
+      const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+      if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+        throw new BadRequestException(
+          "LiveKit configuration is missing. Please check your environment variables.",
+        );
+      }
+
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      const dispatch_metadata = {
+        assistant_id: assistantId,
+        phone_number: phoneNumber,
+        call_type: "inbound",
+      };
+
+      const rule: SipDispatchRuleIndividual = {
+        roomPrefix: "call-",
+        type: "individual",
+      };
+
+      const options: CreateSipDispatchRuleOptions = {
+        name: `${assistantId}-${phoneNumber}`,
+        trunkIds: [trunkId],
+        roomConfig: new RoomConfiguration({
+          agents: [
+            new RoomAgentDispatch({
+              agentName: "hexite-inbound-caller",
+              metadata: JSON.stringify(dispatch_metadata),
+            }),
+          ],
+        }),
+      };
+
+      const dispatchRule = await sipClient.createSipDispatchRule(rule, options);
+
+      this.logger.log(
+        "Created dispatch rule successfully",
+        JSON.stringify(dispatchRule, null, 2),
+      );
+
+      return dispatchRule.sipDispatchRuleId;
+    } catch (error) {
+      this.logger.error(
+        `Error creating SIP dispatch rule: ${error.message}`,
+        error.stack,
+      );
+
+      if (error.message.includes("LiveKit")) {
+        throw new BadRequestException(`LiveKit error: ${error.message}`);
+      }
+
+      throw new BadRequestException(
+        `Failed to create SIP dispatch rule: ${error.message}`,
+      );
+    }
+  }
 }
