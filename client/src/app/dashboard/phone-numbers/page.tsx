@@ -10,6 +10,7 @@ interface RegisteredNumber {
   friendlyName: string;
   phoneNo: string;
   livekitOutboundTrunkId?: string;
+  livekitInboundTrunkId?: string;
   active: boolean;
   userId?: string;
   createdAt?: string;
@@ -135,6 +136,15 @@ export default function PhoneNumbersPage() {
   // Add contact modal state
   const [showAddContactModal, setShowAddContactModal] = useState(false);
   const [newContact, setNewContact] = useState({ name: "", phoneNo: "" });
+
+  // Dispatch rule modal state
+  const [showCreateDispatchRuleModal, setShowCreateDispatchRuleModal] =
+    useState(false);
+  const [dispatchRuleForm, setDispatchRuleForm] = useState({
+    assistantId: "",
+    phoneNumber: "",
+    trunkId: "",
+  });
 
   // Twilio form
   const [twilioForm, setTwilioForm] = useState({
@@ -661,8 +671,8 @@ export default function PhoneNumbersPage() {
       );
 
       if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.message || `HTTP ${res.status}`);
+        const errText = await res.text();
+        throw new Error(errText || `HTTP ${res.status}`);
       }
 
       setDispatchRules((prev) =>
@@ -677,6 +687,106 @@ export default function PhoneNumbersPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const createDispatchRule = async () => {
+    try {
+      if (
+        !dispatchRuleForm.assistantId ||
+        !dispatchRuleForm.phoneNumber ||
+        !dispatchRuleForm.trunkId
+      ) {
+        alert("Please fill in all fields");
+        return;
+      }
+
+      const payload = {
+        assistantId: dispatchRuleForm.assistantId,
+        phoneNumber: dispatchRuleForm.phoneNumber,
+        trunkId: dispatchRuleForm.trunkId,
+      };
+
+      console.log("Creating dispatch rule with payload:", payload);
+      console.log(
+        "API URL:",
+        `${getApiBaseUrl()}/registered-numbers/create_dispatch_rule`,
+      );
+
+      setLoading(true);
+      const res = await fetch(
+        `${getApiBaseUrl()}/registered-numbers/create_dispatch_rule`,
+        {
+          method: "POST",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      console.log("Response status:", res.status);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(res.headers.entries()),
+      );
+
+      if (!res.ok) {
+        let errorMessage = `HTTP ${res.status}`;
+        try {
+          const errorData = await res.json();
+          console.error("Error response (JSON):", errorData);
+          errorMessage =
+            errorData.message || errorData.detail || JSON.stringify(errorData);
+        } catch {
+          const errText = await res.text();
+          console.error("Error response (text):", errText);
+          errorMessage = errText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      let responseData;
+      try {
+        responseData = await res.json();
+        console.log("Success response:", responseData);
+      } catch (e) {
+        console.log("No JSON response body, assuming success");
+        responseData = {};
+      }
+
+      // Refresh dispatch rules first
+      await fetchDispatchRules();
+
+      // Show success message
+      alert("Dispatch rule created successfully!");
+
+      setShowCreateDispatchRuleModal(false);
+      setDispatchRuleForm({
+        assistantId: "",
+        phoneNumber: "",
+        trunkId: "",
+      });
+    } catch (err) {
+      console.error("createDispatchRule error:", err);
+      alert(
+        `Failed to create dispatch rule: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenDispatchRuleModal = () => {
+    console.log("=== Opening Dispatch Rule Modal ===");
+    console.log("Available Assistants:", assistants);
+    console.log("Available Registered Numbers:", registeredNumbers);
+    console.log(
+      "Numbers with livekitInboundTrunkId:",
+      registeredNumbers.filter((n) => n.livekitInboundTrunkId),
+    );
+    console.log("Current form state:", dispatchRuleForm);
+    setShowCreateDispatchRuleModal(true);
   };
 
   const handleSelectNumber = (numberId: string) => {
@@ -1308,6 +1418,12 @@ export default function PhoneNumbersPage() {
                   Manage your dispatch rules for incoming calls.
                 </p>
               </div>
+              <button
+                onClick={handleOpenDispatchRuleModal}
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+              >
+                + Add Dispatch Rule
+              </button>
             </div>
 
             <div className="space-y-3">
@@ -2191,6 +2307,148 @@ export default function PhoneNumbersPage() {
                 className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE DISPATCH RULE MODAL */}
+      {showCreateDispatchRuleModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                Create Dispatch Rule
+              </h3>
+              <button
+                onClick={() => setShowCreateDispatchRuleModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-6 h-6"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assistant
+                </label>
+                <select
+                  value={dispatchRuleForm.assistantId}
+                  onChange={(e) => {
+                    console.log("Selected assistant:", e.target.value);
+                    setDispatchRuleForm((prev) => ({
+                      ...prev,
+                      assistantId: e.target.value,
+                    }));
+                  }}
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                >
+                  <option value="">Select an assistant</option>
+                  {assistants.map((assistant) => (
+                    <option key={assistant.id} value={assistant.id}>
+                      {assistant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <select
+                  value={dispatchRuleForm.phoneNumber}
+                  onChange={(e) => {
+                    console.log("Selected phone number:", e.target.value);
+                    setDispatchRuleForm((prev) => ({
+                      ...prev,
+                      phoneNumber: e.target.value,
+                    }));
+                  }}
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                >
+                  <option value="">Select a phone number</option>
+                  {registeredNumbers.map((number) => (
+                    <option key={number.id} value={number.phoneNo}>
+                      {number.friendlyName} ({number.phoneNo})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trunk ID (LiveKit Inbound Trunk)
+                </label>
+                <select
+                  value={dispatchRuleForm.trunkId}
+                  onChange={(e) => {
+                    console.log("Selected trunk ID:", e.target.value);
+                    setDispatchRuleForm((prev) => ({
+                      ...prev,
+                      trunkId: e.target.value,
+                    }));
+                  }}
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                >
+                  <option value="">Select a trunk</option>
+                  {registeredNumbers
+                    .filter((number) => number.livekitInboundTrunkId)
+                    .map((number) => (
+                      <option
+                        key={number.id}
+                        value={number.livekitInboundTrunkId}
+                      >
+                        {number.friendlyName} ({number.livekitInboundTrunkId})
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select the LiveKit trunk for inbound calls
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateDispatchRuleModal(false)}
+                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createDispatchRule}
+                disabled={
+                  loading ||
+                  !dispatchRuleForm.assistantId ||
+                  !dispatchRuleForm.phoneNumber ||
+                  !dispatchRuleForm.trunkId
+                }
+                className={`px-4 py-2 rounded-md text-white ${
+                  loading ||
+                  !dispatchRuleForm.assistantId ||
+                  !dispatchRuleForm.phoneNumber ||
+                  !dispatchRuleForm.trunkId
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
+              >
+                {loading ? "Creating..." : "Create Rule"}
               </button>
             </div>
           </div>

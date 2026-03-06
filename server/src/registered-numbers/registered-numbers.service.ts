@@ -29,6 +29,8 @@ import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
 import { ImportTelecmiNumbersDto } from "./dto/import-telecmi-numbers.dto";
 import { ImportTelecmiResponseDto } from "./dto/import-telecmi-response.dto";
 import { DispatchRuleResponseDto } from "./dto/dispatch-rule-response.dto";
+import { CreateDispatchRuleDto } from "./dto/create-dispatch-rule.dto";
+import { CreateDispatchRuleResponseDto } from "./dto/create-dispatch-rule-response.dto";
 
 @Injectable()
 export class RegisteredNumbersService {
@@ -679,6 +681,44 @@ export class RegisteredNumbersService {
         `Failed to create SIP dispatch rule: ${error.message}`,
       );
     }
+  }
+
+  async createDispatchRule(
+    userId: string,
+    createDispatchRuleDto: CreateDispatchRuleDto,
+  ): Promise<CreateDispatchRuleResponseDto> {
+    const { assistantId, phoneNumber, trunkId } = createDispatchRuleDto;
+
+    this.logger.log(
+      `Creating dispatch rule for user: ${userId}, assistant: ${assistantId}, phone: ${phoneNumber}, trunk: ${trunkId}`,
+    );
+
+    // Validate that the trunkId belongs to the user
+    const registeredNumber = await this.registeredNumberRepository.findOne({
+      where: [
+        { userId, livekitInboundTrunkId: trunkId },
+        { userId, livekitOutboundTrunkId: trunkId },
+      ],
+    });
+
+    if (!registeredNumber) {
+      throw new BadRequestException(
+        "Invalid trunk ID. The trunk does not belong to this user or does not exist.",
+      );
+    }
+
+    this.logger.log(
+      `Trunk validation successful for user ${userId}, trunk ${trunkId}`,
+    );
+
+    // Call the existing createSipDispatchRule method
+    const sipDispatchRuleId = await this.createSipDispatchRule(
+      assistantId,
+      phoneNumber,
+      trunkId,
+    );
+
+    return new CreateDispatchRuleResponseDto(sipDispatchRuleId);
   }
 
   async getDispatchRules(userId: string): Promise<DispatchRuleResponseDto[]> {

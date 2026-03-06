@@ -30,6 +30,8 @@ import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
 import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
 import { ImportTelecmiNumbersDto } from "./dto/import-telecmi-numbers.dto";
 import { ImportTelecmiResponseDto } from "./dto/import-telecmi-response.dto";
+import { CreateDispatchRuleDto } from "./dto/create-dispatch-rule.dto";
+import { CreateDispatchRuleResponseDto } from "./dto/create-dispatch-rule-response.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @ApiTags("registered-numbers")
@@ -196,6 +198,40 @@ export class RegisteredNumbersController {
     return this.registeredNumbersService.importTelecmiNumbers(
       req.user.id,
       importTelecmiNumbersDto,
+    );
+  }
+
+  @Post("create_dispatch_rule")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Create a SIP dispatch rule",
+    description:
+      "Create a SIP dispatch rule for the authenticated user with the provided assistant ID, phone number, and trunk ID. The trunk ID must belong to the user.",
+  })
+  @ApiBody({ type: CreateDispatchRuleDto })
+  @ApiResponse({
+    status: 201,
+    description: "Dispatch rule created successfully",
+    type: CreateDispatchRuleResponseDto,
+    example: {
+      message: "Created dispatch rule successfully",
+      sipDispatchRuleId: "SDR_uRzWUrE8torL",
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Bad request - validation failed, invalid trunk ID, or LiveKit error",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized - invalid token" })
+  async createDispatchRule(
+    @Request() req,
+    @Body() createDispatchRuleDto: CreateDispatchRuleDto,
+  ): Promise<CreateDispatchRuleResponseDto> {
+    return this.registeredNumbersService.createDispatchRule(
+      req.user.id,
+      createDispatchRuleDto,
     );
   }
 
