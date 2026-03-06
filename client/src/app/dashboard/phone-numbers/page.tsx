@@ -280,7 +280,7 @@ export default function PhoneNumbersPage() {
         return;
       }
       const res = await fetch(
-        `${getApiBaseUrl()}/api/v1/registered-numbers/dispatch-rules`,
+        `${getApiBaseUrl()}/registered-numbers/dispatch-rules`,
         {
           headers: getAuthHeaders(),
         },
@@ -653,7 +653,7 @@ export default function PhoneNumbersPage() {
     try {
       setLoading(true);
       const res = await fetch(
-        `${getApiBaseUrl()}/api/v1/registered-numbers/dispatch-rules/${sipDispatchRuleId}`,
+        `${getApiBaseUrl()}/registered-numbers/dispatch-rules/${sipDispatchRuleId}`,
         {
           method: "DELETE",
           headers: getAuthHeaders(),
