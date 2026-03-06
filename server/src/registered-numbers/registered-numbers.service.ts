@@ -28,6 +28,7 @@ import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
 import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
 import { ImportTelecmiNumbersDto } from "./dto/import-telecmi-numbers.dto";
 import { ImportTelecmiResponseDto } from "./dto/import-telecmi-response.dto";
+import { DispatchRuleResponseDto } from "./dto/dispatch-rule-response.dto";
 
 @Injectable()
 export class RegisteredNumbersService {
@@ -676,6 +677,150 @@ export class RegisteredNumbersService {
 
       throw new BadRequestException(
         `Failed to create SIP dispatch rule: ${error.message}`,
+      );
+    }
+  }
+
+  async getDispatchRules(userId: string): Promise<DispatchRuleResponseDto[]> {
+    try {
+      // Get all registered numbers for the user
+      const registeredNumbers = await this.findAllByUser(userId);
+
+      // Filter for numbers with inbound trunk IDs
+      const inboundTrunkIds = registeredNumbers
+        .filter((number) => number.livekitInboundTrunkId)
+        .map((number) => number.livekitInboundTrunkId);
+
+      if (inboundTrunkIds.length === 0) {
+        return [];
+      }
+
+      // Initialize LiveKit SIP client
+      const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+      const LIVEKIT_API_SECRET =
+        this.configService.get<string>("LIVEKIT_API_SECRET");
+      const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+      if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+        throw new BadRequestException(
+          "LiveKit credentials are not configured properly",
+        );
+      }
+
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      // Get dispatch rules for all trunk IDs
+      const rules = await sipClient.listSipDispatchRule({
+        trunkIds: inboundTrunkIds,
+      });
+
+      // Map the rules to the response DTO
+      const dispatchRules: DispatchRuleResponseDto[] = [];
+
+      for (const rule of rules) {
+        try {
+          // Parse the metadata from the first agent if available
+          let assistantId = "";
+          let assistantName = "";
+          let phoneNumber = "";
+
+          if (rule.roomConfig?.agents && rule.roomConfig.agents.length > 0) {
+            const agent = rule.roomConfig.agents[0];
+            assistantName = agent.agentName || "";
+
+            // Parse metadata JSON
+            if (agent.metadata) {
+              try {
+                const metadata = JSON.parse(agent.metadata);
+                assistantId = metadata.assistant_id || "";
+                phoneNumber = metadata.phone_number || "";
+              } catch (parseError) {
+                this.logger.warn(
+                  `Failed to parse agent metadata for rule ${rule.sipDispatchRuleId}: ${parseError.message}`,
+                );
+              }
+            }
+          }
+
+          dispatchRules.push(
+            new DispatchRuleResponseDto(
+              rule.sipDispatchRuleId,
+              rule.name,
+              assistantId,
+              assistantName,
+              phoneNumber,
+            ),
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Failed to process dispatch rule ${rule.sipDispatchRuleId}: ${error.message}`,
+          );
+          // Continue processing other rules
+        }
+      }
+
+      return dispatchRules;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get dispatch rules for user ${userId}`,
+        error.stack,
+      );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        `Failed to get dispatch rules: ${error.message}`,
+      );
+    }
+  }
+
+  async deleteDispatchRule(
+    sipDispatchRuleId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      // Initialize LiveKit SIP client
+      const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+      const LIVEKIT_API_SECRET =
+        this.configService.get<string>("LIVEKIT_API_SECRET");
+      const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+      if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+        throw new BadRequestException(
+          "LiveKit credentials are not configured properly",
+        );
+      }
+
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      // Delete the dispatch rule
+      await sipClient.deleteSipDispatchRule(sipDispatchRuleId);
+
+      this.logger.log(
+        `Deleted dispatch rule ${sipDispatchRuleId} for user ${userId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete dispatch rule ${sipDispatchRuleId}: ${error.message}`,
+        error.stack,
+      );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        `Failed to delete dispatch rule: ${error.message}`,
       );
     }
   }
