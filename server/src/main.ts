@@ -183,7 +183,7 @@ async function bootstrap() {
     operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
   });
 
-  // Setup Swagger UI with custom options
+  // Setup Swagger UI with custom options (removed external CDN to prevent hanging)
   SwaggerModule.setup("api/docs", app, document, {
     swaggerOptions: {
       persistAuthorization: true,
@@ -194,14 +194,6 @@ async function bootstrap() {
       tryItOutEnabled: true,
     },
     customSiteTitle: "Zenvoice API Documentation",
-    customfavIcon: "/favicon.ico",
-    customJs: [
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js",
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.min.js",
-    ],
-    customCssUrl: [
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css",
-    ],
   });
 
   // Also setup JSON endpoint for API spec
@@ -211,7 +203,15 @@ async function bootstrap() {
   const host = "0.0.0.0"; // Listen on all interfaces
 
   console.log("🚀 Starting server...");
-  await app.listen(port, host);
+  console.log(`📍 Attempting to bind to ${host}:${port}...`);
+
+  try {
+    await app.listen(port, host);
+    console.log(`✅ Server successfully listening on ${host}:${port}`);
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    throw error;
+  }
 
   logger.log(
     `🚀 Application is running on: http://localhost:${port}`,

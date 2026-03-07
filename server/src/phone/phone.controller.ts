@@ -17,7 +17,7 @@ import {
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { PhoneService } from "./services/phone.service";
-import { MakeCallDto } from "./dto/make-call.dto";
+import { MakeCallDto, MakeInboundCallDto } from "./dto/make-call.dto";
 import { HangupDto } from "./dto/hangup.dto";
 
 @ApiTags("phone")
@@ -57,6 +57,27 @@ export class PhoneController {
     }
 
     const result = await this.phoneService.makeCall(makeCallDto, req.user.id);
+    return result;
+  }
+
+  @Post("make_inbound_call")
+  @ApiOperation({
+    summary: "Initiate an inbound phone call without authentication",
+    description:
+      "Make an inbound call to the provided phone number. User ID is extracted from the selected assistant.",
+  })
+  @ApiBody({ type: MakeInboundCallDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Inbound call initiated successfully",
+    type: Object,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Invalid input data or assistant not found",
+  })
+  async makeInboundCall(@Body() makeInboundCallDto: MakeInboundCallDto) {
+    const result = await this.phoneService.makeInboundCall(makeInboundCallDto);
     return result;
   }
 

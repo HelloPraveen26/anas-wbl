@@ -23,12 +23,15 @@ import { RegisteredNumbersService } from "./registered-numbers.service";
 import { CreateRegisteredNumberDto } from "./dto/create-registered-number.dto";
 import { UpdateRegisteredNumberDto } from "./dto/update-registered-number.dto";
 import { RegisteredNumberResponseDto } from "./dto/registered-number-response.dto";
+import { DispatchRuleResponseDto } from "./dto/dispatch-rule-response.dto";
 import { ImportTwilioNumbersDto } from "./dto/import-twilio-numbers.dto";
 import { ImportTwilioResponseDto } from "./dto/import-twilio-response.dto";
 import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
 import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
 import { ImportTelecmiNumbersDto } from "./dto/import-telecmi-numbers.dto";
 import { ImportTelecmiResponseDto } from "./dto/import-telecmi-response.dto";
+import { CreateDispatchRuleDto } from "./dto/create-dispatch-rule.dto";
+import { CreateDispatchRuleResponseDto } from "./dto/create-dispatch-rule-response.dto";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @ApiTags("registered-numbers")
@@ -80,9 +83,9 @@ export class RegisteredNumbersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
-    summary: "Import phone numbers from Twilio",
+    summary: "Import phone number for Twilio",
     description:
-      "Import phone numbers from Twilio account and create LiveKit SIP trunk",
+      "Import a single phone number for Twilio provider and create LiveKit SIP trunks (inbound/outbound) based on configuration",
   })
   @ApiBody({ type: ImportTwilioNumbersDto })
   @ApiResponse({
@@ -90,16 +93,15 @@ export class RegisteredNumbersController {
     description: "Phone numbers imported successfully",
     type: ImportTwilioResponseDto,
     example: {
-      importedCount: 3,
-      livekitOutboundTrunkId: "ST_YTGYHbEZ8PWm",
+      importedCount: 1,
       importedNumbers: [
         {
           phoneNumber: "+19282185402",
-          friendlyName: "My Phone Number",
+          friendlyName: "+19282185402",
           registeredNumberId: "uuid-here",
         },
       ],
-      message: "Successfully imported 3 phone numbers from Twilio",
+      message: "Successfully imported 1 phone numbers from Twilio",
     },
   })
   @ApiResponse({
@@ -199,6 +201,40 @@ export class RegisteredNumbersController {
     );
   }
 
+  @Post("create_dispatch_rule")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Create a SIP dispatch rule",
+    description:
+      "Create a SIP dispatch rule for the authenticated user with the provided assistant ID, phone number, and trunk ID. The trunk ID must belong to the user.",
+  })
+  @ApiBody({ type: CreateDispatchRuleDto })
+  @ApiResponse({
+    status: 201,
+    description: "Dispatch rule created successfully",
+    type: CreateDispatchRuleResponseDto,
+    example: {
+      message: "Created dispatch rule successfully",
+      sipDispatchRuleId: "SDR_uRzWUrE8torL",
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Bad request - validation failed, invalid trunk ID, or LiveKit error",
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized - invalid token" })
+  async createDispatchRule(
+    @Request() req,
+    @Body() createDispatchRuleDto: CreateDispatchRuleDto,
+  ): Promise<CreateDispatchRuleResponseDto> {
+    return this.registeredNumbersService.createDispatchRule(
+      req.user.id,
+      createDispatchRuleDto,
+    );
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
@@ -232,6 +268,79 @@ export class RegisteredNumbersController {
     return registeredNumbers.map(
       (number) => new RegisteredNumberResponseDto(number),
     );
+  }
+
+  @Get("dispatch-rules")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Get dispatch rules for registered numbers",
+    description:
+      "Retrieve all SIP dispatch rules for the authenticated user's registered numbers with inbound trunks",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Dispatch rules retrieved successfully",
+    type: [DispatchRuleResponseDto],
+    example: [
+      {
+        sipDispatchRuleId: "SDR_uRzWUrE8torL",
+        name: "inbound-917943446691-from-sample-app",
+        assistantId: "2833c12e-8bcc-4c50-b6ae-c02bc7ea177c",
+        assistantName: "hexite-inbound-caller",
+        phoneNumber: "+917943446691",
+      },
+    ],
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized - invalid token" })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - LiveKit error or configuration issue",
+  })
+  async getDispatchRules(@Request() req): Promise<DispatchRuleResponseDto[]> {
+    return this.registeredNumbersService.getDispatchRules(req.user.id);
+  }
+
+  @Delete("dispatch-rules/:sipDispatchRuleId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Delete a dispatch rule",
+    description:
+      "Delete a SIP dispatch rule by its ID for the authenticated user's registered numbers",
+  })
+  @ApiParam({
+    name: "sipDispatchRuleId",
+    description: "SIP Dispatch Rule ID",
+    type: "string",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Dispatch rule deleted successfully",
+    schema: {
+      type: "object",
+      properties: {
+        message: {
+          type: "string",
+          example: "Dispatch rule deleted successfully",
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized - invalid token" })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - LiveKit error or dispatch rule not found",
+  })
+  async deleteDispatchRule(
+    @Param("sipDispatchRuleId") sipDispatchRuleId: string,
+    @Request() req,
+  ): Promise<{ message: string }> {
+    await this.registeredNumbersService.deleteDispatchRule(
+      sipDispatchRuleId,
+      req.user.id,
+    );
+    return { message: "Dispatch rule deleted successfully" };
   }
 
   @Get(":id")

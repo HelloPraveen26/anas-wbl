@@ -10,6 +10,7 @@ interface RegisteredNumber {
   friendlyName: string;
   phoneNo: string;
   livekitOutboundTrunkId?: string;
+  livekitInboundTrunkId?: string;
   active: boolean;
   userId?: string;
   createdAt?: string;
@@ -38,6 +39,14 @@ interface Assistant {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+interface DispatchRule {
+  sipDispatchRuleId: string;
+  name: string;
+  assistantId: string;
+  assistantName: string;
+  phoneNumber: string;
 }
 
 /* -------------------- Config -------------------- */
@@ -92,6 +101,7 @@ export default function PhoneNumbersPage() {
   >([]);
   const [contactNumbers, setContactNumbers] = useState<ContactNumber[]>([]);
   const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [dispatchRules, setDispatchRules] = useState<DispatchRule[]>([]);
   const [numSearchTerm, setNumSearchTerm] = useState("");
   const [numProviderFilter, setNumProviderFilter] = useState("all");
   const [assistantSearchTerm, setAssistantSearchTerm] = useState("");
@@ -127,13 +137,23 @@ export default function PhoneNumbersPage() {
   const [showAddContactModal, setShowAddContactModal] = useState(false);
   const [newContact, setNewContact] = useState({ name: "", phoneNo: "" });
 
+  // Dispatch rule modal state
+  const [showCreateDispatchRuleModal, setShowCreateDispatchRuleModal] =
+    useState(false);
+  const [dispatchRuleForm, setDispatchRuleForm] = useState({
+    assistantId: "",
+    phoneNumber: "",
+    trunkId: "",
+  });
+
   // Twilio form
   const [twilioForm, setTwilioForm] = useState({
-    accountSid: "",
-    authToken: "",
+    phoneNumber: "",
     address: "",
     authUsername: "",
     authPassword: "",
+    inboundEnabled: true,
+    outboundEnabled: true,
   });
 
   // Plivo form
@@ -151,6 +171,8 @@ export default function PhoneNumbersPage() {
     authUsername: "",
     authPassword: "",
     phoneNumber: "",
+    inboundEnabled: true,
+    outboundEnabled: true,
   });
 
   // WS refs
@@ -259,6 +281,30 @@ export default function PhoneNumbersPage() {
     }
   };
 
+  const fetchDispatchRules = async () => {
+    try {
+      setLoading(true);
+      const token = authManager.getToken();
+      if (!token) {
+        setDispatchRules([]);
+        return;
+      }
+      const res = await fetch(
+        `${getApiBaseUrl()}/registered-numbers/dispatch-rules`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setDispatchRules(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("fetchDispatchRules error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* -------------------- Actions (REST) -------------------- */
   const importTwilioNumbers = async () => {
     try {
@@ -269,13 +315,16 @@ export default function PhoneNumbersPage() {
         return;
       }
       if (
-        !twilioForm.accountSid ||
-        !twilioForm.authToken ||
+        !twilioForm.phoneNumber ||
         !twilioForm.address ||
         !twilioForm.authUsername ||
         !twilioForm.authPassword
       ) {
         alert("Please fill in all required fields");
+        return;
+      }
+      if (!twilioForm.inboundEnabled && !twilioForm.outboundEnabled) {
+        alert("At least one option (inbound or outbound) must be enabled");
         return;
       }
       const res = await fetch(
@@ -287,11 +336,12 @@ export default function PhoneNumbersPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            accountSid: twilioForm.accountSid,
-            authToken: twilioForm.authToken,
+            phoneNumber: twilioForm.phoneNumber,
             address: twilioForm.address,
             authUsername: twilioForm.authUsername,
             authPassword: twilioForm.authPassword,
+            inboundEnabled: twilioForm.inboundEnabled,
+            outboundEnabled: twilioForm.outboundEnabled,
           }),
         },
       );
@@ -305,11 +355,12 @@ export default function PhoneNumbersPage() {
       );
       setOpenModal(false);
       setTwilioForm({
-        accountSid: "",
-        authToken: "",
+        phoneNumber: "",
         address: "",
         authUsername: "",
         authPassword: "",
+        inboundEnabled: true,
+        outboundEnabled: true,
       });
       await fetchRegisteredNumbers();
     } catch (err) {
@@ -401,6 +452,10 @@ export default function PhoneNumbersPage() {
         alert("Please fill in all required fields");
         return;
       }
+      if (!telecmiForm.inboundEnabled && !telecmiForm.outboundEnabled) {
+        alert("Please enable at least one option: Inbound or Outbound");
+        return;
+      }
       const res = await fetch(
         `${getApiBaseUrl()}/registered-numbers/import-phone-numbers-telecmi`,
         {
@@ -414,6 +469,8 @@ export default function PhoneNumbersPage() {
             authUsername: telecmiForm.authUsername,
             authPassword: telecmiForm.authPassword,
             phoneNumber: telecmiForm.phoneNumber,
+            inboundEnabled: telecmiForm.inboundEnabled,
+            outboundEnabled: telecmiForm.outboundEnabled,
           }),
         },
       );
@@ -431,6 +488,8 @@ export default function PhoneNumbersPage() {
         authUsername: "",
         authPassword: "",
         phoneNumber: "",
+        inboundEnabled: true,
+        outboundEnabled: true,
       });
       await fetchRegisteredNumbers();
     } catch (err) {
@@ -595,6 +654,139 @@ export default function PhoneNumbersPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const deleteDispatchRule = async (sipDispatchRuleId: string) => {
+    if (!window.confirm("Are you sure you want to delete this dispatch rule?"))
+      return;
+
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${getApiBaseUrl()}/registered-numbers/dispatch-rules/${sipDispatchRuleId}`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        },
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || `HTTP ${res.status}`);
+      }
+
+      setDispatchRules((prev) =>
+        prev.filter((r) => r.sipDispatchRuleId !== sipDispatchRuleId),
+      );
+      alert("Dispatch rule deleted successfully.");
+    } catch (err) {
+      console.error("deleteDispatchRule error:", err);
+      alert(
+        `Failed to delete dispatch rule: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createDispatchRule = async () => {
+    try {
+      if (
+        !dispatchRuleForm.assistantId ||
+        !dispatchRuleForm.phoneNumber ||
+        !dispatchRuleForm.trunkId
+      ) {
+        alert("Please fill in all fields");
+        return;
+      }
+
+      const payload = {
+        assistantId: dispatchRuleForm.assistantId,
+        phoneNumber: dispatchRuleForm.phoneNumber,
+        trunkId: dispatchRuleForm.trunkId,
+      };
+
+      console.log("Creating dispatch rule with payload:", payload);
+      console.log(
+        "API URL:",
+        `${getApiBaseUrl()}/registered-numbers/create_dispatch_rule`,
+      );
+
+      setLoading(true);
+      const res = await fetch(
+        `${getApiBaseUrl()}/registered-numbers/create_dispatch_rule`,
+        {
+          method: "POST",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      console.log("Response status:", res.status);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(res.headers.entries()),
+      );
+
+      if (!res.ok) {
+        let errorMessage = `HTTP ${res.status}`;
+        try {
+          const errorData = await res.json();
+          console.error("Error response (JSON):", errorData);
+          errorMessage =
+            errorData.message || errorData.detail || JSON.stringify(errorData);
+        } catch {
+          const errText = await res.text();
+          console.error("Error response (text):", errText);
+          errorMessage = errText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      let responseData;
+      try {
+        responseData = await res.json();
+        console.log("Success response:", responseData);
+      } catch (e) {
+        console.log("No JSON response body, assuming success");
+        responseData = {};
+      }
+
+      // Refresh dispatch rules first
+      await fetchDispatchRules();
+
+      // Show success message
+      alert("Dispatch rule created successfully!");
+
+      setShowCreateDispatchRuleModal(false);
+      setDispatchRuleForm({
+        assistantId: "",
+        phoneNumber: "",
+        trunkId: "",
+      });
+    } catch (err) {
+      console.error("createDispatchRule error:", err);
+      alert(
+        `Failed to create dispatch rule: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenDispatchRuleModal = () => {
+    console.log("=== Opening Dispatch Rule Modal ===");
+    console.log("Available Assistants:", assistants);
+    console.log("Available Registered Numbers:", registeredNumbers);
+    console.log(
+      "Numbers with livekitInboundTrunkId:",
+      registeredNumbers.filter((n) => n.livekitInboundTrunkId),
+    );
+    console.log("Current form state:", dispatchRuleForm);
+    setShowCreateDispatchRuleModal(true);
   };
 
   const handleSelectNumber = (numberId: string) => {
@@ -830,6 +1022,7 @@ export default function PhoneNumbersPage() {
         fetchRegisteredNumbers(),
         fetchContactNumbers(),
         fetchAssistants(),
+        fetchDispatchRules(),
       ]);
     })();
 
@@ -1214,6 +1407,77 @@ export default function PhoneNumbersPage() {
             )}
           </section>
 
+          {/* Dispatch Rules Card */}
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Dispatch Rules
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Manage your dispatch rules for incoming calls.
+                </p>
+              </div>
+              <button
+                onClick={handleOpenDispatchRuleModal}
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
+              >
+                + Add Dispatch Rule
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {dispatchRules.length > 0 ? (
+                dispatchRules.map((rule) => (
+                  <div
+                    key={rule.sipDispatchRuleId}
+                    className="p-4 border rounded-lg bg-white border-gray-200 flex items-center justify-between"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-gray-900">
+                        {rule.name}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Assistant: {rule.assistantName}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Phone: {rule.phoneNumber}
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <button
+                        onClick={() =>
+                          deleteDispatchRule(rule.sipDispatchRuleId)
+                        }
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        title="Delete Dispatch Rule"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-gray-500">
+                  No dispatch rules found.
+                </div>
+              )}
+            </div>
+          </section>
+
           <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
@@ -1380,24 +1644,6 @@ export default function PhoneNumbersPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2">
               {activeTab === "twilio" ? (
                 <>
-                  <div>
-                    <InputField
-                      label="Account SID"
-                      value={twilioForm.accountSid}
-                      onChange={(v) =>
-                        setTwilioForm((p) => ({ ...p, accountSid: v }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <InputField
-                      label="API Secret"
-                      value={twilioForm.authToken}
-                      onChange={(v) =>
-                        setTwilioForm((p) => ({ ...p, authToken: v }))
-                      }
-                    />
-                  </div>
                   <div className="md:col-span-2">
                     <InputField
                       label="Address"
@@ -1425,6 +1671,61 @@ export default function PhoneNumbersPage() {
                         setTwilioForm((p) => ({ ...p, authPassword: v }))
                       }
                     />
+                  </div>
+                  <div className="md:col-span-2">
+                    <InputField
+                      label="Phone Number"
+                      value={twilioForm.phoneNumber}
+                      onChange={(v) =>
+                        setTwilioForm((p) => ({ ...p, phoneNumber: v }))
+                      }
+                      placeholder="+1234567890"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Call Direction
+                    </label>
+                    <div className="flex gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={twilioForm.inboundEnabled}
+                          onChange={(e) =>
+                            setTwilioForm((p) => ({
+                              ...p,
+                              inboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Inbound Calls
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={twilioForm.outboundEnabled}
+                          onChange={(e) =>
+                            setTwilioForm((p) => ({
+                              ...p,
+                              outboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Outbound Calls
+                        </span>
+                      </label>
+                    </div>
+                    {!twilioForm.inboundEnabled &&
+                      !twilioForm.outboundEnabled && (
+                        <p className="text-sm text-red-600 mt-1">
+                          At least one option must be enabled
+                        </p>
+                      )}
                   </div>
                 </>
               ) : activeTab === "plivo" ? (
@@ -1516,6 +1817,51 @@ export default function PhoneNumbersPage() {
                       placeholder="+911203134120"
                     />
                   </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Call Direction
+                    </label>
+                    <div className="flex gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={telecmiForm.inboundEnabled}
+                          onChange={(e) =>
+                            setTelecmiForm((p) => ({
+                              ...p,
+                              inboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Inbound Calls
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={telecmiForm.outboundEnabled}
+                          onChange={(e) =>
+                            setTelecmiForm((p) => ({
+                              ...p,
+                              outboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Outbound Calls
+                        </span>
+                      </label>
+                    </div>
+                    {!telecmiForm.inboundEnabled &&
+                      !telecmiForm.outboundEnabled && (
+                        <p className="text-sm text-red-600 mt-1">
+                          At least one option must be enabled
+                        </p>
+                      )}
+                  </div>
                 </>
               )}
             </div>
@@ -1538,9 +1884,12 @@ export default function PhoneNumbersPage() {
                 disabled={
                   loading ||
                   (activeTab === "twilio" &&
-                    (!twilioForm.accountSid ||
-                      !twilioForm.authToken ||
-                      !twilioForm.address)) ||
+                    (!twilioForm.phoneNumber ||
+                      !twilioForm.address ||
+                      !twilioForm.authUsername ||
+                      !twilioForm.authPassword ||
+                      (!twilioForm.inboundEnabled &&
+                        !twilioForm.outboundEnabled))) ||
                   (activeTab === "plivo" &&
                     (!plivoForm.accountSid ||
                       !plivoForm.authToken ||
@@ -1551,7 +1900,9 @@ export default function PhoneNumbersPage() {
                     (!telecmiForm.address ||
                       !telecmiForm.authUsername ||
                       !telecmiForm.authPassword ||
-                      !telecmiForm.phoneNumber))
+                      !telecmiForm.phoneNumber ||
+                      (!telecmiForm.inboundEnabled &&
+                        !telecmiForm.outboundEnabled)))
                 }
                 className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
@@ -1956,6 +2307,148 @@ export default function PhoneNumbersPage() {
                 className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-11 px-6 rounded-xl font-semibold shadow-lg shadow-emerald-500/30 flex-shrink-0"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE DISPATCH RULE MODAL */}
+      {showCreateDispatchRuleModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                Create Dispatch Rule
+              </h3>
+              <button
+                onClick={() => setShowCreateDispatchRuleModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-6 h-6"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assistant
+                </label>
+                <select
+                  value={dispatchRuleForm.assistantId}
+                  onChange={(e) => {
+                    console.log("Selected assistant:", e.target.value);
+                    setDispatchRuleForm((prev) => ({
+                      ...prev,
+                      assistantId: e.target.value,
+                    }));
+                  }}
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                >
+                  <option value="">Select an assistant</option>
+                  {assistants.map((assistant) => (
+                    <option key={assistant.id} value={assistant.id}>
+                      {assistant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <select
+                  value={dispatchRuleForm.phoneNumber}
+                  onChange={(e) => {
+                    console.log("Selected phone number:", e.target.value);
+                    setDispatchRuleForm((prev) => ({
+                      ...prev,
+                      phoneNumber: e.target.value,
+                    }));
+                  }}
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                >
+                  <option value="">Select a phone number</option>
+                  {registeredNumbers.map((number) => (
+                    <option key={number.id} value={number.phoneNo}>
+                      {number.friendlyName} ({number.phoneNo})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trunk ID (LiveKit Inbound Trunk)
+                </label>
+                <select
+                  value={dispatchRuleForm.trunkId}
+                  onChange={(e) => {
+                    console.log("Selected trunk ID:", e.target.value);
+                    setDispatchRuleForm((prev) => ({
+                      ...prev,
+                      trunkId: e.target.value,
+                    }));
+                  }}
+                  className="w-full border rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                >
+                  <option value="">Select a trunk</option>
+                  {registeredNumbers
+                    .filter((number) => number.livekitInboundTrunkId)
+                    .map((number) => (
+                      <option
+                        key={number.id}
+                        value={number.livekitInboundTrunkId}
+                      >
+                        {number.friendlyName} ({number.livekitInboundTrunkId})
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select the LiveKit trunk for inbound calls
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateDispatchRuleModal(false)}
+                className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createDispatchRule}
+                disabled={
+                  loading ||
+                  !dispatchRuleForm.assistantId ||
+                  !dispatchRuleForm.phoneNumber ||
+                  !dispatchRuleForm.trunkId
+                }
+                className={`px-4 py-2 rounded-md text-white ${
+                  loading ||
+                  !dispatchRuleForm.assistantId ||
+                  !dispatchRuleForm.phoneNumber ||
+                  !dispatchRuleForm.trunkId
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
+              >
+                {loading ? "Creating..." : "Create Rule"}
               </button>
             </div>
           </div>

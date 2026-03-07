@@ -20,6 +20,7 @@ import {
 import * as twilio from "twilio";
 import * as plivo from "plivo";
 import { RegisteredNumber } from "./entities/registered-number.entity";
+import { Assistant } from "../assistant/entities/assistant.entity";
 import { CreateRegisteredNumberDto } from "./dto/create-registered-number.dto";
 import { UpdateRegisteredNumberDto } from "./dto/update-registered-number.dto";
 import { ImportTwilioNumbersDto } from "./dto/import-twilio-numbers.dto";
@@ -28,6 +29,9 @@ import { ImportPlivoNumbersDto } from "./dto/import-plivo-numbers.dto";
 import { ImportPlivoResponseDto } from "./dto/import-plivo-response.dto";
 import { ImportTelecmiNumbersDto } from "./dto/import-telecmi-numbers.dto";
 import { ImportTelecmiResponseDto } from "./dto/import-telecmi-response.dto";
+import { DispatchRuleResponseDto } from "./dto/dispatch-rule-response.dto";
+import { CreateDispatchRuleDto } from "./dto/create-dispatch-rule.dto";
+import { CreateDispatchRuleResponseDto } from "./dto/create-dispatch-rule-response.dto";
 
 @Injectable()
 export class RegisteredNumbersService {
@@ -36,6 +40,8 @@ export class RegisteredNumbersService {
   constructor(
     @InjectRepository(RegisteredNumber)
     private readonly registeredNumberRepository: Repository<RegisteredNumber>,
+    @InjectRepository(Assistant)
+    private readonly assistantRepository: Repository<Assistant>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -116,8 +122,14 @@ export class RegisteredNumbersService {
   ): Promise<ImportTwilioResponseDto> {
     this.logger.log(`Starting Twilio number import for user: ${userId}`);
 
-    const { accountSid, authToken, address, authUsername, authPassword } =
-      importDto;
+    const {
+      phoneNumber,
+      address,
+      authUsername,
+      authPassword,
+      inboundEnabled,
+      outboundEnabled,
+    } = importDto;
     const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
     const LIVEKIT_API_SECRET =
       this.configService.get<string>("LIVEKIT_API_SECRET");
@@ -127,57 +139,102 @@ export class RegisteredNumbersService {
       throw new BadRequestException("LiveKit configuration is missing");
     }
 
+    // Validate that at least one direction is enabled
+    if (!inboundEnabled && !outboundEnabled) {
+      throw new BadRequestException(
+        "At least one of inbound or outbound must be enabled",
+      );
+    }
+
+    this.logger.log(
+      `Twilio import configuration - Inbound: ${inboundEnabled}, Outbound: ${outboundEnabled}`,
+    );
+
     try {
       const sipClient = new SipClient(
         LIVEKIT_URL,
         LIVEKIT_API_KEY,
         LIVEKIT_API_SECRET,
       );
-      const client = twilio(accountSid, authToken);
-      const numbers = await client.incomingPhoneNumbers.list({ limit: 20 });
-      if (numbers.length === 0) {
-        this.logger.warn("No phone numbers found in Twilio account");
+      if (!phoneNumber) {
+        this.logger.warn("No phone number provided for Twilio import");
         return {
           importedCount: 0,
           importedNumbers: [],
-          message: "No phone numbers found in Twilio account to import",
+          message: "No phone number provided for import",
         };
       }
+
       const importedNumbers = [];
-      const trunkOptions = {
-        transport: SIPTransport.SIP_TRANSPORT_AUTO,
-        auth_username: authUsername,
-        auth_password: authPassword,
-      };
-      for (const number of numbers) {
-        let trunk = await sipClient.createSipOutboundTrunk(
+
+      let outboundTrunkId: string | null = null;
+      let inboundTrunkId: string | null = null;
+
+      // Create outbound SIP trunk if enabled
+      if (outboundEnabled) {
+        const trunkOptions = {
+          transport: SIPTransport.SIP_TRANSPORT_AUTO,
+          auth_username: authUsername,
+          auth_password: authPassword,
+        };
+
+        const outboundTrunk = await sipClient.createSipOutboundTrunk(
           `Twilio Trunk ${new Date().toISOString()}`,
           address,
-          [number.phoneNumber], //TODO: pass all numbers into array
+          [phoneNumber],
           trunkOptions,
         );
+
+        outboundTrunkId = outboundTrunk.sipTrunkId;
+
         this.logger.log(
-          `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for ${number.phoneNumber}`,
+          `Created LiveKit SIP outbound trunk with ID: ${outboundTrunkId} for phone number: ${phoneNumber}`,
         );
-        const registeredNumber = this.registeredNumberRepository.create({
-          providerName: "twilio",
-          friendlyName: number.friendlyName || number.phoneNumber,
-          phoneNo: number.phoneNumber,
-          livekitOutboundTrunkId: trunk.sipTrunkId,
-          active: true,
-          userId,
-        });
-
-        const savedNumber =
-          await this.registeredNumberRepository.save(registeredNumber);
-
-        importedNumbers.push({
-          phoneNumber: number.phoneNumber,
-          friendlyName: number.friendlyName || number.phoneNumber,
-          registeredNumberId: savedNumber.id,
-        });
-        this.logger.log(`Imported phone number: ${number.phoneNumber}`);
+      } else {
+        this.logger.log(
+          `Skipping outbound trunk creation (outbound disabled) for phone number: ${phoneNumber}`,
+        );
       }
+
+      // Create inbound SIP trunk if enabled
+      if (inboundEnabled) {
+        inboundTrunkId = await this.createSipInboundTrunk(
+          [phoneNumber],
+          "twilio",
+        );
+
+        this.logger.log(
+          `Created LiveKit SIP inbound trunk with ID: ${inboundTrunkId} for phone number: ${phoneNumber}`,
+        );
+      } else {
+        this.logger.log(
+          `Skipping inbound trunk creation (inbound disabled) for phone number: ${phoneNumber}`,
+        );
+      }
+
+      // Import the phone number
+      const friendlyName = phoneNumber; // Use phone number as friendlyName
+
+      const registeredNumber = this.registeredNumberRepository.create({
+        providerName: "twilio",
+        friendlyName: friendlyName,
+        phoneNo: phoneNumber,
+        livekitOutboundTrunkId: outboundTrunkId,
+        livekitInboundTrunkId: inboundTrunkId,
+        active: true,
+        userId,
+      });
+
+      const savedNumber =
+        await this.registeredNumberRepository.save(registeredNumber);
+
+      importedNumbers.push({
+        phoneNumber: phoneNumber,
+        friendlyName: friendlyName,
+        registeredNumberId: savedNumber.id,
+      });
+
+      this.logger.log(`Imported phone number: ${phoneNumber}`);
 
       const response: ImportTwilioResponseDto = {
         importedCount: importedNumbers.length,
@@ -194,10 +251,6 @@ export class RegisteredNumbersService {
         `Error importing Twilio numbers: ${error.message}`,
         error.stack,
       );
-
-      if (error.code === 20003) {
-        throw new BadRequestException("Invalid Twilio credentials");
-      }
 
       if (error.message.includes("LiveKit")) {
         throw new BadRequestException(`LiveKit error: ${error.message}`);
@@ -331,7 +384,14 @@ export class RegisteredNumbersService {
   ): Promise<ImportTelecmiResponseDto> {
     this.logger.log(`Starting Telecmi number import for user: ${userId}`);
 
-    const { phoneNumber, address, authUsername, authPassword } = importDto;
+    const {
+      phoneNumber,
+      address,
+      authUsername,
+      authPassword,
+      inboundEnabled,
+      outboundEnabled,
+    } = importDto;
     const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
     const LIVEKIT_API_SECRET =
       this.configService.get<string>("LIVEKIT_API_SECRET");
@@ -340,6 +400,17 @@ export class RegisteredNumbersService {
     if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
       throw new BadRequestException("LiveKit configuration is missing");
     }
+
+    // Validate that at least one direction is enabled
+    if (!inboundEnabled && !outboundEnabled) {
+      throw new BadRequestException(
+        "At least one of inbound or outbound must be enabled",
+      );
+    }
+
+    this.logger.log(
+      `Telecmi import configuration - Inbound: ${inboundEnabled}, Outbound: ${outboundEnabled}`,
+    );
 
     try {
       const sipClient = new SipClient(
@@ -360,47 +431,50 @@ export class RegisteredNumbersService {
 
       const importedNumbers = [];
 
-      // Create a single SIP trunk for all numbers
-      const trunkOptions = {
-        transport: SIPTransport.SIP_TRANSPORT_AUTO,
-        auth_username: authUsername,
-        auth_password: authPassword,
-      };
+      let outboundTrunkId: string | null = null;
+      let inboundTrunkId: string | null = null;
 
-      const trunk = await sipClient.createSipOutboundTrunk(
-        `Telecmi Trunk ${new Date().toISOString()}`,
-        address,
-        [phoneNumber],
-        trunkOptions,
-      );
+      // Create outbound SIP trunk if enabled
+      if (outboundEnabled) {
+        const trunkOptions = {
+          transport: SIPTransport.SIP_TRANSPORT_AUTO,
+          auth_username: authUsername,
+          auth_password: authPassword,
+        };
 
-      this.logger.log(
-        `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for phone number: ${phoneNumber}`,
-      );
+        const outboundTrunk = await sipClient.createSipOutboundTrunk(
+          `Telecmi Trunk ${new Date().toISOString()}`,
+          address,
+          [phoneNumber],
+          trunkOptions,
+        );
 
-      // Create SIP dispatch rule
-      const rule: SipDispatchRuleIndividual = {
-        roomPrefix: "call-",
-        type: "individual",
-      };
-      const options: CreateSipDispatchRuleOptions = {
-        name: "dispatch rule - telecmi from node",
-        trunkIds: [trunk.sipTrunkId],
-        roomConfig: new RoomConfiguration({
-          agents: [
-            new RoomAgentDispatch({
-              agentName: "hexite-outbound-caller",
-              metadata: "dispatch metadata",
-            }),
-          ],
-        }),
-      };
+        outboundTrunkId = outboundTrunk.sipTrunkId;
 
-      const dispatchRule = await sipClient.createSipDispatchRule(rule, options);
-      this.logger.log(
-        "created dispatch rule",
-        JSON.stringify(dispatchRule, null, 2),
-      );
+        this.logger.log(
+          `Created LiveKit SIP outbound trunk with ID: ${outboundTrunkId} for phone number: ${phoneNumber}`,
+        );
+      } else {
+        this.logger.log(
+          `Skipping outbound trunk creation (outbound disabled) for phone number: ${phoneNumber}`,
+        );
+      }
+
+      // Create inbound SIP trunk if enabled
+      if (inboundEnabled) {
+        inboundTrunkId = await this.createSipInboundTrunk(
+          [phoneNumber],
+          "telecmi",
+        );
+
+        this.logger.log(
+          `Created LiveKit SIP inbound trunk with ID: ${inboundTrunkId} for phone number: ${phoneNumber}`,
+        );
+      } else {
+        this.logger.log(
+          `Skipping inbound trunk creation (inbound disabled) for phone number: ${phoneNumber}`,
+        );
+      }
 
       // Import the phone number
       const friendlyName = phoneNumber; // Use phone number as friendlyName
@@ -409,7 +483,8 @@ export class RegisteredNumbersService {
         providerName: "telecmi",
         friendlyName: friendlyName,
         phoneNo: phoneNumber,
-        livekitOutboundTrunkId: trunk.sipTrunkId,
+        livekitOutboundTrunkId: outboundTrunkId,
+        livekitInboundTrunkId: inboundTrunkId,
         active: true,
         userId,
       });
@@ -427,7 +502,7 @@ export class RegisteredNumbersService {
 
       const telecmiResponse: ImportTelecmiResponseDto = {
         importedCount: importedNumbers.length,
-        livekitOutboundTrunkId: trunk.sipTrunkId,
+        livekitOutboundTrunkId: outboundTrunkId || "",
         importedNumbers,
         message: `Successfully imported ${importedNumbers.length} phone numbers from Telecmi`,
       };
@@ -452,6 +527,353 @@ export class RegisteredNumbersService {
 
       throw new BadRequestException(
         `Failed to import Telecmi numbers: ${error.message}`,
+      );
+    }
+  }
+
+  async createSipInboundTrunk(
+    phoneNumbers: string[],
+    providerName: string,
+  ): Promise<string> {
+    this.logger.log(
+      `Creating SIP inbound trunk for provider: ${providerName} with numbers: ${phoneNumbers.join(", ")}`,
+    );
+
+    const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+    const LIVEKIT_API_SECRET =
+      this.configService.get<string>("LIVEKIT_API_SECRET");
+    const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+    if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+      throw new BadRequestException("LiveKit configuration is missing");
+    }
+
+    try {
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      // Check for existing trunks with the same number(s) and delete them
+      this.logger.log(
+        "Checking for existing trunks with the same number(s)...",
+      );
+      const existingTrunks = await sipClient.listSipInboundTrunk();
+
+      for (const existingTrunk of existingTrunks) {
+        const hasMatchingNumber = phoneNumbers.some((num) =>
+          existingTrunk.numbers.includes(num),
+        );
+
+        if (hasMatchingNumber) {
+          this.logger.log(
+            `Found existing trunk "${existingTrunk.name}" (${existingTrunk.sipTrunkId}) with matching number(s). Deleting...`,
+          );
+          await sipClient.deleteSipTrunk(existingTrunk.sipTrunkId);
+          this.logger.log(`Deleted trunk: ${existingTrunk.sipTrunkId}`);
+        }
+      }
+
+      // Create trunk name: provider + phone numbers
+      const trunkName = `${providerName} | ${phoneNumbers.join(", ")}`;
+
+      // Default trunk options
+      const trunkOptions = {
+        krispEnabled: true,
+      };
+
+      this.logger.log("Creating new inbound trunk...");
+      const trunk = await sipClient.createSipInboundTrunk(
+        trunkName,
+        phoneNumbers,
+        trunkOptions,
+      );
+
+      this.logger.log(
+        `Successfully created inbound trunk with ID: ${trunk.sipTrunkId}`,
+      );
+
+      return trunk.sipTrunkId;
+    } catch (error) {
+      this.logger.error(
+        `Error creating SIP inbound trunk: ${error.message}`,
+        error.stack,
+      );
+
+      if (error.message.includes("LiveKit")) {
+        throw new BadRequestException(`LiveKit error: ${error.message}`);
+      }
+
+      throw new BadRequestException(
+        `Failed to create SIP inbound trunk: ${error.message}`,
+      );
+    }
+  }
+
+  async createSipDispatchRule(
+    assistantId: string,
+    phoneNumber: string,
+    trunkId: string,
+  ) {
+    this.logger.log(
+      `Creating SIP dispatch rule for assistant: ${assistantId}, phone: ${phoneNumber}, trunk: ${trunkId}`,
+    );
+
+    try {
+      const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+      const LIVEKIT_API_SECRET =
+        this.configService.get<string>("LIVEKIT_API_SECRET");
+      const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+      if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+        throw new BadRequestException(
+          "LiveKit configuration is missing. Please check your environment variables.",
+        );
+      }
+
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      const dispatch_metadata = {
+        assistant_id: assistantId,
+        phone_number: phoneNumber,
+        call_type: "inbound",
+      };
+
+      const rule: SipDispatchRuleIndividual = {
+        roomPrefix: "call-",
+        type: "individual",
+      };
+
+      const options: CreateSipDispatchRuleOptions = {
+        name: `${assistantId}-${phoneNumber}`,
+        trunkIds: [trunkId],
+        roomConfig: new RoomConfiguration({
+          agents: [
+            new RoomAgentDispatch({
+              agentName: "hexite-inbound-caller",
+              metadata: JSON.stringify(dispatch_metadata),
+            }),
+          ],
+        }),
+      };
+
+      const dispatchRule = await sipClient.createSipDispatchRule(rule, options);
+
+      this.logger.log(
+        "Created dispatch rule successfully",
+        JSON.stringify(dispatchRule, null, 2),
+      );
+
+      return dispatchRule.sipDispatchRuleId;
+    } catch (error) {
+      this.logger.error(
+        `Error creating SIP dispatch rule: ${error.message}`,
+        error.stack,
+      );
+
+      if (error.message.includes("LiveKit")) {
+        throw new BadRequestException(`LiveKit error: ${error.message}`);
+      }
+
+      throw new BadRequestException(
+        `Failed to create SIP dispatch rule: ${error.message}`,
+      );
+    }
+  }
+
+  async createDispatchRule(
+    userId: string,
+    createDispatchRuleDto: CreateDispatchRuleDto,
+  ): Promise<CreateDispatchRuleResponseDto> {
+    const { assistantId, phoneNumber, trunkId } = createDispatchRuleDto;
+
+    this.logger.log(
+      `Creating dispatch rule for user: ${userId}, assistant: ${assistantId}, phone: ${phoneNumber}, trunk: ${trunkId}`,
+    );
+
+    // Validate that the trunkId belongs to the user
+    const registeredNumber = await this.registeredNumberRepository.findOne({
+      where: [
+        { userId, livekitInboundTrunkId: trunkId },
+        { userId, livekitOutboundTrunkId: trunkId },
+      ],
+    });
+
+    if (!registeredNumber) {
+      throw new BadRequestException(
+        "Invalid trunk ID. The trunk does not belong to this user or does not exist.",
+      );
+    }
+
+    this.logger.log(
+      `Trunk validation successful for user ${userId}, trunk ${trunkId}`,
+    );
+
+    // Call the existing createSipDispatchRule method
+    const sipDispatchRuleId = await this.createSipDispatchRule(
+      assistantId,
+      phoneNumber,
+      trunkId,
+    );
+
+    return new CreateDispatchRuleResponseDto(sipDispatchRuleId);
+  }
+
+  async getDispatchRules(userId: string): Promise<DispatchRuleResponseDto[]> {
+    try {
+      // Get all registered numbers for the user
+      const registeredNumbers = await this.findAllByUser(userId);
+
+      // Filter for numbers with inbound trunk IDs
+      const inboundTrunkIds = registeredNumbers
+        .filter((number) => number.livekitInboundTrunkId)
+        .map((number) => number.livekitInboundTrunkId);
+
+      if (inboundTrunkIds.length === 0) {
+        return [];
+      }
+
+      // Initialize LiveKit SIP client
+      const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+      const LIVEKIT_API_SECRET =
+        this.configService.get<string>("LIVEKIT_API_SECRET");
+      const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+      if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+        throw new BadRequestException(
+          "LiveKit credentials are not configured properly",
+        );
+      }
+
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      // Get dispatch rules for all trunk IDs
+      const rules = await sipClient.listSipDispatchRule({
+        trunkIds: inboundTrunkIds,
+      });
+
+      // Map the rules to the response DTO
+      const dispatchRules: DispatchRuleResponseDto[] = [];
+
+      for (const rule of rules) {
+        try {
+          // Parse the metadata from the first agent if available
+          let assistantId = "";
+          let assistantName = "";
+          let phoneNumber = "";
+
+          if (rule.roomConfig?.agents && rule.roomConfig.agents.length > 0) {
+            const agent = rule.roomConfig.agents[0];
+            // Fetch assistant name from database using assistant_id
+
+            // Parse metadata JSON
+            if (agent.metadata) {
+              try {
+                const metadata = JSON.parse(agent.metadata);
+                assistantId = metadata.assistant_id || "";
+                phoneNumber = metadata.phone_number || "";
+
+                // Fetch assistant from database to get the name
+                if (assistantId) {
+                  const assistant = await this.assistantRepository.findOne({
+                    where: { id: assistantId },
+                  });
+                  if (assistant) {
+                    assistantName = assistant.name;
+                  }
+                }
+              } catch (parseError) {
+                this.logger.warn(
+                  `Failed to parse agent metadata for rule ${rule.sipDispatchRuleId}: ${parseError.message}`,
+                );
+              }
+            }
+          }
+
+          dispatchRules.push(
+            new DispatchRuleResponseDto(
+              rule.sipDispatchRuleId,
+              rule.name,
+              assistantId,
+              assistantName,
+              phoneNumber,
+            ),
+          );
+        } catch (error) {
+          this.logger.warn(
+            `Failed to process dispatch rule ${rule.sipDispatchRuleId}: ${error.message}`,
+          );
+          // Continue processing other rules
+        }
+      }
+
+      return dispatchRules;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get dispatch rules for user ${userId}`,
+        error.stack,
+      );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        `Failed to get dispatch rules: ${error.message}`,
+      );
+    }
+  }
+
+  async deleteDispatchRule(
+    sipDispatchRuleId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      // Initialize LiveKit SIP client
+      const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
+      const LIVEKIT_API_SECRET =
+        this.configService.get<string>("LIVEKIT_API_SECRET");
+      const LIVEKIT_URL = this.configService.get<string>("LIVEKIT_URL");
+
+      if (!LIVEKIT_API_KEY || !LIVEKIT_API_SECRET || !LIVEKIT_URL) {
+        throw new BadRequestException(
+          "LiveKit credentials are not configured properly",
+        );
+      }
+
+      const sipClient = new SipClient(
+        LIVEKIT_URL,
+        LIVEKIT_API_KEY,
+        LIVEKIT_API_SECRET,
+      );
+
+      // Delete the dispatch rule
+      await sipClient.deleteSipDispatchRule(sipDispatchRuleId);
+
+      this.logger.log(
+        `Deleted dispatch rule ${sipDispatchRuleId} for user ${userId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to delete dispatch rule ${sipDispatchRuleId}: ${error.message}`,
+        error.stack,
+      );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        `Failed to delete dispatch rule: ${error.message}`,
       );
     }
   }

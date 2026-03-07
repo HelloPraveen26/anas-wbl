@@ -6,6 +6,7 @@ import {
   Length,
   IsArray,
   ArrayNotEmpty,
+  IsBoolean,
 } from "class-validator";
 
 export class ImportTelecmiNumbersDto {
@@ -46,4 +47,22 @@ export class ImportTelecmiNumbersDto {
   @IsString()
   @IsNotEmpty()
   phoneNumber: string;
+
+  @ApiProperty({
+    description: "Enable inbound calls for this number",
+    example: true,
+    default: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  inboundEnabled: boolean;
+
+  @ApiProperty({
+    description: "Enable outbound calls for this number",
+    example: true,
+    default: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  outboundEnabled: boolean;
 }

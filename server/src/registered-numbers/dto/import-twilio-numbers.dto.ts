@@ -1,26 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsString, IsNotEmpty, IsOptional, Length } from "class-validator";
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  Length,
+  IsBoolean,
+} from "class-validator";
 
 export class ImportTwilioNumbersDto {
   @ApiProperty({
-    description: "Twilio Account SID",
-    example: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    maxLength: 34,
+    description: "Phone number to import",
+    example: "+1234567890",
   })
   @IsString()
   @IsNotEmpty()
-  @Length(34, 34)
-  accountSid: string;
-
-  @ApiProperty({
-    description: "Twilio Auth Token",
-    example: "your_auth_token_here",
-    maxLength: 255,
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Length(1, 255)
-  authToken: string;
+  phoneNumber: string;
 
   @ApiPropertyOptional({
     description: "SIP trunk address (optional)",
@@ -51,4 +45,22 @@ export class ImportTwilioNumbersDto {
   @IsNotEmpty()
   @Length(1, 255)
   authPassword: string;
+
+  @ApiProperty({
+    description: "Enable inbound calls for this number",
+    example: true,
+    default: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  inboundEnabled: boolean;
+
+  @ApiProperty({
+    description: "Enable outbound calls for this number",
+    example: true,
+    default: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  outboundEnabled: boolean;
 }
