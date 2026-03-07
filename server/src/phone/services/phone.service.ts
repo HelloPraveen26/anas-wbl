@@ -765,21 +765,8 @@ After collecting all required information, the system will automatically process
       this.logger.log("=".repeat(80));
       this.logger.log(`Full payload:\n${JSON.stringify(payload, null, 2)}`);
       this.logger.log("=".repeat(80));
-
-      const { data } = await firstValueFrom(
-        this.httpService.post(`${this.baseUrl}/make_call`, payload),
-      );
-
-      this.logger.log(
-        `✅ Inbound call initiated successfully. Call ID: ${data.call_id || "N/A"}`,
-      );
-
-      // Note: We don't update sessionId for inbound calls as per requirements
-      // callStatus remains "In Progress"
-
       return {
-        ...data,
-        payload,
+        config: payload,
         toolConfig,
       };
     } catch (error) {
