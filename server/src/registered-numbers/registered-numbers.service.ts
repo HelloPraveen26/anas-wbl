@@ -20,6 +20,7 @@ import {
 import * as twilio from "twilio";
 import * as plivo from "plivo";
 import { RegisteredNumber } from "./entities/registered-number.entity";
+import { Assistant } from "../assistant/entities/assistant.entity";
 import { CreateRegisteredNumberDto } from "./dto/create-registered-number.dto";
 import { UpdateRegisteredNumberDto } from "./dto/update-registered-number.dto";
 import { ImportTwilioNumbersDto } from "./dto/import-twilio-numbers.dto";
@@ -39,6 +40,8 @@ export class RegisteredNumbersService {
   constructor(
     @InjectRepository(RegisteredNumber)
     private readonly registeredNumberRepository: Repository<RegisteredNumber>,
+    @InjectRepository(Assistant)
+    private readonly assistantRepository: Repository<Assistant>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -770,7 +773,7 @@ export class RegisteredNumbersService {
 
           if (rule.roomConfig?.agents && rule.roomConfig.agents.length > 0) {
             const agent = rule.roomConfig.agents[0];
-            assistantName = agent.agentName || "";
+            // Fetch assistant name from database using assistant_id
 
             // Parse metadata JSON
             if (agent.metadata) {
@@ -778,6 +781,16 @@ export class RegisteredNumbersService {
                 const metadata = JSON.parse(agent.metadata);
                 assistantId = metadata.assistant_id || "";
                 phoneNumber = metadata.phone_number || "";
+
+                // Fetch assistant from database to get the name
+                if (assistantId) {
+                  const assistant = await this.assistantRepository.findOne({
+                    where: { id: assistantId },
+                  });
+                  if (assistant) {
+                    assistantName = assistant.name;
+                  }
+                }
               } catch (parseError) {
                 this.logger.warn(
                   `Failed to parse agent metadata for rule ${rule.sipDispatchRuleId}: ${parseError.message}`,
