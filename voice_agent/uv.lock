@@ -2574,7 +2574,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", extras = ["all"] },
-    { name = "livekit-agents", extras = ["aws", "azure", "deepgram", "elevenlabs", "google", "groq", "lmnt", "openai", "sarvam", "silero"], specifier = ">=1.4.3" },
+    { name = "livekit-agents", extras = ["aws", "azure", "deepgram", "elevenlabs", "google", "groq", "lmnt", "openai", "sarvam", "silero"], specifier = ">=1.4.0" },
     { name = "livekit-plugins-aws", extras = ["realtime"] },
     { name = "openai", specifier = ">=2.0" },
     { name = "pymupdf4llm", specifier = ">=0.0.17" },
