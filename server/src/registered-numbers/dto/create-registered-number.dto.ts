@@ -62,6 +62,16 @@ export class CreateRegisteredNumberDto {
   livekitInboundTrunkId?: string;
 
   @ApiPropertyOptional({
+    description: "Username for authentication",
+    example: "auth_username_123",
+    maxLength: 255,
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 255)
+  username?: string;
+
+  @ApiPropertyOptional({
     description: "Whether the number is active",
     default: true,
   })

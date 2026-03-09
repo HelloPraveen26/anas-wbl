@@ -31,6 +31,9 @@ export class RegisteredNumber {
   @Column({ name: "livekit_inbound_trunk_id", length: 255, nullable: true })
   livekitInboundTrunkId: string | null;
 
+  @Column({ length: 255, nullable: true })
+  username: string | null;
+
   @Column({ default: true })
   active: boolean;
 
