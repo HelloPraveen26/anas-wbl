@@ -36,7 +36,6 @@ from shared import (
     ModelProvider,
     ToolFactory,
     load_all_tools,
-    setup_langfuse,
 )
 
 logger = logging.getLogger("livekit.agents.inbound")
@@ -225,7 +224,6 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Metadata parsed in {time.time() - metadata_start:.2f}s")
 
     # Get dynamic parameters
-    user_id = metadata.get("user_id")
     # Use caller_phone extracted from SIP participant above; fall back to metadata field
     phone_number = caller_phone or metadata.get("phone_number")
     custom_instructions = metadata.get("instructions") or metadata.get("system_prompt")
@@ -245,28 +243,6 @@ async def entrypoint(ctx: JobContext):
     tts_config = metadata.get("tts_config")
     assistant_id = metadata.get("assistant_id")
     knowledgebase_content = metadata.get("knowledgebase_content")
-
-    # Setup telemetry background
-    async def setup_telemetry_async():
-        try:
-            langfuse_metadata = {
-                "langfuse.session.id": ctx.room.name,
-                "langfuse.trace.name": f"Inbound Agent Session - {ctx.room.name}",
-            }
-            if user_id:
-                langfuse_metadata["langfuse.user.id"] = user_id
-
-            trace_provider = setup_langfuse(metadata=langfuse_metadata)
-            if trace_provider:
-
-                async def flush_trace_provider():
-                    trace_provider.force_flush()
-
-                ctx.add_shutdown_callback(flush_trace_provider)
-        except Exception:
-            pass
-
-    asyncio.create_task(setup_telemetry_async())
 
     # Merge instructions (Personality + Metadata + Tools)
     final_instructions = DEFAULT_INBOUND_PERSONALITY

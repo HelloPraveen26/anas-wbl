@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import json
 import logging
 import os
@@ -28,7 +27,6 @@ from livekit.agents import (
     metrics,
 )
 from livekit.agents import llm as agent_llm
-from livekit.agents.telemetry import set_tracer_provider
 from livekit.plugins import (
     aws,
     azure,
@@ -41,12 +39,9 @@ from livekit.plugins import (
     sarvam,
     silero,
 )
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.util.types import AttributeValue
-
 logger = logging.getLogger("agent")
 
-load_dotenv(".env", override=True)
+load_dotenv("/Users/sumanpaudel/zenvoice/voice_agent/agents/.env", override=True)
 
 # -----------------------------------------------------------------------------
 # DynamicToolHandler: Advanced Multi-Tool Orchestration
@@ -348,35 +343,6 @@ class Assistant(Agent):
             await job_ctx.delete_room()
 
 
-def setup_langfuse(
-    metadata: dict[str, AttributeValue] | None = None,
-    *,
-    host: str | None = None,
-    public_key: str | None = None,
-    secret_key: str | None = None,
-) -> TracerProvider:
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-    public_key = public_key or os.getenv("LANGFUSE_PUBLIC_KEY")
-    secret_key = secret_key or os.getenv("LANGFUSE_SECRET_KEY")
-    host = host or os.getenv("LANGFUSE_HOST")
-
-    if not public_key or not secret_key or not host:
-        logger.info("Langfuse not configured.")
-        return None
-
-    langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
-    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{host.rstrip('/')}/api/public/otel"
-    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
-
-    trace_provider = TracerProvider()
-    trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-    set_tracer_provider(trace_provider, metadata=metadata)
-    return trace_provider
-
-
 async def entrypoint(ctx: JobContext):
     entrypoint_start = time.time()
     ctx.log_context_fields = {"room": ctx.room.name}
@@ -398,7 +364,6 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Metadata parsed in {time.time() - metadata_start:.2f}s")
 
     # Get dynamic parameters
-    user_id = metadata.get("user_id")
     phone_number = metadata.get("phone_number")
     outbound_trunk_id = metadata.get("outbound_trunk_id")
     custom_instructions = metadata.get("instructions")
@@ -415,28 +380,6 @@ async def entrypoint(ctx: JobContext):
     tts_config = metadata.get("tts_config")
     assistant_id = metadata.get("assistant_id")
     knowledgebase_content = metadata.get("knowledgebase_content")
-
-    # Setup telemetry background
-    async def setup_telemetry_async():
-        try:
-            langfuse_metadata = {
-                "langfuse.session.id": ctx.room.name,
-                "langfuse.trace.name": f"Voice Agent Session - {ctx.room.name}",
-            }
-            if user_id:
-                langfuse_metadata["langfuse.user.id"] = user_id
-
-            trace_provider = setup_langfuse(metadata=langfuse_metadata)
-            if trace_provider:
-
-                async def flush_trace_provider():
-                    trace_provider.force_flush()
-
-                ctx.add_shutdown_callback(flush_trace_provider)
-        except Exception:
-            pass
-
-    asyncio.create_task(setup_telemetry_async())
 
     # --- 3. MERGE INSTRUCTIONS (Personality + Metadata + Tools) ---
     final_instructions = DEFAULT_PERSONALITY
