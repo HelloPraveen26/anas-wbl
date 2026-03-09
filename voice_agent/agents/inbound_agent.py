@@ -119,13 +119,14 @@ class Assistant(Agent):
             await job_ctx.delete_room()
 
 
-async def _fetch_assistant_config(assistant_id: str) -> dict | None:
+async def _fetch_assistant_config(assistant_id: str, assistant_phone_number: str, caller_phone: str) -> dict | None:
     """Fetch full assistant config from dispatcher backend. Returns None on 404 or error."""
     backend_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{backend_url}/assistants/{assistant_id}/config")
-            if resp.status_code == 200:
+            resp = await client.post(f"{backend_url}/api/v1/phone/make_inbound_call", json={"phoneNumber": caller_phone, "fromPhoneNumber": assistant_phone_number, "selectedAssistant": assistant_id})
+            if resp.status_code == 201:
+                logger.info(f"payload:{resp.json().get('config', {})}")
                 return resp.json().get("config", {})
     except Exception as e:
         logger.warning(f"Could not fetch assistant config for {assistant_id}: {e}")
@@ -204,8 +205,9 @@ async def entrypoint(ctx: JobContext):
     # Layer 2: assistant config — fetched live from backend by assistant_id.
     # Overrides dispatch-level values, so frontend can update config without recreating dispatch rules.
     assistant_id_from_dispatch = metadata.get("assistant_id")
+    assistant_phone_number = metadata.get("phone_number")
     if assistant_id_from_dispatch:
-        assistant_cfg = await _fetch_assistant_config(assistant_id_from_dispatch)
+        assistant_cfg = await _fetch_assistant_config(assistant_id_from_dispatch, assistant_phone_number, caller_phone)
         if assistant_cfg:
             metadata = {**metadata, **assistant_cfg}
             logger.info(f"📦 Loaded assistant config for {assistant_id_from_dispatch} ({list(assistant_cfg.keys())})")
