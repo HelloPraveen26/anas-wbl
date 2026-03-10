@@ -28,6 +28,10 @@ export class RegisteredNumberResponseDto {
   @Expose()
   livekitInboundTrunkId?: string;
 
+  @ApiPropertyOptional({ description: "Username for authentication" })
+  @Expose()
+  username?: string;
+
   @ApiProperty({ description: "Whether the number is active" })
   @Expose()
   active: boolean;

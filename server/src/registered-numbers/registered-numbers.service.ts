@@ -221,6 +221,7 @@ export class RegisteredNumbersService {
         phoneNo: phoneNumber,
         livekitOutboundTrunkId: outboundTrunkId,
         livekitInboundTrunkId: inboundTrunkId,
+        username: authUsername,
         active: true,
         userId,
       });
@@ -331,6 +332,7 @@ export class RegisteredNumbersService {
           friendlyName: friendlyName,
           phoneNo: phoneNumber,
           livekitOutboundTrunkId: trunk.sipTrunkId,
+          username: authUsername,
           active: true,
           userId,
         });
@@ -485,6 +487,7 @@ export class RegisteredNumbersService {
         phoneNo: phoneNumber,
         livekitOutboundTrunkId: outboundTrunkId,
         livekitInboundTrunkId: inboundTrunkId,
+        username: authUsername,
         active: true,
         userId,
       });

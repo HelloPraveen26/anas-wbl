@@ -293,7 +293,7 @@ export default function CallLogsPage() {
 
   const formatCost = (cost: any) => {
     const numericCost = parseFloat(cost);
-    return isNaN(numericCost) ? "0.00" : numericCost.toFixed(5);
+    return isNaN(numericCost) ? "0.00" : numericCost.toFixed(2);
   };
 
   const getStatusColor = (status: string) => {
@@ -553,7 +553,7 @@ export default function CallLogsPage() {
                     {call.duration}
                   </td>
                   <td className="px-4 py-3 border-b font-medium">
-                    ${formatCost(call.cost)}
+                    ₹{formatCost(call.cost)}
                   </td>
                 </tr>
               ))
