@@ -1,30 +1,24 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsString, IsNotEmpty, IsOptional, Length } from "class-validator";
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  Length,
+  IsBoolean,
+} from "class-validator";
 
 export class ImportPlivoNumbersDto {
   @ApiProperty({
-    description: "Plivo Auth ID",
-    example: "",
-    maxLength: 255,
+    description: "Phone number to import",
+    example: "+1234567890",
   })
   @IsString()
   @IsNotEmpty()
-  @Length(1, 255)
-  accountSid: string;
-
-  @ApiProperty({
-    description: "Plivo Auth Token",
-    example: "",
-    maxLength: 255,
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Length(1, 255)
-  authToken: string;
+  phoneNumber: string;
 
   @ApiPropertyOptional({
     description: "SIP trunk address (optional)",
-    example: "plivo-trunk.example.com",
+    example: "13128041375304087.zt.plivo.com",
     maxLength: 255,
   })
   @IsOptional()
@@ -51,4 +45,22 @@ export class ImportPlivoNumbersDto {
   @IsNotEmpty()
   @Length(1, 255)
   authPassword: string;
+
+  @ApiProperty({
+    description: "Enable inbound calls for this number",
+    example: true,
+    default: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  inboundEnabled: boolean;
+
+  @ApiProperty({
+    description: "Enable outbound calls for this number",
+    example: true,
+    default: true,
+  })
+  @IsBoolean()
+  @IsNotEmpty()
+  outboundEnabled: boolean;
 }

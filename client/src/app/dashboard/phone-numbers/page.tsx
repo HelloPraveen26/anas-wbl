@@ -158,11 +158,12 @@ export default function PhoneNumbersPage() {
 
   // Plivo form
   const [plivoForm, setPlivoForm] = useState({
-    accountSid: "",
-    authToken: "",
+    phoneNumber: "",
     address: "",
     authUsername: "",
     authPassword: "",
+    inboundEnabled: true,
+    outboundEnabled: true,
   });
 
   // Telecmi form
@@ -382,13 +383,16 @@ export default function PhoneNumbersPage() {
         return;
       }
       if (
-        !plivoForm.accountSid ||
-        !plivoForm.authToken ||
+        !plivoForm.phoneNumber ||
         !plivoForm.address ||
         !plivoForm.authUsername ||
         !plivoForm.authPassword
       ) {
         alert("Please fill in all required fields");
+        return;
+      }
+      if (!plivoForm.inboundEnabled && !plivoForm.outboundEnabled) {
+        alert("At least one option (inbound or outbound) must be enabled");
         return;
       }
       const res = await fetch(
@@ -400,11 +404,12 @@ export default function PhoneNumbersPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            accountSid: plivoForm.accountSid,
-            authToken: plivoForm.authToken,
+            phoneNumber: plivoForm.phoneNumber,
             address: plivoForm.address,
             authUsername: plivoForm.authUsername,
             authPassword: plivoForm.authPassword,
+            inboundEnabled: plivoForm.inboundEnabled,
+            outboundEnabled: plivoForm.outboundEnabled,
           }),
         },
       );
@@ -418,11 +423,12 @@ export default function PhoneNumbersPage() {
       );
       setOpenModal(false);
       setPlivoForm({
-        accountSid: "",
-        authToken: "",
+        phoneNumber: "",
         address: "",
         authUsername: "",
         authPassword: "",
+        inboundEnabled: true,
+        outboundEnabled: true,
       });
       await fetchRegisteredNumbers();
     } catch (err) {
@@ -1732,20 +1738,12 @@ export default function PhoneNumbersPage() {
                 <>
                   <div>
                     <InputField
-                      label="Account SID"
-                      value={plivoForm.accountSid}
+                      label="Phone Number"
+                      value={plivoForm.phoneNumber}
                       onChange={(v) =>
-                        setPlivoForm((p) => ({ ...p, accountSid: v }))
+                        setPlivoForm((p) => ({ ...p, phoneNumber: v }))
                       }
-                    />
-                  </div>
-                  <div>
-                    <InputField
-                      label="API Secret"
-                      value={plivoForm.authToken}
-                      onChange={(v) =>
-                        setPlivoForm((p) => ({ ...p, authToken: v }))
-                      }
+                      placeholder="+1234567890"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -1775,6 +1773,51 @@ export default function PhoneNumbersPage() {
                         setPlivoForm((p) => ({ ...p, authPassword: v }))
                       }
                     />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Call Direction
+                    </label>
+                    <div className="flex gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={plivoForm.inboundEnabled}
+                          onChange={(e) =>
+                            setPlivoForm((p) => ({
+                              ...p,
+                              inboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Inbound Calls
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={plivoForm.outboundEnabled}
+                          onChange={(e) =>
+                            setPlivoForm((p) => ({
+                              ...p,
+                              outboundEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Outbound Calls
+                        </span>
+                      </label>
+                    </div>
+                    {!plivoForm.inboundEnabled &&
+                      !plivoForm.outboundEnabled && (
+                        <p className="text-sm text-red-600 mt-1">
+                          At least one option must be enabled
+                        </p>
+                      )}
                   </div>
                 </>
               ) : (
@@ -1891,11 +1934,12 @@ export default function PhoneNumbersPage() {
                       (!twilioForm.inboundEnabled &&
                         !twilioForm.outboundEnabled))) ||
                   (activeTab === "plivo" &&
-                    (!plivoForm.accountSid ||
-                      !plivoForm.authToken ||
+                    (!plivoForm.phoneNumber ||
                       !plivoForm.address ||
                       !plivoForm.authUsername ||
-                      !plivoForm.authPassword)) ||
+                      !plivoForm.authPassword ||
+                      (!plivoForm.inboundEnabled &&
+                        !plivoForm.outboundEnabled))) ||
                   (activeTab === "telecmi" &&
                     (!telecmiForm.address ||
                       !telecmiForm.authUsername ||
