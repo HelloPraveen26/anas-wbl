@@ -267,82 +267,21 @@ After collecting all required information, the system will automatically process
       }
       this.logger.log("=".repeat(80));
 
-      // Determine sip_headers based on provider_name and from_phone_number
+      // Determine sip_headers based on provider_name
       let sipHeaders = {};
       if (registeredNumber.providerName === "telecmi") {
-        if (["+917943446693"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "agarwalpackers",
-          };
-        } else if (["+917943446695"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "vidhuacademy",
-          };
-        } else if (["+917943446690"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "gnsolutions",
-          };
-        } else if (
-          [
-            "+917943446694",
-            "+917943446703",
-            "+917943446704",
-            "+917943446705",
-            "+917943446706",
-            "+917943446707",
-            "+917943446708",
-            "+917943446709",
-            "+917943446710",
-          ].includes(fromPhoneNumber)
-        ) {
-          sipHeaders = {
-            "X-Piopiy-Username": "manjugroups",
-          };
-        } else if (["+917943446696"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "excelecobag",
-          };
-        } else if (["+917943446699"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "avroofings",
-          };
-        } else if (["+917943446700"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "kaizen",
-          };
-        } else if (["+917943446698"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "shreemadam",
-          };
-        } else if (["+917943446701"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "guptaanimation",
-          };
-        } else if (["+917943446712"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "drmaria",
-          };
-        } else if (["+917943446714"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "harvel",
-          };
-        } else if (["+917943446715"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "GRDcollege",
-          };
-        } else if (["+917943446721"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "powergroup",
-          };
-        } else if (["+917943446722"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "liveedu",
-          };
-        } else {
-          sipHeaders = {
-            "X-Piopiy-Username": "zenaisip",
-          };
+        if (!registeredNumber.username) {
+          this.logger.error(
+            `❌ Username is missing for telecmi provider with phone number: ${fromPhoneNumber}`,
+          );
+          throw new HttpException(
+            "Username is required for telecmi provider",
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
         }
+        sipHeaders = {
+          "X-Piopiy-Username": registeredNumber.username,
+        };
       }
 
       const payload = {
@@ -673,82 +612,21 @@ After collecting all required information, the system will automatically process
           : toolInstructions;
       }
 
-      // Determine sip_headers based on provider_name and from_phone_number
+      // Determine sip_headers based on provider_name
       let sipHeaders = {};
       if (registeredNumber.providerName === "telecmi") {
-        if (["+917943446693"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "agarwalpackers",
-          };
-        } else if (["+917943446695"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "vidhuacademy",
-          };
-        } else if (["+917943446690"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "gnsolutions",
-          };
-        } else if (
-          [
-            "+917943446694",
-            "+917943446703",
-            "+917943446704",
-            "+917943446705",
-            "+917943446706",
-            "+917943446707",
-            "+917943446708",
-            "+917943446709",
-            "+917943446710",
-          ].includes(fromPhoneNumber)
-        ) {
-          sipHeaders = {
-            "X-Piopiy-Username": "manjugroups",
-          };
-        } else if (["+917943446696"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "excelecobag",
-          };
-        } else if (["+917943446699"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "avroofings",
-          };
-        } else if (["+917943446700"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "kaizen",
-          };
-        } else if (["+917943446698"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "shreemadam",
-          };
-        } else if (["+917943446701"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "guptaanimation",
-          };
-        } else if (["+917943446712"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "drmaria",
-          };
-        } else if (["+917943446714"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "harvel",
-          };
-        } else if (["+917943446715"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "GRDcollege",
-          };
-        } else if (["+917943446721"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "powergroup",
-          };
-        } else if (["+917943446722"].includes(fromPhoneNumber)) {
-          sipHeaders = {
-            "X-Piopiy-Username": "liveedu",
-          };
-        } else {
-          sipHeaders = {
-            "X-Piopiy-Username": "zenaisip",
-          };
+        if (!registeredNumber.username) {
+          this.logger.error(
+            `❌ Username is missing for telecmi provider with phone number: ${fromPhoneNumber}`,
+          );
+          throw new HttpException(
+            "Username is required for telecmi provider",
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          );
         }
+        sipHeaders = {
+          "X-Piopiy-Username": registeredNumber.username,
+        };
       }
 
       const payload = {
