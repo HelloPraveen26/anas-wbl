@@ -269,8 +269,14 @@ export class RegisteredNumbersService {
   ): Promise<ImportPlivoResponseDto> {
     this.logger.log(`Starting Plivo number import for user: ${userId}`);
 
-    const { accountSid, authToken, address, authUsername, authPassword } =
-      importDto;
+    const {
+      phoneNumber,
+      address,
+      authUsername,
+      authPassword,
+      inboundEnabled,
+      outboundEnabled,
+    } = importDto;
     const LIVEKIT_API_KEY = this.configService.get<string>("LIVEKIT_API_KEY");
     const LIVEKIT_API_SECRET =
       this.configService.get<string>("LIVEKIT_API_SECRET");
@@ -280,6 +286,17 @@ export class RegisteredNumbersService {
       throw new BadRequestException("LiveKit configuration is missing");
     }
 
+    // Validate that at least one direction is enabled
+    if (!inboundEnabled && !outboundEnabled) {
+      throw new BadRequestException(
+        "At least one of inbound or outbound must be enabled",
+      );
+    }
+
+    this.logger.log(
+      `Plivo import configuration - Inbound: ${inboundEnabled}, Outbound: ${outboundEnabled}`,
+    );
+
     try {
       const sipClient = new SipClient(
         LIVEKIT_URL,
@@ -287,71 +304,91 @@ export class RegisteredNumbersService {
         LIVEKIT_API_SECRET,
       );
 
-      const client = new plivo.Client(accountSid, authToken);
-      const response = await client.numbers.list({ limit: 20 });
-      const numbers = response;
-
-      if (numbers.length === 0) {
-        this.logger.warn("No phone numbers found in Plivo account");
+      if (!phoneNumber) {
+        this.logger.warn("No phone number provided for Plivo import");
         return {
           importedCount: 0,
           livekitOutboundTrunkId: "",
           importedNumbers: [],
-          message: "No phone numbers found in Plivo account to import",
+          message: "No phone number provided for import",
         };
       }
 
       const importedNumbers = [];
-      const phoneNumbers = numbers.map((number) => `+${number.number}`);
 
-      // Create a single SIP trunk for all numbers
-      const trunkOptions = {
-        transport: SIPTransport.SIP_TRANSPORT_AUTO,
-        auth_username: authUsername,
-        auth_password: authPassword,
-      };
+      let outboundTrunkId: string | null = null;
+      let inboundTrunkId: string | null = null;
 
-      const trunk = await sipClient.createSipOutboundTrunk(
-        `Plivo Trunk ${new Date().toISOString()}`,
-        address,
-        phoneNumbers,
-        trunkOptions,
-      );
+      // Create outbound SIP trunk if enabled
+      if (outboundEnabled) {
+        const trunkOptions = {
+          transport: SIPTransport.SIP_TRANSPORT_AUTO,
+          auth_username: authUsername,
+          auth_password: authPassword,
+        };
 
-      this.logger.log(
-        `Created LiveKit SIP trunk with ID: ${trunk.sipTrunkId} for ${phoneNumbers.length} numbers`,
-      );
+        const outboundTrunk = await sipClient.createSipOutboundTrunk(
+          `Plivo Trunk ${new Date().toISOString()}`,
+          address,
+          [phoneNumber],
+          trunkOptions,
+        );
 
-      // Import each number
-      for (const number of numbers) {
-        const phoneNumber = `+${number.number}`;
-        const friendlyName = number.number; // Use same number as friendlyName as specified
+        outboundTrunkId = outboundTrunk.sipTrunkId;
 
-        const registeredNumber = this.registeredNumberRepository.create({
-          providerName: "plivo",
-          friendlyName: friendlyName,
-          phoneNo: phoneNumber,
-          livekitOutboundTrunkId: trunk.sipTrunkId,
-          username: authUsername,
-          active: true,
-          userId,
-        });
-
-        const savedNumber =
-          await this.registeredNumberRepository.save(registeredNumber);
-
-        importedNumbers.push({
-          phoneNumber: phoneNumber,
-          friendlyName: friendlyName,
-          registeredNumberId: savedNumber.id,
-        });
-
-        this.logger.log(`Imported phone number: ${phoneNumber}`);
+        this.logger.log(
+          `Created LiveKit SIP outbound trunk with ID: ${outboundTrunkId} for phone number: ${phoneNumber}`,
+        );
+      } else {
+        this.logger.log(
+          `Skipping outbound trunk creation (outbound disabled) for phone number: ${phoneNumber}`,
+        );
       }
+
+      // Create inbound SIP trunk if enabled
+      if (inboundEnabled) {
+        inboundTrunkId = await this.createSipInboundTrunk(
+          [phoneNumber],
+          "plivo",
+        );
+
+        this.logger.log(
+          `Created LiveKit SIP inbound trunk with ID: ${inboundTrunkId} for phone number: ${phoneNumber}`,
+        );
+      } else {
+        this.logger.log(
+          `Skipping inbound trunk creation (inbound disabled) for phone number: ${phoneNumber}`,
+        );
+      }
+
+      // Import the phone number
+      const friendlyName = phoneNumber; // Use phone number as friendlyName
+
+      const registeredNumber = this.registeredNumberRepository.create({
+        providerName: "plivo",
+        friendlyName: friendlyName,
+        phoneNo: phoneNumber,
+        livekitOutboundTrunkId: outboundTrunkId,
+        livekitInboundTrunkId: inboundTrunkId,
+        username: authUsername,
+        active: true,
+        userId,
+      });
+
+      const savedNumber =
+        await this.registeredNumberRepository.save(registeredNumber);
+
+      importedNumbers.push({
+        phoneNumber: phoneNumber,
+        friendlyName: friendlyName,
+        registeredNumberId: savedNumber.id,
+      });
+
+      this.logger.log(`Imported phone number: ${phoneNumber}`);
 
       const plivoResponse: ImportPlivoResponseDto = {
         importedCount: importedNumbers.length,
-        livekitOutboundTrunkId: trunk.sipTrunkId,
+        livekitOutboundTrunkId: outboundTrunkId || "",
         importedNumbers,
         message: `Successfully imported ${importedNumbers.length} phone numbers from Plivo`,
       };
@@ -365,10 +402,6 @@ export class RegisteredNumbersService {
         `Error importing Plivo numbers: ${error.message}`,
         error.stack,
       );
-
-      if (error.message.includes("Authentication failed")) {
-        throw new BadRequestException("Invalid Plivo credentials");
-      }
 
       if (error.message.includes("LiveKit")) {
         throw new BadRequestException(`LiveKit error: ${error.message}`);
