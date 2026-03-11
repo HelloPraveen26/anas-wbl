@@ -6,12 +6,16 @@ import {
   Matches,
   IsObject,
 } from "class-validator";
+import { Transform } from "class-transformer";
 
 export class MakeCallDto {
   @ApiProperty({
     description: "The phone number to call, in E.164 format",
     example: "+1234567890",
   })
+  @Transform(({ value }) =>
+    value && !value.startsWith("+") ? `+${value}` : value,
+  )
   @IsNotEmpty()
   @Matches(/^\+[1-9]\d{1,14}$/, {
     message: "phone_number must be a valid phone number",
@@ -24,6 +28,9 @@ export class MakeCallDto {
     required: false,
     default: "+19282185402",
   })
+  @Transform(({ value }) =>
+    value && !value.startsWith("+") ? `+${value}` : value,
+  )
   @IsOptional()
   @Matches(/^\+[1-9]\d{1,14}$/, {
     message: "fromPhoneNumber must be a valid phone number",
@@ -62,6 +69,9 @@ export class MakeInboundCallDto {
     description: "The phone number to call, in E.164 format",
     example: "+1234567890",
   })
+  @Transform(({ value }) =>
+    value && !value.startsWith("+") ? `+${value}` : value,
+  )
   @IsNotEmpty()
   @Matches(/^\+[1-9]\d{1,14}$/, {
     message: "phone_number must be a valid phone number",
@@ -74,6 +84,9 @@ export class MakeInboundCallDto {
     required: false,
     default: "+19282185402",
   })
+  @Transform(({ value }) =>
+    value && !value.startsWith("+") ? `+${value}` : value,
+  )
   @IsOptional()
   @Matches(/^\+[1-9]\d{1,14}$/, {
     message: "fromPhoneNumber must be a valid phone number",
