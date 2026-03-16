@@ -124,9 +124,22 @@ export function VisualFlowBuilder({ value, onChange }: VisualFlowBuilderProps) {
 
     const addNode = () => {
         const id = `node_${Date.now()}`;
+        
+        // Find the rightmost position to place the new node
+        let newX = 400;
+        let newY = 300;
+        
+        if (nodes.length > 0) {
+            const rightmostNode = nodes.reduce((prev, current) => 
+                (prev.position.x > current.position.x) ? prev : current
+            );
+            newX = rightmostNode.position.x + 450;
+            newY = rightmostNode.position.y;
+        }
+
         const newNode: Node = {
             id,
-            position: { x: 400, y: 300 }, // Center-ish
+            position: { x: newX, y: newY },
             type: 'messageNode',
             data: {
                 isStart: false,
@@ -253,22 +266,22 @@ export function VisualFlowBuilder({ value, onChange }: VisualFlowBuilderProps) {
                 className="bg-[#f8f9fa]"
             >
                 <Background gap={24} size={2} color="#000000ff" />
-                <Controls className="bg-white border-emerald-100 fill-emerald-600 text-emerald-600 shadow-lg" />
+                <Controls className="bg-white border-purple-50 fill-purple-600 text-purple-600 shadow-lg rounded-lg" />
             </ReactFlow>
 
             <div className="absolute top-4 right-4 z-10 flex gap-2">
                 <Button
                     variant="outline"
                     onClick={resetFlow}
-                    className="h-10 px-4 border-emerald-100 text-emerald-600 hover:bg-emerald-50 bg-white"
+                    className="h-10 px-6 border-purple-100 text-purple-600 hover:bg-purple-50 bg-white font-medium rounded-lg shadow-sm"
                 >
                     Clear Flow
                 </Button>
                 <Button
                     onClick={addNode}
-                    className="h-10 px-4 gap-2 shadow-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-none rounded-md font-medium"
+                    className="h-10 px-6 gap-2 shadow-lg bg-gradient-to-r from-[#8b5cf6] to-[#06b6d4] hover:from-[#7c3aed] hover:to-[#0891b2] text-white border-none rounded-lg font-semibold"
                 >
-                    <Plus className="w-4 h-4" /> Add Node
+                    <Plus className="w-5 h-5" /> Add Node
                 </Button>
             </div>
         </div>

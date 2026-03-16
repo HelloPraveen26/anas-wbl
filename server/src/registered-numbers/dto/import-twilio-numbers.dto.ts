@@ -1,10 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsString,
   IsNotEmpty,
   IsOptional,
   Length,
   IsBoolean,
+  Matches,
 } from "class-validator";
 
 export class ImportTwilioNumbersDto {
@@ -14,6 +16,10 @@ export class ImportTwilioNumbersDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: "phoneNumber must be a valid phone number in E.164 format",
+  })
   phoneNumber: string;
 
   @ApiPropertyOptional({
@@ -23,6 +29,7 @@ export class ImportTwilioNumbersDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @Length(1, 255)
   address?: string;
 
@@ -33,6 +40,7 @@ export class ImportTwilioNumbersDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @Length(1, 255)
   authUsername: string;
 

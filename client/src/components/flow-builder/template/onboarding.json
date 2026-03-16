@@ -1,0 +1,109 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Hello 👋 Welcome to the Onboarding Assistant.\nI'm here to help you get started quickly. ",
+    "position": {
+      "x": 203.26191235872625,
+      "y": -141.56076954545074
+    },
+    "buttons": [
+      {
+        "id": "btn_1772705076141",
+        "text": "Start my onboarding",
+        "type": "quick_reply",
+        "action": "node_1772797747753"
+      },
+      {
+        "id": "btn_1772705076524",
+        "text": "I need help with setup",
+        "type": "quick_reply",
+        "action": "node_1772797926395"
+      }
+    ]
+  },
+  "nodes": {
+    "node_1772797747753": {
+      "message": "Great! Let's begin your onboarding process.\nPlease provide your name and email so we can set up your account.",
+      "position": {
+        "x": 627.5418403311536,
+        "y": -132.81820658176593
+      },
+      "buttons": [
+        {
+          "id": "btn_1772797778023",
+          "text": "Okay, I will share my details",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        },
+        {
+          "id": "btn_1772797778143",
+          "text": "I will do it later",
+          "type": "quick_reply",
+          "action": "node_1772798142957"
+        }
+      ]
+    },
+    "node_1772797926395": {
+      "message": "No problem! I can guide you through the setup.\nWould you like to see the onboarding steps or connect with our support team?",
+      "position": {
+        "x": 1074.149313655747,
+        "y": -132.78327576120978
+      },
+      "buttons": [
+        {
+          "id": "btn_1772798203095",
+          "text": "Show onboarding steps",
+          "type": "quick_reply",
+          "action": "node_1772798289304"
+        },
+        {
+          "id": "btn_1772798203679",
+          "text": "No thanks",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        }
+      ]
+    },
+    "node_1772798101438": {
+      "message": "Thank you! Once your details are submitted, your account will be ready to use.",
+      "position": {
+        "x": 1919.189895545357,
+        "y": -71.60820537932409
+      },
+      "buttons": []
+    },
+    "node_1772798142957": {
+      "message": "No worries! You can complete the onboarding anytime. We're here whenever you're ready.",
+      "position": {
+        "x": 1508.5662749645853,
+        "y": -83.67836443898517
+      },
+      "buttons": []
+    },
+    "node_1772798289304": {
+      "message": "Here are the onboarding steps:\n1️⃣ Create your account\n2️⃣ Set up your profile\n3️⃣ Connect your tools\n4️⃣ Start using the platform",
+      "position": {
+        "x": 2411.714430207941,
+        "y": -81.56925615557861
+      },
+      "buttons": [
+        {
+          "id": "btn_1772798431748",
+          "text": "Got it, thanks",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        },
+        {
+          "id": "btn_1772798431969",
+          "text": "Okay, bye",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        }
+      ]
+    }
+  },
+  "fallback": {
+    "message": "Sorry, I didn't quite understand that. Could you please choose one of the options above?",
+    "buttons": []
+  }
+}

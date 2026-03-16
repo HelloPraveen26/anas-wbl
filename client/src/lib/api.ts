@@ -40,6 +40,7 @@ export interface User {
   email: string;
   phone?: string;
   credits?: number;
+  balance?: number;
   isVerified: boolean;
 }
 
@@ -75,12 +76,18 @@ class ApiClient {
     const url = `${this.baseURL}${endpoint}`;
 
     const config: RequestInit = {
+      ...options,
       headers: {
         "Content-Type": "application/json",
         ...options.headers,
       },
-      ...options,
     };
+
+    console.log(`🚀 Request to ${url}:`, {
+      method: config.method,
+      body: config.body,
+      headers: config.headers,
+    });
 
     // Enhanced debug logging
     console.log("🔗 Making API request:", {
@@ -172,6 +179,13 @@ class ApiClient {
     });
   }
 
+  async signInAdmin(data: SignInRequest): Promise<ApiResponse<AuthData>> {
+    return this.request<AuthData>("/auth/admin/signin", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   async forgotPassword(email: string): Promise<ApiResponse> {
     return this.request("/auth/forgot-password", {
       method: "POST",
@@ -185,6 +199,54 @@ class ApiClient {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+    });
+  }
+
+  async createPayment(token: string, amount: number): Promise<ApiResponse> {
+    return this.request("/payment/create-payment", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ amount }),
+    });
+  }
+
+  async getPaymentHistory(token: string): Promise<ApiResponse<any[]>> {
+    return this.request<any[]>("/payment/history", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async getSubUsers(token: string): Promise<ApiResponse<User[]>> {
+    return this.request<User[]>("/users/sub-users", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async createSubUser(token: string, data: any): Promise<ApiResponse<User>> {
+    return this.request<User>("/users/create-sub-user", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async adjustSubUserCredits(token: string, userId: string, data: any): Promise<ApiResponse<User>> {
+    return this.request<User>(`/users/adjust-credits/${userId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
     });
   }
 }

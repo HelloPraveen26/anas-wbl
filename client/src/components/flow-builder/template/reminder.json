@@ -1,0 +1,116 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Hello 👋 This is a reminder assistant.\\nWe noticed you have an upcoming task. Would you like to set a reminder?",
+    "position": {
+      "x": 400,
+      "y": 50
+    },
+    "buttons": [
+      {
+        "id": "btn_1773342318454",
+        "text": "Yes, set reminder",
+        "type": "quick_reply",
+        "action": "node_1773342379588"
+      },
+      {
+        "id": "btn_1773342318632",
+        "text": "Not now",
+        "type": "quick_reply",
+        "action": "node_1773342494645"
+      }
+    ]
+  },
+  "nodes": {
+    "node_1773342379588": {
+      "message": "Great! What would you like to set a reminder for?",
+      "position": {
+        "x": 884.8181268882174,
+        "y": 110.83685800604229
+      },
+      "buttons": [
+        {
+          "id": "btn_1773342401236",
+          "text": "Meeting Reminder",
+          "type": "quick_reply",
+          "action": "node_1773342450032"
+        },
+        {
+          "id": "btn_1773342401414",
+          "text": "Task Reminder",
+          "type": "quick_reply",
+          "action": "node_1773342494645"
+        }
+      ]
+    },
+    "node_1773342450032": {
+      "message": "No problem! Would you like me to remind you later today?",
+      "position": {
+        "x": 1354.2229607250754,
+        "y": 175.29244712990942
+      },
+      "buttons": [
+        {
+          "id": "btn_1773342457052",
+          "text": "Yes remind later",
+          "type": "quick_reply",
+          "action": "node_1773342562128"
+        },
+        {
+          "id": "btn_1773342457233",
+          "text": "No thanks",
+          "type": "quick_reply",
+          "action": "node_1773342591910"
+        }
+      ]
+    },
+    "node_1773342494645": {
+      "message": "When should we remind you?",
+      "position": {
+        "x": 1784.3939577039275,
+        "y": 186.50211480362543
+      },
+      "buttons": [
+        {
+          "id": "btn_1773342535382",
+          "text": "In 1 hour",
+          "type": "quick_reply",
+          "action": "node_1773342562128"
+        },
+        {
+          "id": "btn_1773342535561",
+          "text": "Tomorrow",
+          "type": "quick_reply",
+          "action": "node_1773342562128"
+        }
+      ]
+    },
+    "node_1773342562128": {
+      "message": "Your reminder has been successfully scheduled. We'll notify you at the selected time.",
+      "position": {
+        "x": 2276.49836858006,
+        "y": 228.53836858006048
+      },
+      "buttons": [
+        {
+          "id": "btn_1773342570966",
+          "text": "okay thank you",
+          "type": "quick_reply",
+          "action": "node_1773342591910"
+        }
+      ]
+    },
+    "node_1773342591910": {
+      "message": "Thank you! If you need another reminder in the future, feel free to come back anytime.",
+      "position": {
+        "x": 2757.3931117824764,
+        "y": 285.987915407855
+      },
+      "buttons": []
+    }
+  },
+  "fallback": {
+    "message": "Sorry, I missed that. Are you calling to confirm or reschedule?",
+    "buttons": []
+  }
+}

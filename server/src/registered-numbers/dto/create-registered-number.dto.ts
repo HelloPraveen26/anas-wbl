@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsString,
   IsNotEmpty,
@@ -36,6 +37,7 @@ export class CreateRegisteredNumberDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @Matches(/^\+[1-9]\d{1,14}$/, {
     message: "Phone number must be in E.164 format (e.g., +19282185402)",
   })
@@ -48,6 +50,7 @@ export class CreateRegisteredNumberDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @Length(1, 255)
   livekitOutboundTrunkId: string;
 
@@ -58,6 +61,7 @@ export class CreateRegisteredNumberDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @Length(1, 255)
   livekitInboundTrunkId?: string;
 

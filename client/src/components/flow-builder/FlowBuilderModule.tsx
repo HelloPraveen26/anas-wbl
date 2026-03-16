@@ -19,12 +19,13 @@ export interface TemplateData {
 }
 
 interface FlowBuilderModalProps {
+    title?: string;
     initialValue?: any;
     onSave: (flow: any) => void;
     onClose: () => void;
 }
 
-export default function FlowBuilderModule({ initialValue, onSave, onClose }: FlowBuilderModalProps) {
+export default function FlowBuilderModule({ title, initialValue, onSave, onClose }: FlowBuilderModalProps) {
     const [activeTab, setActiveTab] = useState<'visual' | 'prompt'>('visual');
     const [templateData, setTemplateData] = useState<TemplateData>({
         name: '',
@@ -41,25 +42,25 @@ export default function FlowBuilderModule({ initialValue, onSave, onClose }: Flo
     };
 
     return (
-        <div className="flex flex-col h-[85vh] w-full bg-white text-gray-900 rounded-xl overflow-hidden border border-emerald-100 shadow-2xl">
+        <div className="flex flex-col h-[90vh] w-full bg-white text-gray-900 rounded-xl overflow-hidden border border-gray-100 shadow-2xl">
             {/* Top Navigation */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[#f8f9fa]">
                 <div className="flex items-center gap-4">
-                    <button onClick={onClose} className="p-2 hover:bg-emerald-100/50 rounded-full transition-colors text-emerald-700">
+                    <button onClick={onClose} className="p-2 hover:bg-purple-100/50 rounded-full transition-colors text-purple-700">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div>
-                        <h1 className="text-xl font-bold text-emerald-900">Flow Builder</h1>
-                        <p className="text-sm text-emerald-700/70">Design your conversational flow</p>
+                        <h1 className="text-xl font-bold text-[#6d28d9]">{title || "Flow Builder"}</h1>
+                        <p className="text-sm text-gray-500">Design your conversational flow</p>
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="ghost" onClick={onClose} className="text-gray-600 hover:text-emerald-700 hover:bg-emerald-50">
+                    <Button variant="ghost" onClick={onClose} className="text-gray-500 hover:text-[#06b6d4] hover:bg-gray-50 font-medium">
                         Cancel
                     </Button>
                     <Button
                         onClick={handleSave}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white border-none shadow-md shadow-emerald-500/20 px-6"
+                        className="bg-gradient-to-r from-[#8b5cf6] to-[#06b6d4] hover:from-[#7c3aed] hover:to-[#0891b2] text-white border-none shadow-md shadow-purple-500/20 px-6 rounded-lg font-semibold"
                     >
                         Apply to Assistant
                     </Button>
@@ -71,14 +72,14 @@ export default function FlowBuilderModule({ initialValue, onSave, onClose }: Flo
                 <div className="flex-1 flex flex-col bg-gray-50/50">
                     {/* Tabs area */}
                     <div className="px-6 pt-4 flex items-center justify-between">
-                        <div className="flex bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
                             <button
                                 onClick={() => setActiveTab('visual')}
                                 className={cn(
-                                    "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                                    "px-6 py-2 text-sm font-semibold rounded-lg transition-all",
                                     activeTab === 'visual'
-                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
-                                        : "text-gray-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                        ? "bg-gradient-to-r from-[#8b5cf6] to-[#06b6d4] text-white shadow-sm"
+                                        : "text-gray-500 hover:text-purple-600 hover:bg-gray-50"
                                 )}
                             >
                                 Visual Builder
@@ -86,10 +87,10 @@ export default function FlowBuilderModule({ initialValue, onSave, onClose }: Flo
                             <button
                                 onClick={() => setActiveTab('prompt')}
                                 className={cn(
-                                    "px-4 py-1.5 text-sm font-medium rounded-md transition-all",
+                                    "px-6 py-2 text-sm font-medium rounded-lg transition-all ml-1",
                                     activeTab === 'prompt'
-                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm"
-                                        : "text-gray-500 hover:text-emerald-600 hover:bg-emerald-50"
+                                        ? "bg-gradient-to-r from-[#8b5cf6] to-[#06b6d4] text-white shadow-sm"
+                                        : "text-gray-500 hover:text-purple-600 hover:bg-gray-50"
                                 )}
                             >
                                 System Prompt

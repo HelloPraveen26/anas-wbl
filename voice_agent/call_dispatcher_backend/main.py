@@ -295,12 +295,46 @@ def cleanup_expired_data():
         )
 
 
+import httpx
+
 async def notify_call_completed(room_name: str, webhook_data: Dict[str, Any]):
-    """Internal callback for call completion notification"""
-    logger.info(f"Call completed notification for room {room_name}")
-    # This is where you can add custom logic for handling call completion
-    # For example: send to another service, update database, trigger workflows, etc.
-    pass
+    """Internal callback for call completion notification - forwards to main server"""
+    logger.info(f"Forwarding call summary for room {room_name} to main server...")
+    
+    # 1. Extract timing data
+    call_duration = webhook_data.get("call_duration") or webhook_data.get("call_duration_seconds", 0)
+    start_time = webhook_data.get("start_time") or webhook_data.get("call_start_time")
+    end_time = webhook_data.get("end_time") or webhook_data.get("call_end_time")
+    
+    # 2. Prepare payload for NestJS server (CallSummaryDto schema)
+    payload = {
+        "room_name": room_name,
+        "history": webhook_data.get("transcript", {}).get("history", {"items": []}),
+        "captured_at": webhook_data.get("webhook_timestamp"),
+        "start_time": start_time or datetime.now(timezone.utc).isoformat(),
+        "end_time": end_time or datetime.now(timezone.utc).isoformat(),
+        "call_duration_seconds": float(call_duration)
+    }
+    
+    # 3. Handle potential missing history
+    if not payload["history"] or not payload["history"].get("items"):
+        # Take it from buffered data if available and not yet cleared (though it should be in transcript by now)
+        logger.debug(f"History empty in webhook data for {room_name}, checking if we have cached transcript")
+
+    # 4. Forward to NestJS server
+    main_server_url = os.getenv("NESTJS_SERVER_URL", "http://localhost:8000")
+    webhook_endpoint = f"{main_server_url}/api/v1/webhooks/call-summary"
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(webhook_endpoint, json=payload)
+            if response.status_code in (200, 201):
+                logger.info(f"✅ Successfully forwarded call summary for {room_name} to main server")
+            else:
+                logger.error(f"❌ Failed to forward call summary for {room_name}: {response.status_code} - {response.text}")
+    except Exception as e:
+        logger.error(f"❌ Error forwarding call summary: {e}")
+
 
 
 @app.on_event("startup")
@@ -679,6 +713,9 @@ async def webhook_handler(
             "start_time": webhook_data.get("start_time"),
             "end_time": webhook_data.get("end_time"),
             "call_duration": webhook_data.get("call_duration"),
+            "call_duration_seconds": webhook_data.get("call_duration_seconds"),
+            "call_start_time": webhook_data.get("call_start_time"),
+            "call_end_time": webhook_data.get("call_end_time"),
         }
 
         # Store webhook data in memory buffer

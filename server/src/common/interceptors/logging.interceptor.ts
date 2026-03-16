@@ -49,7 +49,7 @@ export class LoggingInterceptor implements NestInterceptor {
         next: (data) => {
           const duration = Date.now() - startTime;
           const statusCode = response.statusCode;
-          
+
           // Log response
           this.logger.log(
             `📤 ${method} ${url} - ${statusCode} - ${duration}ms`,
@@ -65,7 +65,7 @@ export class LoggingInterceptor implements NestInterceptor {
         error: (error) => {
           const duration = Date.now() - startTime;
           const statusCode = error.status || 500;
-          
+
           this.logger.error(
             `❌ ${method} ${url} - ${statusCode} - ${duration}ms - ${error.message}`,
             error.stack,

@@ -21,7 +21,7 @@ export class WebhooksController {
     private readonly callLogsService: CallLogsService,
     private readonly chatLogsService: ChatLogsService,
     private readonly usersService: UsersService,
-  ) {}
+  ) { }
 
   @Post("call-summary")
   @HttpCode(HttpStatus.OK)
@@ -140,56 +140,55 @@ export class WebhooksController {
     description: "Invalid call summary data",
   })
   async receiveCallSummary(@Body() callSummary: CallSummaryDto) {
-    this.logger.log("=".repeat(80));
-    this.logger.log("📞 CALL SUMMARY WEBHOOK RECEIVED");
-    this.logger.log("=".repeat(80));
+    this.logger.log(`📥 Received call summary: ${JSON.stringify(callSummary, null, 2)}`);
 
-    this.logger.log(`Room Name: ${callSummary.room_name}`);
-    this.logger.log(
-      `Call Duration: ${callSummary.call_duration_seconds.toFixed(2)} seconds`,
-    );
-    this.logger.log(`Call Start: ${callSummary.call_start_time}`);
-    this.logger.log(`Call End: ${callSummary.call_end_time}`);
-    this.logger.log(
-      `Message Count: ${callSummary.history?.items?.length || 0}`,
-    );
     try {
       const callLog = await this.callLogsService.findBySessionId(
         callSummary.room_name,
       );
 
+      if (!callLog) {
+        this.logger.error(`❌ CRITICAL: No call log found for room ${callSummary.room_name}. Credits CANNOT be deducted.`);
+        return { success: false, message: "No call log found" };
+      }
+
+      this.logger.log(`🔍 Found call log ${callLog.id} for user ${callLog.userId}. Current status: ${callLog.callStatus}`);
+
       if (callLog) {
-        const durationInSeconds = Math.round(callSummary.call_duration_seconds);
-        const costInRupees = (durationInSeconds * 3.85) / 60;
+        if (callLog.callStatus !== "completed") {
+          const durationInSeconds = Math.round(callSummary.call_duration_seconds || 0);
+          this.logger.log(`⏳ Duration: ${durationInSeconds}s for room ${callSummary.room_name}`);
 
-        await this.callLogsService.updateBySessionId(callSummary.room_name, {
-          duration: durationInSeconds,
-          cost: costInRupees,
-          callStatus: "completed",
-        });
-        this.logger.log(
-          `✅ Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees.toFixed(4)}, status: completed`,
-        );
+          // Deduct cost from user's credits using central service
+          try {
+            const costDeducted = await this.usersService.deductUsage(callLog.userId, durationInSeconds);
+            this.logger.log(`💰 Cost: ₹${costDeducted} deducted for user ${callLog.userId}`);
 
-        // Deduct cost from user's credits
-        try {
-          const user = await this.usersService.findById(callLog.userId);
-          const currentCredits = Number(user.credits);
-          const newCredits = parseFloat(
-            (currentCredits - costInRupees).toFixed(2),
-          );
+            // Update the call log with the final cost calculated by UsersService
+            await this.callLogsService.updateBySessionId(callSummary.room_name, {
+              duration: durationInSeconds,
+              cost: costDeducted,
+              callStatus: "completed",
+            });
 
-          await this.usersService.update(callLog.userId, {
-            credits: newCredits,
-          });
+            this.logger.log(
+              `✅ SUCCESS: Updated call log ${callLog.id} and deducted ₹${costDeducted.toFixed(4)} from user ${callLog.userId}`,
+            );
+          } catch (creditError) {
+            this.logger.error(
+              `❌ Error deducting credits from user ${callLog.userId}: ${creditError.message}`,
+              creditError.stack,
+            );
 
-          this.logger.log(
-            `✅ Deducted ₹${costInRupees.toFixed(4)} from user ${callLog.userId}. Credits: ₹${currentCredits.toFixed(4)} → ₹${newCredits.toFixed(4)}`,
-          );
-        } catch (creditError) {
-          this.logger.error(
-            `❌ Error deducting credits from user ${callLog.userId}: ${creditError.message}`,
-            creditError.stack,
+            // Still update status to completed even if deduction fails
+            await this.callLogsService.updateBySessionId(callSummary.room_name, {
+              duration: durationInSeconds,
+              callStatus: "completed",
+            });
+          }
+        } else {
+          this.logger.warn(
+            `⚠️ Call log ${callLog.id} for room ${callSummary.room_name} is already completed. Skipping deduction.`,
           );
         }
 

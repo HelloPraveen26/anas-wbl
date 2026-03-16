@@ -23,7 +23,7 @@ import { HangupDto } from "./dto/hangup.dto";
 @ApiTags("phone")
 @Controller("phone")
 export class PhoneController {
-  constructor(private readonly phoneService: PhoneService) {}
+  constructor(private readonly phoneService: PhoneService) { }
 
   @Post("make_call")
   @UseGuards(JwtAuthGuard)
@@ -104,7 +104,7 @@ export class PhoneController {
     return result;
   }
 
-  @Get("active_call")
+  @Get("active-calls")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({

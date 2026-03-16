@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsString,
   IsNotEmpty,
@@ -7,6 +8,7 @@ import {
   IsArray,
   ArrayNotEmpty,
   IsBoolean,
+  Matches,
 } from "class-validator";
 
 export class ImportTelecmiNumbersDto {
@@ -17,6 +19,7 @@ export class ImportTelecmiNumbersDto {
   })
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @Length(1, 255)
   address?: string;
 
@@ -27,6 +30,7 @@ export class ImportTelecmiNumbersDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @Length(1, 255)
   authUsername: string;
 
@@ -46,6 +50,10 @@ export class ImportTelecmiNumbersDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: "phoneNumber must be a valid phone number",
+  })
   phoneNumber: string;
 
   @ApiProperty({

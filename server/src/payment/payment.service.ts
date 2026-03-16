@@ -26,7 +26,7 @@ export class PaymentService {
     private readonly paymentRepository: Repository<Payment>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-  ) {}
+  ) { }
 
   async createPayment(
     userId: string,
@@ -37,12 +37,27 @@ export class PaymentService {
         `Creating payment for user ${userId}, amount: ${createPaymentDto.amount}`,
       );
 
-      const key = this.configService.get<string>("PAYU_KEY");
-      const salt = this.configService.get<string>("PAYU_SALT");
+      const user = await this.usersService.findById(userId);
+      const role = user.role;
+      this.logger.log(`User role: ${role}`);
+
+      let key = this.configService.get<string>("PAYU_KEY");
+      let salt = this.configService.get<string>("PAYU_SALT");
+
+      // Use admin keys if user is an admin
+      if (role === 'admin') {
+        const adminKey = this.configService.get<string>("ADMIN_PAYU_KEY");
+        const adminSalt = this.configService.get<string>("ADMIN_PAYU_SALT");
+        if (adminKey && adminSalt) {
+          key = adminKey;
+          salt = adminSalt;
+          this.logger.log('Using admin PayU credentials');
+        }
+      }
 
       if (!key || !salt) {
         throw new Error(
-          "PayU credentials not configured. Set PAYU_KEY and PAYU_SALT environment variables.",
+          "PayU credentials not configured. Set PAYU_KEY/SALT or ADMIN_PAYU_KEY/SALT environment variables.",
         );
       }
 
@@ -58,7 +73,9 @@ export class PaymentService {
         "https://secure.payu.in/_payment";
       const paymentUrl = isTestEnv ? testPaymentUrl : prodPaymentUrl;
 
-      const user = await this.usersService.findById(userId);
+      if (!createPaymentDto.amount) {
+        throw new BadRequestException("Payment amount is required");
+      }
 
       const productinfo = "zenvoice";
       const amount = createPaymentDto.amount.toString();
@@ -89,6 +106,7 @@ export class PaymentService {
         surl,
         furl,
         udf1: createPaymentDto.reference || "", // Optional - can be used for order reference
+        udf2: createPaymentDto.baseAmount?.toString() || "", // Base amount for credit calculation
       };
 
       const hash = this.generatePayuHash(params, salt);
@@ -177,7 +195,10 @@ export class PaymentService {
 
       // Update user credits if payment is successful
       if (body.status === "success") {
-        const creditAmount = parseFloat(body.amount || "0");
+        // Prioritize base amount from udf2, fall back to total amount
+        const rawAmount = body.udf2 || body.amount || "0";
+        const creditAmount = parseFloat(rawAmount);
+
         if (creditAmount > 0) {
           await this.userRepository.increment(
             { id: existingPayment.userId },
@@ -185,7 +206,7 @@ export class PaymentService {
             creditAmount,
           );
           this.logger.log(
-            `Added ${creditAmount} credits to user ${existingPayment.userId}`,
+            `Added ${creditAmount} credits to user ${existingPayment.userId} (based on ${body.udf2 ? 'udf2/baseAmount' : 'total amount'})`,
           );
         }
       }
@@ -294,7 +315,7 @@ export class PaymentService {
       params.firstname,
       params.email,
       params.udf1 || "",
-      "", // udf2
+      params.udf2 || "",
       "", // udf3
       "", // udf4
       "", // udf5
@@ -360,5 +381,12 @@ export class PaymentService {
       this.logger.error(`Hash verification error: ${error.message}`);
       return false;
     }
+  }
+
+  async getPaymentHistory(userId: string): Promise<Payment[]> {
+    return this.paymentRepository.find({
+      where: { userId },
+      order: { createdAt: "DESC" },
+    });
   }
 }

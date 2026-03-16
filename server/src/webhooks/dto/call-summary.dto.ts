@@ -19,6 +19,36 @@ class MessageMetrics {
   @IsNumber()
   @IsOptional()
   stopped_speaking_at?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  llm_node_ttft?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  tts_node_ttfb?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  e2e_latency?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  transcription_delay?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  end_of_turn_delay?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  on_user_turn_completed_delay?: number;
 }
 
 class HistoryItem {
@@ -85,6 +115,11 @@ class HistoryItem {
   @ApiProperty({ required: false })
   @IsOptional()
   is_error?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  transcript_confidence?: number;
 }
 
 class History {

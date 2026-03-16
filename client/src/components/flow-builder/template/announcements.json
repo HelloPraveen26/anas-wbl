@@ -1,0 +1,108 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Hello welcome  We have an important announcement for you.\\nWould you like to hear the latest update from us?",
+    "position": {
+      "x": -237.39934853420198,
+      "y": 50
+    },
+    "buttons": [
+      {
+        "id": "btn_1773339614876",
+        "text": "Yes, tell me more",
+        "type": "quick_reply",
+        "action": "node_1773339649720"
+      },
+      {
+        "id": "btn_1773339615054",
+        "text": "Maybe later,sorry iam busy",
+        "type": "quick_reply",
+        "action": "node_1773339743053"
+      }
+    ]
+  },
+  "nodes": {
+    "node_1773339649720": {
+      "message": "Exciting News!\\nWe are launching a new feature and special offers for our customers. You can now enjoy better services and exclusive benefits.",
+      "position": {
+        "x": 251.10618892508137,
+        "y": 52.40130293159598
+      },
+      "buttons": [
+        {
+          "id": "btn_1773339669140",
+          "text": "View Details yes tell about",
+          "type": "quick_reply",
+          "action": "node_1773339743053"
+        },
+        {
+          "id": "btn_1773339669320",
+          "text": "Remind Me Later\"",
+          "type": "quick_reply",
+          "action": "node_1773339793294"
+        }
+      ]
+    },
+    "node_1773339743053": {
+      "message": "Here are the highlights of our announcement:\\n\\n✨ New product features\\n🎁 Exclusive customer offers\\n🚀 Improved service experience\\n\\nWould you like to explore more?",
+      "position": {
+        "x": 692.7687296416939,
+        "y": 92.55244299674268
+      },
+      "buttons": [
+        {
+          "id": "btn_1773339748297",
+          "text": "Yes, show more",
+          "type": "quick_reply"
+        },
+        {
+          "id": "btn_1773339748481",
+          "text": "Thank you",
+          "type": "quick_reply"
+        }
+      ]
+    },
+    "node_1773339793294": {
+      "message": "Sure! We’ll remind you about this announcement later so you don’t miss it.",
+      "position": {
+        "x": 1164.1444858753325,
+        "y": 143.52585923275058
+      },
+      "buttons": [
+        {
+          "id": "btn_1773339820228",
+          "text": "Okay, thanks",
+          "type": "quick_reply",
+          "action": "node_1773339979496"
+        }
+      ]
+    },
+    "node_1773339861943": {
+      "message": "Great! Visit our website or app to explore the new updates and offers available for you.",
+      "position": {
+        "x": 1636.0085755919433,
+        "y": 172.26240778383158
+      },
+      "buttons": [
+        {
+          "id": "btn_1773339955525",
+          "text": "Got it,yes ,thanks ",
+          "type": "quick_reply",
+          "action": "node_1773339979496"
+        }
+      ]
+    },
+    "node_1773339979496": {
+      "message": "Thank you for your time! Stay tuned for more exciting updates from us.",
+      "position": {
+        "x": 2115.8927722327735,
+        "y": 207.4512734737889
+      },
+      "buttons": []
+    }
+  },
+  "fallback": {
+    "message": "Say that again?",
+    "buttons": []
+  }
+}

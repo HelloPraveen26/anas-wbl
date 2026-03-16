@@ -26,7 +26,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async signUp(signUpDto: SignUpDto): Promise<AuthResponseDto> {
     this.logger.log(`Sign up attempt for email: ${signUpDto.email}`);
@@ -197,32 +197,6 @@ export class AuthService {
     };
   }
 
-  async googleLogin(user: User): Promise<AuthResponseDto> {
-    this.logger.log(`Google login for user: ${user.id}`);
-
-    // Update last login
-    await this.usersService.updateLastLogin(user.id);
-
-    const token = this.generateJwtToken(user);
-
-    return {
-      success: true,
-      message: "Google sign in successful",
-      data: {
-        user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          phone: user.phone,
-          isVerified: user.isVerified,
-          credits: user.credits,
-        },
-        token,
-      },
-    };
-  }
-
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.usersService.findByEmail(email);
 
@@ -237,6 +211,86 @@ export class AuthService {
     return null;
   }
 
+  async adminSignIn(signInDto: SignInDto): Promise<AuthResponseDto> {
+    const { email, password } = signInDto;
+    this.logger.log(`Admin sign in attempt for email: ${email}`);
+
+    try {
+      // 1. Validate with Hub
+      const hubAdmin = await this.usersService.validateAdminWithHub(
+        email,
+        password,
+      );
+
+      // 2. Find or create local user
+      let user = await this.usersService.findByEmail(email);
+
+      if (!user) {
+        this.logger.log(
+          `Creating local admin user for ${email} after Hub validation`,
+        );
+        user = await this.usersService.create({
+          email: email.toLowerCase(),
+          firstName: "Admin",
+          lastName: "User",
+          password: password, // Store provided password (hashed by UsersService)
+          role: "admin" as any,
+          credits: hubAdmin.credits,
+          costPerMinute: hubAdmin.costPerMinute,
+        });
+        // Set balance separately as it's not in CreateUserDto usually
+        user.balance = hubAdmin.balance;
+        await this.usersService.update(user.id, {
+          balance: hubAdmin.balance,
+        } as any);
+      } else {
+        // Update local data with Hub data
+        await this.usersService.update(user.id, {
+          credits: hubAdmin.credits,
+          balance: hubAdmin.balance,
+          costPerMinute: hubAdmin.costPerMinute,
+          role: "admin" as any, // Ensure they have admin role
+        } as any);
+        // Update local object too
+        user.credits = hubAdmin.credits;
+        user.balance = hubAdmin.balance;
+        user.costPerMinute = hubAdmin.costPerMinute;
+      }
+
+      // 3. Generate Token
+      const token = this.generateJwtToken(user);
+      await this.usersService.updateLastLogin(user.id);
+
+      this.logger.log(`Admin signed in successfully: ${user.id}`);
+
+      return {
+        success: true,
+        message: "Admin sign in successful",
+        data: {
+          user: {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            isVerified: user.isVerified,
+            credits: user.credits,
+          },
+          token,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Admin sign in failed for ${email}: ${error.message}`);
+      throw new UnauthorizedException(
+        error.message || "Invalid admin credentials",
+      );
+    }
+  }
+
+  async getProfile(userId: string): Promise<User> {
+    return this.usersService.findById(userId);
+  }
+
   private generateJwtToken(user: User): string {
     const payload = {
       sub: user.id,
@@ -244,6 +298,7 @@ export class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       credits: user.credits,
+      role: user.role,
     };
 
     return this.jwtService.sign(payload);

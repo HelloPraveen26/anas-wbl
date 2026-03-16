@@ -1,0 +1,109 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Hello 👋 It looks like you left some items in your cart.\nWould you like to complete your purchase?",
+    "position": {
+      "x": 203.26191235872625,
+      "y": -141.56076954545074
+    },
+    "buttons": [
+      {
+        "id": "btn_1772705076141",
+        "text": "Yes, show my cart",
+        "type": "quick_reply",
+        "action": "node_1772797747753"
+      },
+      {
+        "id": "btn_1772705076524",
+        "text": "I have a question before buying",
+        "type": "quick_reply",
+        "action": "node_1772797926395"
+      }
+    ]
+  },
+  "nodes": {
+    "node_1772797747753": {
+      "message": "Great! Your selected items are still available in your cart.\nYou can continue your checkout and complete your purchase now.",
+      "position": {
+        "x": 627.5418403311536,
+        "y": -132.81820658176593
+      },
+      "buttons": [
+        {
+          "id": "btn_1772797778023",
+          "text": "Proceed to Checkout",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        },
+        {
+          "id": "btn_1772797778143",
+          "text": "Maybe later",
+          "type": "quick_reply",
+          "action": "node_1772798142957"
+        }
+      ]
+    },
+    "node_1772797926395": {
+      "message": "Sure! I'm here to help.\nWould you like more details about the product or help with completing your order?",
+      "position": {
+        "x": 1014.1493136557469,
+        "y": -114.78327576120978
+      },
+      "buttons": [
+        {
+          "id": "btn_1772798203095",
+          "text": "Tell me more about the product",
+          "type": "quick_reply",
+          "action": "node_1772798289304"
+        },
+        {
+          "id": "btn_1772798203679",
+          "text": "Not interested anymore",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        }
+      ]
+    },
+    "node_1772798101438": {
+      "message": "Thank you for visiting our store. If you need any help, feel free to come back anytime.",
+      "position": {
+        "x": 1465.5946570537317,
+        "y": -61.96847230055869
+      },
+      "buttons": []
+    },
+    "node_1772798142957": {
+      "message": "No worries! Your cart items will be saved. You can complete your purchase anytime.",
+      "position": {
+        "x": 1908.4285258476425,
+        "y": -37.67836443898523
+      },
+      "buttons": []
+    },
+    "node_1772798289304": {
+      "message": "These items are popular and selling fast. Completing your order now ensures you don't miss out!",
+      "position": {
+        "x": 2390.9091276781223,
+        "y": -79.79177395987051
+      },
+      "buttons": [
+        {
+          "id": "btn_1772798431748",
+          "text": "Okay, I'll checkout",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        },
+        {
+          "id": "btn_1772798431969",
+          "text": "Maybe next time",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        }
+      ]
+    }
+  },
+  "fallback": {
+    "message": "Sorry, I didn't quite understand that. Could you please choose one of the options above?",
+    "buttons": []
+  }
+}

@@ -248,6 +248,10 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(log_usage)
 
+    # Start Session
+    session_start_time = time.time()
+    call_start_iso = datetime.now(timezone.utc).isoformat()
+    
     # Transcript Sync
     @session.on("agent_state_changed")
     def _on_state_change(state):
@@ -267,6 +271,10 @@ async def entrypoint(ctx: JobContext):
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
         logger.info("📞 Call ending - syncing webhooks...")
+        call_end_time = time.time()
+        call_end_iso = datetime.now(timezone.utc).isoformat()
+        call_duration = call_end_time - session_start_time
+        
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
 
@@ -281,7 +289,7 @@ async def entrypoint(ctx: JobContext):
                         json={
                             "room_name": ctx.room.name,
                             "history": session.history.to_dict(),
-                            "captured_at": datetime.now(timezone.utc).isoformat(),
+                            "captured_at": call_end_iso,
                         },
                     )
                     # Call Completion Webhook
@@ -290,6 +298,9 @@ async def entrypoint(ctx: JobContext):
                         json={
                             "room_name": ctx.room.name,
                             "event_type": "call_completed",
+                            "call_duration_seconds": call_duration,
+                            "call_start_time": call_start_iso,
+                            "call_end_time": call_end_iso,
                         },
                     )
         except Exception as e:
@@ -300,8 +311,6 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(shutdown_cleanup)
 
-    # Start Session
-    session_start_time = time.time()
     await session.start(
         agent=Assistant(instructions=final_instructions, tools=all_tools),
         room=ctx.room,
@@ -313,16 +322,20 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Session started in {time.time() - session_start_time:.2f}s")
 
     # Wait for participant and greet
+    # Wait for participant with a bit more buffer
     await _wait_for_participant(ctx.room)
+    await asyncio.sleep(1.0) # Allow SIP RTP path to settle
+    # Greet using session.say for better reliability on first message
     try:
-        await asyncio.wait_for(
-            session.generate_reply(
-                instructions=f"Start by saying: '{custom_first_message}'"
-            ),
-            timeout=5.0,
-        )
+        logger.info(f"🎤 Saying initial greeting: {custom_first_message}")
+        await session.say(custom_first_message, allow_interruptions=False)
     except Exception as e:
-        logger.warning(f"Initial greeting timed out or failed: {e}")
+        logger.warning(f"Initial greeting failed: {e}")
+        # Fallback to generate_reply if say fails
+        try:
+            await session.generate_reply()
+        except:
+            pass
 
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
 

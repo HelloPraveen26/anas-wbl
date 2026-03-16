@@ -1,0 +1,110 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Hello 👋 Welcome to Logistics Support. How can we assist you today?",
+    "position": {
+      "x": 400,
+      "y": 50
+    },
+    "buttons": [
+      {
+        "id": "btn_1773344207646",
+        "text": "Track Shipment",
+        "type": "quick_reply",
+        "action": "node_1773344242186"
+      },
+      {
+        "id": "btn_1773344207823",
+        "text": "Delivery Issue",
+        "type": "quick_reply",
+        "action": "node_1773344277983"
+      }
+    ]
+  },
+  "nodes": {
+    "node_1773344242186": {
+      "message": "Please share your tracking ID so we can check your shipment status",
+      "position": {
+        "x": 850,
+        "y": 50
+      },
+      "buttons": [
+        {
+          "id": "btn_1773344255773",
+          "text": "Share Tracking ID",
+          "type": "quick_reply",
+          "action": "node_1773344308102"
+        }
+      ]
+    },
+    "node_1773344277983": {
+      "message": "Sorry for the inconvenience. What issue are you facing?",
+      "position": {
+        "x": 1300,
+        "y": 50
+      },
+      "buttons": [
+        {
+          "id": "btn_1773344281332",
+          "text": "Package Delayed",
+          "type": "quick_reply",
+          "action": "node_1773344335811"
+        },
+        {
+          "id": "btn_1773344281501",
+          "text": "Package Damaged",
+          "type": "quick_reply",
+          "action": "node_1773344335811"
+        }
+      ]
+    },
+    "node_1773344308102": {
+      "message": "Your shipment is currently in transit and expected to arrive soon.",
+      "position": {
+        "x": 1750,
+        "y": 50
+      },
+      "buttons": [
+        {
+          "id": "btn_1773344316891",
+          "text": "Thank You",
+          "type": "quick_reply",
+          "action": "node_1773344386180"
+        }
+      ]
+    },
+    "node_1773344335811": {
+      "message": "Our logistics team will review your issue and update you shortly.",
+      "position": {
+        "x": 2200,
+        "y": 50
+      },
+      "buttons": [
+        {
+          "id": "btn_1773344363612",
+          "text": "okay iam waiting",
+          "type": "quick_reply",
+          "action": "node_1773344386180"
+        },
+        {
+          "id": "btn_1773344363792",
+          "text": "Finish",
+          "type": "quick_reply",
+          "action": "node_1773344386180"
+        }
+      ]
+    },
+    "node_1773344386180": {
+      "message": "Thank you for contacting logistics support. Have a great day",
+      "position": {
+        "x": 2650,
+        "y": 50
+      },
+      "buttons": []
+    }
+  },
+  "fallback": {
+    "message": "My apologies, can you say that again?",
+    "buttons": []
+  }
+}

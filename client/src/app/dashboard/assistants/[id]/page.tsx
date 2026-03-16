@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 
 import { CreateAssistantModal } from "@/components/CreateAssistantModal";
+import { TemplateSelectionModal } from "@/components/flow-builder/TemplateSelectionModal";
 import { authManager } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
 import LiveKitApplication from "@/app/livekit-talk-agent";
@@ -326,6 +327,9 @@ export default function AssistantEditPage() {
   const [showLiveKitModal, setShowLiveKitModal] = useState(false);
   const [showAivocoModal, setShowAivocoModal] = useState(false);
   const [showFlowBuilderModal, setShowFlowBuilderModal] = useState(false);
+  const [showTemplateSelectionModal, setShowTemplateSelectionModal] = useState(false);
+  const [flowBuilderInitialValue, setFlowBuilderInitialValue] = useState<any>(null);
+  const [flowBuilderTitle, setFlowBuilderTitle] = useState<string>("Visual Flow Builder");
 
   // Prompt generation
   const [generateLoading, setGenerateLoading] = useState(false);
@@ -1314,7 +1318,7 @@ export default function AssistantEditPage() {
                       />
                       <div className="flex justify-end">
                         <Button
-                          onClick={() => setShowFlowBuilderModal(true)}
+                          onClick={() => setShowTemplateSelectionModal(true)}
                           className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md shadow-emerald-500/20 h-11 px-6 mt-2"
                         >
                           <Zap className="w-4 h-4 mr-2" />
@@ -1960,18 +1964,36 @@ export default function AssistantEditPage() {
         />
       </Modal>
 
+      {/* Template Selection Modal */}
+      <TemplateSelectionModal
+        open={showTemplateSelectionModal}
+        onOpenChange={setShowTemplateSelectionModal}
+        onSelectScratch={() => {
+          setFlowBuilderInitialValue(null);
+          setFlowBuilderTitle("Visual Flow Builder");
+          setShowFlowBuilderModal(true);
+        }}
+        onSelectTemplate={(templateJson, title) => {
+          setFlowBuilderInitialValue(templateJson);
+          setFlowBuilderTitle(title);
+          setShowFlowBuilderModal(true);
+        }}
+      />
+
       {/* Flow Builder Modal */}
       <Modal
         open={showFlowBuilderModal}
         onCancel={() => setShowFlowBuilderModal(false)}
         footer={null}
-        width={1200}
+        width={1400}
         centered
         className="flow-builder-modal"
         destroyOnClose
       >
         <FlowBuilderModule
+          title={flowBuilderTitle}
           initialValue={(() => {
+            if (flowBuilderInitialValue) return flowBuilderInitialValue;
             if (!systemPrompt) return null;
             try {
               // Try direct parse first

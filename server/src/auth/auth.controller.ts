@@ -24,14 +24,13 @@ import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { AuthResponseDto } from "./dto/auth-response.dto";
 import { LocalAuthGuard } from "./guards/local-auth.guard";
-import { GoogleAuthGuard } from "./guards/google-auth.guard";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 
 @ApiTags("auth")
 @Controller("auth")
 @UseGuards(ThrottlerGuard)
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post("signup")
   @ApiOperation({
@@ -101,6 +100,26 @@ export class AuthController {
     return this.authService.signIn(signInDto);
   }
 
+  @Post("admin/signin")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Sign in as administrator via Hub",
+    description: "Authenticate admin user using central Hub credentials",
+  })
+  @ApiBody({ type: SignInDto })
+  @ApiResponse({
+    status: 200,
+    description: "Admin signed in successfully",
+    type: AuthResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - invalid Hub credentials",
+  })
+  async adminSignIn(@Body() signInDto: SignInDto): Promise<AuthResponseDto> {
+    return this.authService.adminSignIn(signInDto);
+  }
+
   @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -155,70 +174,6 @@ export class AuthController {
     return this.authService.resetPassword(resetPasswordDto);
   }
 
-  @Get("google")
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({
-    summary: "Initiate Google OAuth login",
-    description: "Redirect to Google OAuth consent screen",
-  })
-  @ApiResponse({ status: 302, description: "Redirect to Google OAuth" })
-  async googleAuth(): Promise<void> {
-    // Initiates Google OAuth flow
-  }
-
-  @Get("google/callback")
-  @UseGuards(GoogleAuthGuard)
-  @ApiOperation({
-    summary: "Google OAuth callback",
-    description:
-      "Handle Google OAuth callback and redirect to frontend with auth token",
-  })
-  @ApiResponse({
-    status: 302,
-    description: "Redirect to frontend with auth token",
-  })
-  async googleAuthCallback(@Request() req, @Response() res): Promise<void> {
-    console.log("🔍 Google OAuth callback triggered");
-    console.log("📊 Request user data:", JSON.stringify(req.user, null, 2));
-    console.log("🌐 Environment - FRONTEND_URL:", process.env.FRONTEND_URL);
-
-    try {
-      const authResult = await this.authService.googleLogin(req.user);
-      console.log(
-        "✅ Google login successful for user:",
-        authResult.data.user.email,
-      );
-
-      // Redirect to frontend with token
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8001";
-      const redirectUrl = `${frontendUrl}/auth/callback?token=${authResult.data.token}`;
-
-      console.log("🔗 Redirecting to:", redirectUrl);
-      console.log(
-        "🎫 Token (first 20 chars):",
-        authResult.data.token.substring(0, 20) + "...",
-      );
-
-      res.redirect(redirectUrl);
-    } catch (error) {
-      console.error("❌ Google OAuth callback error:", error);
-      console.error(
-        "📋 Error stack:",
-        error instanceof Error ? error.stack : "No stack trace",
-      );
-
-      // Handle authentication errors by redirecting to login with error message
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8001";
-      const errorMessage = encodeURIComponent(
-        error instanceof Error ? error.message : "Authentication failed",
-      );
-      const errorRedirectUrl = `${frontendUrl}/login?error=${errorMessage}`;
-
-      console.log("🔗 Redirecting to error page:", errorRedirectUrl);
-      res.redirect(errorRedirectUrl);
-    }
-  }
-
   @Get("profile")
   @SkipThrottle()
   @UseGuards(JwtAuthGuard)
@@ -257,9 +212,24 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized - invalid token" })
   async getProfile(@Request() req): Promise<any> {
+    const user = await this.authService.getProfile(req.user.id);
     return {
       success: true,
-      data: { user: req.user },
+      data: {
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          isVerified: user.isVerified,
+          credits: user.credits,
+          balance: user.balance,
+          role: user.role,
+          adminId: user.adminId,
+          costPerMinute: user.costPerMinute,
+        },
+      },
     };
   }
 }

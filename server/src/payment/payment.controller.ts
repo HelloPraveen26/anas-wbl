@@ -3,10 +3,12 @@ import {
   Post,
   Body,
   UseGuards,
+  Get,
   Request,
   HttpStatus,
   Res,
   Redirect,
+  Logger,
 } from "@nestjs/common";
 import { Response } from "express";
 import {
@@ -30,10 +32,12 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 @Controller("payment")
 @UseGuards(ThrottlerGuard)
 export class PaymentController {
+  private readonly logger = new Logger(PaymentController.name);
+
   constructor(
     private readonly paymentService: PaymentService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   @Post("create-payment")
   @UseGuards(JwtAuthGuard)
@@ -83,8 +87,14 @@ export class PaymentController {
   async createPayment(
     @Request() req,
     @Body() createPaymentDto: CreatePaymentDto,
-  ): Promise<PaymentInitiationResponseDto> {
-    return this.paymentService.createPayment(req.user.id, createPaymentDto);
+  ): Promise<any> {
+    this.logger.log('💰 create-payment request for amount: ' + createPaymentDto.amount);
+    const result = await this.paymentService.createPayment(req.user.id, createPaymentDto);
+    return {
+      success: result.success,
+      message: result.message,
+      data: result,
+    };
   }
 
   @Post("success")
@@ -129,5 +139,17 @@ export class PaymentController {
       const baseUrl = this.configService.get<string>("APP_BASE_URL");
       res.redirect(`${baseUrl}/dashboard/assistants?payment=error`);
     }
+  }
+
+  @Get("history")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Get payment history for a user" })
+  async getPaymentHistory(@Request() req): Promise<any> {
+    const history = await this.paymentService.getPaymentHistory(req.user.id);
+    return {
+      success: true,
+      data: history,
+    };
   }
 }

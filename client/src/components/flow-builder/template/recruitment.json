@@ -1,0 +1,109 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Hello 👋 Welcome to the Recruitment Assistant.\nHow can I assist you today?",
+    "position": {
+      "x": 203.26191235872625,
+      "y": -141.56076954545074
+    },
+    "buttons": [
+      {
+        "id": "btn_1772705076141",
+        "text": "Apply for a Job",
+        "type": "quick_reply",
+        "action": "node_1772797747753"
+      },
+      {
+        "id": "btn_1772705076524",
+        "text": "Check Application Status",
+        "type": "quick_reply",
+        "action": "node_1772797926395"
+      }
+    ]
+  },
+  "nodes": {
+    "node_1772797747753": {
+      "message": "Thank you for your interest in joining our company.\nPlease share your resume or email ID, and our recruitment team will review your profile and contact you shortly.",
+      "position": {
+        "x": 627.5418403311536,
+        "y": -132.81820658176593
+      },
+      "buttons": [
+        {
+          "id": "btn_1772797778023",
+          "text": "okay, iam share it ",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        },
+        {
+          "id": "btn_1772797778143",
+          "text": "sorry now i dont have a time",
+          "type": "quick_reply",
+          "action": "node_1772798142957"
+        }
+      ]
+    },
+    "node_1772797926395": {
+      "message": "Please provide your Application ID or registered email address to check the current status of your application.",
+      "position": {
+        "x": 1074.149313655747,
+        "y": -132.78327576120978
+      },
+      "buttons": [
+        {
+          "id": "btn_1772798203095",
+          "text": "application details ",
+          "type": "quick_reply",
+          "action": "node_1772798289304"
+        },
+        {
+          "id": "btn_1772798203679",
+          "text": "sorry iam not interest",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        }
+      ]
+    },
+    "node_1772798101438": {
+      "message": "thank you for your interest",
+      "position": {
+        "x": 1581.5946570537317,
+        "y": -135.9684723005587
+      },
+      "buttons": []
+    },
+    "node_1772798142957": {
+      "message": "its is a great opening so don't miss it thank you",
+      "position": {
+        "x": 1580.4285258476425,
+        "y": 348.3216355610148
+      },
+      "buttons": []
+    },
+    "node_1772798289304": {
+      "message": "okay thanks for share for you applications details its is now processing for your job role",
+      "position": {
+        "x": 2026.9091276781223,
+        "y": -123.79177395987051
+      },
+      "buttons": [
+        {
+          "id": "btn_1772798431748",
+          "text": "thank you",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        },
+        {
+          "id": "btn_1772798431969",
+          "text": "okay bye",
+          "type": "quick_reply",
+          "action": "node_1772798101438"
+        }
+      ]
+    }
+  },
+  "fallback": {
+    "message": "Sorry, I didn't quite understand that. Could you please choose one of the options above?",
+    "buttons": []
+  }
+}

@@ -52,6 +52,30 @@ export class UserResponseDto {
   @Expose()
   credits: number;
 
+  @ApiProperty({ description: "User monetary balance" })
+  @Expose()
+  balance: number;
+
+  @ApiProperty({ description: "User role" })
+  @Expose()
+  role: string;
+
+  @ApiPropertyOptional({ description: "Admin ID for sub-users" })
+  @Expose()
+  adminId?: string;
+
+  @ApiPropertyOptional({ description: "Cost per minute for sub-users" })
+  @Expose()
+  costPerMinute?: number;
+
+  @ApiPropertyOptional({ description: "Admin credits balance for sub-users" })
+  @Expose()
+  adminCredits?: number;
+
+  @ApiPropertyOptional({ description: "Admin balance for sub-users" })
+  @Expose()
+  adminBalance?: number;
+
   @ApiProperty({ description: "User full name" })
   @Expose()
   @Transform(({ obj }) => `${obj.firstName} ${obj.lastName}`)

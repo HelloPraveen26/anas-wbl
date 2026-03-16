@@ -7,6 +7,8 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  BeforeInsert,
+  BeforeUpdate,
 } from "typeorm";
 import { User } from "../../users/entities/user.entity";
 
@@ -49,4 +51,15 @@ export class RegisteredNumber {
 
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  trimFields() {
+    if (this.phoneNo) this.phoneNo = this.phoneNo.trim();
+    if (this.livekitOutboundTrunkId)
+      this.livekitOutboundTrunkId = this.livekitOutboundTrunkId.trim();
+    if (this.livekitInboundTrunkId)
+      this.livekitInboundTrunkId = this.livekitInboundTrunkId.trim();
+    if (this.username) this.username = this.username.trim();
+  }
 }

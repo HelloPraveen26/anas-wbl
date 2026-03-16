@@ -43,7 +43,7 @@ export class RegisteredNumbersService {
     @InjectRepository(Assistant)
     private readonly assistantRepository: Repository<Assistant>,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   async create(
     userId: string,
@@ -668,10 +668,12 @@ export class RegisteredNumbersService {
         );
       }
 
-      const sipClient = new SipClient(
-        LIVEKIT_URL,
-        LIVEKIT_API_KEY,
-        LIVEKIT_API_SECRET,
+      // 🛠️ DIRECT API CALL WORKAROUND
+      // The livekit-server-sdk v2.13.1 lacks inboundNumbers support in createSipDispatchRule options.
+      // We call the Twirp API directly to include this critical filter.
+      const url = new URL(
+        "/twirp/livekit.SIP/CreateSIPDispatchRule",
+        LIVEKIT_URL.replace("wss://", "https://").replace("ws://", "http://"),
       );
 
       const dispatch_metadata = {
@@ -680,41 +682,61 @@ export class RegisteredNumbersService {
         call_type: "inbound",
       };
 
-      const rule: SipDispatchRuleIndividual = {
-        roomPrefix: "call-",
-        type: "individual",
-      };
-
-      const options: CreateSipDispatchRuleOptions = {
-        name: `${assistantId}-${phoneNumber}`,
+      // Construct raw request body according to protocol
+      const body = {
+        rule: {
+          dispatchRuleIndividual: {
+            roomPrefix: "call-",
+            pin: "",
+          },
+        },
         trunkIds: [trunkId],
-        roomConfig: new RoomConfiguration({
+        inboundNumbers: [phoneNumber], // ✅ CRITICAL: This allows multiple rules on one trunk
+        name: `${assistantId}-${phoneNumber}`,
+        roomConfig: {
           agents: [
-            new RoomAgentDispatch({
-              agentName: "hexite-inbound-caller",
+            {
+              agentName: "inbound-agent", // ✅ Fixed name
               metadata: JSON.stringify(dispatch_metadata),
-            }),
+            },
           ],
-        }),
+        },
       };
 
-      const dispatchRule = await sipClient.createSipDispatchRule(rule, options);
+      // Generate Auth Header
+      const { AccessToken } = await import("livekit-server-sdk");
+      const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+        ttl: "10m",
+      });
+      at.addSIPGrant({ admin: true });
+      const authHeader = `Bearer ${await at.toJwt()}`;
 
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ msg: "Unknown" }));
+        throw new Error(err.msg || response.statusText);
+      }
+
+      const result = await response.json();
       this.logger.log(
-        "Created dispatch rule successfully",
-        JSON.stringify(dispatchRule, null, 2),
+        "Created dispatch rule successfully via direct API",
+        JSON.stringify(result, null, 2),
       );
 
-      return dispatchRule.sipDispatchRuleId;
+      return result.sipDispatchRuleId;
     } catch (error) {
       this.logger.error(
         `Error creating SIP dispatch rule: ${error.message}`,
         error.stack,
       );
-
-      if (error.message.includes("LiveKit")) {
-        throw new BadRequestException(`LiveKit error: ${error.message}`);
-      }
 
       throw new BadRequestException(
         `Failed to create SIP dispatch rule: ${error.message}`,

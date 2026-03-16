@@ -21,18 +21,18 @@ import { UserResponseDto } from './dto/user-response.dto';
 @Controller('users')
 @UseGuards(ThrottlerGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get current user profile',
     description: 'Retrieve detailed profile information of the currently authenticated user'
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'User profile retrieved successfully', 
+  @ApiResponse({
+    status: 200,
+    description: 'User profile retrieved successfully',
     type: UserResponseDto,
     example: {
       id: 'uuid-here',
@@ -58,15 +58,15 @@ export class UsersController {
   @Patch('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Update current user profile',
     description: 'Update profile information of the currently authenticated user'
   })
   @ApiBody({ type: UpdateUserDto })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'User profile updated successfully', 
-    type: UserResponseDto 
+  @ApiResponse({
+    status: 200,
+    description: 'User profile updated successfully',
+    type: UserResponseDto
   })
   @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
@@ -78,12 +78,12 @@ export class UsersController {
   @Delete('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Delete current user account',
     description: 'Permanently delete the currently authenticated user account (soft delete)'
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'User account deleted successfully',
     schema: {
       type: 'object',
@@ -96,5 +96,47 @@ export class UsersController {
   async deleteAccount(@Request() req): Promise<{ message: string }> {
     await this.usersService.remove(req.user.id);
     return { message: 'Account deleted successfully' };
+  }
+
+  @Get('sub-users')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get all sub-users for an admin' })
+  async getSubUsers(@Request() req): Promise<any> {
+    const users = await this.usersService.findSubUsers(req.user.id);
+    return {
+      success: true,
+      data: users.map(user => new UserResponseDto(user)),
+    };
+  }
+
+  @Post('create-sub-user')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Create a new sub-user' })
+  async createSubUser(@Request() req, @Body() createUserDto: any): Promise<any> {
+    const user = await this.usersService.createSubUser(req.user.id, createUserDto);
+    return {
+      success: true,
+      message: 'Sub-user created successfully',
+      data: new UserResponseDto(user),
+    };
+  }
+
+  @Patch('adjust-credits/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Adjust credits for a sub-user' })
+  async adjustCredits(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) subUserId: string,
+    @Body() adjustCreditsDto: any,
+  ): Promise<any> {
+    const user = await this.usersService.adjustSubUserCredits(req.user.id, subUserId, adjustCreditsDto);
+    return {
+      success: true,
+      message: 'Credits adjusted successfully',
+      data: new UserResponseDto(user),
+    };
   }
 }

@@ -1,5 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreatePaymentDto {
   @ApiProperty({
@@ -9,6 +10,7 @@ export class CreatePaymentDto {
   })
   @IsNumber({}, { message: 'Amount must be a valid number' })
   @Min(0.01, { message: 'Amount must be greater than 0' })
+  @Type(() => Number)
   amount: number;
 
   @ApiProperty({
@@ -19,4 +21,13 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsString({ message: 'Reference must be a string' })
   reference?: string;
+
+  @ApiPropertyOptional({
+    description: 'Base payment amount before taxes',
+    example: 100,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Base amount must be a valid number' })
+  @Type(() => Number)
+  baseAmount?: number;
 }

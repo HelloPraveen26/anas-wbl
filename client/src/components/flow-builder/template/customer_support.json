@@ -1,0 +1,165 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Hello 👋 Welcome to Customer Support.\nHow can I assist you today?",
+    "position": {
+      "x": 203.26191235872625,
+      "y": -141.56076954545074
+    },
+    "buttons": [
+      {
+        "id": "btn_1",
+        "text": "Track My Order",
+        "type": "quick_reply",
+        "action": "node_order"
+      },
+      {
+        "id": "btn_2",
+        "text": "Payment Issue",
+        "type": "quick_reply",
+        "action": "node_payment"
+      }
+    ]
+  },
+  "nodes": {
+    "node_order": {
+      "message": "Sure! Please provide your Order ID so we can check your delivery status.",
+      "position": {
+        "x": 627.5418403311536,
+        "y": -132.81820658176593
+      },
+      "buttons": [
+        {
+          "id": "btn_3",
+          "text": "Share Order ID",
+          "type": "quick_reply",
+          "action": "node_order_status"
+        },
+        {
+          "id": "btn_4",
+          "text": "Order Not Delivered",
+          "type": "quick_reply",
+          "action": "node_delivery_issue"
+        }
+      ]
+    },
+    "node_payment": {
+      "message": "I can help with payment issues. What problem are you facing?",
+      "position": {
+        "x": 1074.149313655747,
+        "y": -132.78327576120978
+      },
+      "buttons": [
+        {
+          "id": "btn_5",
+          "text": "Payment Failed",
+          "type": "quick_reply",
+          "action": "node_payment_failed"
+        },
+        {
+          "id": "btn_6",
+          "text": "Money Deducted but Order Not Confirmed",
+          "type": "quick_reply",
+          "action": "node_payment_refund"
+        }
+      ]
+    },
+    "node_order_status": {
+      "message": "Thank you. Your order is currently in transit and will reach you soon.",
+      "position": {
+        "x": 1581.5946570537317,
+        "y": -135.9684723005587
+      },
+      "buttons": [
+        {
+          "id": "btn_7",
+          "text": "Back to Support Menu",
+          "type": "quick_reply",
+          "action": "welcome"
+        }
+      ]
+    },
+    "node_delivery_issue": {
+      "message": "We're sorry for the inconvenience. Our logistics team will review your delivery issue.",
+      "position": {
+        "x": 1580.4285258476425,
+        "y": 348.3216355610148
+      },
+      "buttons": [
+        {
+          "id": "btn_8",
+          "text": "Create Support Ticket",
+          "type": "quick_reply",
+          "action": "node_ticket"
+        },
+        {
+          "id": "btn_9",
+          "text": "Back to Menu",
+          "type": "quick_reply",
+          "action": "welcome"
+        }
+      ]
+    },
+    "node_payment_failed": {
+      "message": "It looks like your payment didn't go through. Please try again or use another payment method.",
+      "position": {
+        "x": 2026.9091276781223,
+        "y": -123.79177395987051
+      },
+      "buttons": [
+        {
+          "id": "btn_10",
+          "text": "Retry Payment",
+          "type": "quick_reply",
+          "action": "node_payment"
+        },
+        {
+          "id": "btn_11",
+          "text": "Contact Support",
+          "type": "quick_reply",
+          "action": "node_ticket"
+        }
+      ]
+    },
+    "node_payment_refund": {
+      "message": "If your money was deducted but the order wasn't confirmed, the refund will be processed within 3–5 business days.",
+      "position": {
+        "x": 2470,
+        "y": -130
+      },
+      "buttons": [
+        {
+          "id": "btn_12",
+          "text": "Raise Refund Ticket",
+          "type": "quick_reply",
+          "action": "node_ticket"
+        },
+        {
+          "id": "btn_13",
+          "text": "Back to Menu",
+          "type": "quick_reply",
+          "action": "welcome"
+        }
+      ]
+    },
+    "node_ticket": {
+      "message": "Your support request has been registered. Our team will contact you shortly.",
+      "position": {
+        "x": 2900,
+        "y": -120
+      },
+      "buttons": [
+        {
+          "id": "btn_14",
+          "text": "Return to Main Menu",
+          "type": "quick_reply",
+          "action": "welcome"
+        }
+      ]
+    }
+  },
+  "fallback": {
+    "message": "Sorry, I didn't understand that. Please choose one of the options above.",
+    "buttons": []
+  }
+}

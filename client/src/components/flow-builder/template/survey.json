@@ -1,0 +1,74 @@
+{
+  "startNode": "welcome",
+  "welcome": {
+    "message": "Welcome! Hello 👋 We would love to hear your feedback. Would you like to take a quick survey?",
+    "position": {
+      "x": 400,
+      "y": 50
+    },
+    "buttons": [
+      {
+        "id": "btn_1773343931824",
+        "text": "Yes, start survey",
+        "type": "quick_reply",
+        "action": "node_1773343882405"
+      },
+      {
+        "id": "btn_1773343932003",
+        "text": "Maybe later",
+        "type": "quick_reply",
+        "action": "node_1773344025132"
+      }
+    ]
+  },
+  "nodes": {
+    "node_1773343882405": {
+      "message": "How was your overall experience with our service?",
+      "position": {
+        "x": 850,
+        "y": 50
+      },
+      "buttons": [
+        {
+          "id": "btn_1773343996804",
+          "text": "Excellent,good ,nice okay",
+          "type": "quick_reply",
+          "action": "node_1773344059593"
+        },
+        {
+          "id": "btn_1773343996985",
+          "text": "Needs Improvement",
+          "type": "quick_reply",
+          "action": "node_1773344059593"
+        }
+      ]
+    },
+    "node_1773344025132": {
+      "message": "Would you recommend our service to others?",
+      "position": {
+        "x": 1300,
+        "y": 50
+      },
+      "buttons": [
+        {
+          "id": "btn_1773344033377",
+          "text": "yes, definitely",
+          "type": "quick_reply",
+          "action": "node_1773344059593"
+        }
+      ]
+    },
+    "node_1773344059593": {
+      "message": "thank you for your valuable feedback. Your response helps us improve our services.",
+      "position": {
+        "x": 1750,
+        "y": 50
+      },
+      "buttons": []
+    }
+  },
+  "fallback": {
+    "message": "Could you repeat that?",
+    "buttons": []
+  }
+}

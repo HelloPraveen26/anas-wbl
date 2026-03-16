@@ -18,6 +18,11 @@ export enum AuthProvider {
   GOOGLE = "google",
 }
 
+export enum UserRole {
+  ADMIN = "admin",
+  USER = "user",
+}
+
 @Entity("users")
 @Index(["email"], { unique: true })
 export class User {
@@ -84,6 +89,37 @@ export class User {
 
   @Column({ type: "numeric", default: 0 })
   credits: number;
+
+  @Column({
+    type: "enum",
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role: UserRole;
+
+  @Column({ name: "admin_id", nullable: true })
+  adminId?: string;
+
+  @Column({
+    name: "cost_per_minute",
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  costPerMinute?: number;
+
+  @Column({
+    type: "decimal",
+    precision: 12,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
+  balance: number;
 
   @OneToMany("Assistant", "user")
   assistants: any[];
