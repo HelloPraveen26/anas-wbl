@@ -573,6 +573,7 @@ After collecting all required information, the system will automatically process
         type: "inbound",
         callStatus: "In Progress",
         startTime: new Date(),
+        sessionId: dto.sessionId,
       });
       callLogId = initialCallLog.id;
 

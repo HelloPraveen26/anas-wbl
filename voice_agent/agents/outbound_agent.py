@@ -270,7 +270,7 @@ async def entrypoint(ctx: JobContext):
 
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
-        logger.info("📞 Call ending - syncing webhooks...")
+        logger.info(f"📞 DEBUG: Call ending for room {ctx.room.name} - syncing webhooks...")
         call_end_time = time.time()
         call_end_iso = datetime.now(timezone.utc).isoformat()
         call_duration = call_end_time - session_start_time
@@ -281,7 +281,8 @@ async def entrypoint(ctx: JobContext):
         # 2. Transcript and Call Completion
         try:
             if hasattr(session, "history"):
-                fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8003")
+                # Use 127.0.0.1 to avoid localhost resolution issues on Windows
+                fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8003")
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     # Transcript
                     await client.post(

@@ -6,50 +6,9 @@ import {
   IsArray,
   IsNumber,
   ValidateNested,
+  IsIn,
 } from "class-validator";
 import { Type } from "class-transformer";
-
-class MessageMetrics {
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  started_speaking_at?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  stopped_speaking_at?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  llm_node_ttft?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  tts_node_ttfb?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  e2e_latency?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  transcription_delay?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  end_of_turn_delay?: number;
-
-  @ApiProperty({ required: false })
-  @IsNumber()
-  @IsOptional()
-  on_user_turn_completed_delay?: number;
-}
 
 class HistoryItem {
   @ApiProperty()
@@ -84,11 +43,15 @@ class HistoryItem {
   @IsOptional()
   extra?: Record<string, any>;
 
-  @ApiProperty({ required: false, type: MessageMetrics })
-  @ValidateNested()
-  @Type(() => MessageMetrics)
+  @ApiProperty({
+    required: false,
+    type: "object",
+    description:
+      "Dynamic metrics data that may contain various performance measurements",
+  })
+  @IsObject()
   @IsOptional()
-  metrics?: MessageMetrics;
+  metrics?: Record<string, any>;
 
   // Function call properties
   @ApiProperty({ required: false })
@@ -204,6 +167,26 @@ export class CallSummaryDto {
   })
   @IsNumber()
   call_duration_seconds: number;
+
+  @ApiProperty({
+    description: "Optional call log identifier",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  call_log_id?: string;
+
+  @ApiProperty({
+    description: "Type of call - inbound or outbound",
+    example: "inbound",
+    enum: ["inbound", "outbound"],
+    required: false,
+  })
+  @IsString()
+  @IsIn(["inbound", "outbound"])
+  @IsOptional()
+  type?: "inbound" | "outbound";
 
   // Allow any other properties for future extensibility
   [key: string]: any;

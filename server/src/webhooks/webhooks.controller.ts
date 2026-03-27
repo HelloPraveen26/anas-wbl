@@ -102,11 +102,11 @@ export class WebhooksController {
           type: "string",
           example: "2026-02-23T17:15:39.339795+00:00",
         },
-        call_start_time: {
+        start_time: {
           type: "string",
           example: "2026-02-23T17:14:34.870660+00:00",
         },
-        call_end_time: {
+        end_time: {
           type: "string",
           example: "2026-02-23T17:15:39.319380+00:00",
         },
@@ -140,78 +140,108 @@ export class WebhooksController {
     description: "Invalid call summary data",
   })
   async receiveCallSummary(@Body() callSummary: CallSummaryDto) {
-    this.logger.log(`📥 Received call summary: ${JSON.stringify(callSummary, null, 2)}`);
+    this.logger.log("=".repeat(80));
+    this.logger.log("📞 CALL SUMMARY WEBHOOK RECEIVED");
+    this.logger.log("=".repeat(80));
 
+    this.logger.log(`Room Name: ${callSummary.room_name}`);
+    this.logger.log(
+      `Call Duration: ${callSummary.call_duration_seconds.toFixed(2)} seconds`,
+    );
+    this.logger.log(`Call Start: ${callSummary.start_time}`);
+    this.logger.log(`Call End: ${callSummary.end_time}`);
+    this.logger.log(
+      `Message Count: ${callSummary.history?.items?.length || 0}`,
+    );
     try {
-      const callLog = await this.callLogsService.findBySessionId(
-        callSummary.room_name,
-      );
-
-      if (!callLog) {
-        this.logger.error(`❌ CRITICAL: No call log found for room ${callSummary.room_name}. Credits CANNOT be deducted.`);
-        return { success: false, message: "No call log found" };
+      let callLog;
+      if (callSummary.type === "inbound" && callSummary.call_log_id) {
+        callLog = await this.callLogsService.findOne(callSummary.call_log_id);
+      } else {
+        callLog = await this.callLogsService.findBySessionId(
+          callSummary.room_name,
+        );
       }
 
-      this.logger.log(`🔍 Found call log ${callLog.id} for user ${callLog.userId}. Current status: ${callLog.callStatus}`);
-
       if (callLog) {
-        if (callLog.callStatus !== "completed") {
-          const durationInSeconds = Math.round(callSummary.call_duration_seconds || 0);
-          this.logger.log(`⏳ Duration: ${durationInSeconds}s for room ${callSummary.room_name}`);
+        const historyItems = callSummary.history?.items || [];
+        const processedHistory = historyItems
+          .filter(
+            (item) =>
+              item.role !== undefined &&
+              item.content !== undefined &&
+              item.interrupted !== undefined,
+          )
+          .map((item) => ({
+            role: item.role,
+            content: Array.isArray(item.content)
+              ? item.content.join(" ")
+              : item.content,
+            interrupted: item.interrupted,
+          }));
 
-          // Deduct cost from user's credits using central service
+        this.logger.log(
+          `📊 Processed history count: ${processedHistory.length}`,
+        );
+        if (processedHistory.length <= 1) {
+          const durationInSeconds = 0;
+          const costInRupees = 0;
+
+          await this.callLogsService.update(callLog.id, {
+            duration: durationInSeconds,
+            cost: costInRupees,
+            callStatus: "failed",
+            sessionId: callSummary.room_name,
+          });
+          this.logger.log(
+            `⚠️ Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees}, status: failed (insufficient history)`,
+          );
+
+          this.logger.log(
+            `ℹ️ Skipping credit deduction due to insufficient conversation history`,
+          );
+
+          this.logger.log(
+            `ℹ️ Skipping chat log save due to insufficient conversation history`,
+          );
+        } else {
+          const durationInSeconds = Math.round(
+            callSummary.call_duration_seconds,
+          );
+          const costInRupees = (durationInSeconds * 3.85) / 60;
+
+          await this.callLogsService.update(callLog.id, {
+            duration: durationInSeconds,
+            cost: costInRupees,
+            callStatus: "completed",
+            sessionId: callSummary.room_name,
+          });
+          this.logger.log(
+            `✅ Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees.toFixed(4)}, status: completed`,
+          );
+
           try {
-            const costDeducted = await this.usersService.deductUsage(callLog.userId, durationInSeconds);
-            this.logger.log(`💰 Cost: ₹${costDeducted} deducted for user ${callLog.userId}`);
+            const user = await this.usersService.findById(callLog.userId);
+            const currentCredits = Number(user.credits);
+            const newCredits = parseFloat(
+              (currentCredits - costInRupees).toFixed(2),
+            );
 
-            // Update the call log with the final cost calculated by UsersService
-            await this.callLogsService.updateBySessionId(callSummary.room_name, {
-              duration: durationInSeconds,
-              cost: costDeducted,
-              callStatus: "completed",
+            await this.usersService.update(callLog.userId, {
+              credits: newCredits,
             });
 
             this.logger.log(
-              `✅ SUCCESS: Updated call log ${callLog.id} and deducted ₹${costDeducted.toFixed(4)} from user ${callLog.userId}`,
+              `✅ Deducted ₹${costInRupees.toFixed(4)} from user ${callLog.userId}. Credits: ₹${currentCredits.toFixed(4)} → ₹${newCredits.toFixed(4)}`,
             );
           } catch (creditError) {
             this.logger.error(
               `❌ Error deducting credits from user ${callLog.userId}: ${creditError.message}`,
               creditError.stack,
             );
-
-            // Still update status to completed even if deduction fails
-            await this.callLogsService.updateBySessionId(callSummary.room_name, {
-              duration: durationInSeconds,
-              callStatus: "completed",
-            });
           }
-        } else {
-          this.logger.warn(
-            `⚠️ Call log ${callLog.id} for room ${callSummary.room_name} is already completed. Skipping deduction.`,
-          );
-        }
 
-        // Save chat history to chat_logs table
-        try {
-          // Filter and process history items
-          const historyItems = callSummary.history?.items || [];
-          const processedHistory = historyItems
-            .filter(
-              (item) =>
-                item.role !== undefined &&
-                item.content !== undefined &&
-                item.interrupted !== undefined,
-            )
-            .map((item) => ({
-              role: item.role,
-              content: Array.isArray(item.content)
-                ? item.content.join(" ")
-                : item.content,
-              interrupted: item.interrupted,
-            }));
-
-          if (processedHistory.length > 0) {
+          try {
             await this.chatLogsService.create({
               callLogId: callLog.id,
               roomName: callSummary.room_name,
@@ -220,14 +250,12 @@ export class WebhooksController {
             this.logger.log(
               `✅ Saved ${processedHistory.length} chat messages to chat log`,
             );
-          } else {
-            this.logger.log(`ℹ️ No valid chat messages to save`);
+          } catch (chatLogError) {
+            this.logger.error(
+              `❌ Error saving chat log: ${chatLogError.message}`,
+              chatLogError.stack,
+            );
           }
-        } catch (chatLogError) {
-          this.logger.error(
-            `❌ Error saving chat log: ${chatLogError.message}`,
-            chatLogError.stack,
-          );
         }
       } else {
         this.logger.warn(

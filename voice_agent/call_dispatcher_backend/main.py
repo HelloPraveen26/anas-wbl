@@ -1,3 +1,6 @@
+"""
+Call Dispatcher Backend - UPDATED FOR STABILITY
+"""
 import json
 import logging
 import os
@@ -299,10 +302,18 @@ import httpx
 
 async def notify_call_completed(room_name: str, webhook_data: Dict[str, Any]):
     """Internal callback for call completion notification - forwards to main server"""
-    logger.info(f"Forwarding call summary for room {room_name} to main server...")
+    logger.info(f"DEBUG: Processing call completion for room {room_name}")
+    logger.info(f"DEBUG: Webhook data keys: {list(webhook_data.keys())}")
     
     # 1. Extract timing data
-    call_duration = webhook_data.get("call_duration") or webhook_data.get("call_duration_seconds", 0)
+    call_duration = webhook_data.get("call_duration")
+    if call_duration is None:
+        call_duration = webhook_data.get("call_duration_seconds")
+    if call_duration is None:
+        call_duration = 0.0
+    
+    logger.info(f"DEBUG: Calculated call_duration={call_duration} (type={type(call_duration)})")
+        
     start_time = webhook_data.get("start_time") or webhook_data.get("call_start_time")
     end_time = webhook_data.get("end_time") or webhook_data.get("call_end_time")
     
@@ -322,7 +333,7 @@ async def notify_call_completed(room_name: str, webhook_data: Dict[str, Any]):
         logger.debug(f"History empty in webhook data for {room_name}, checking if we have cached transcript")
 
     # 4. Forward to NestJS server
-    main_server_url = os.getenv("NESTJS_SERVER_URL", "http://localhost:8000")
+    main_server_url = os.getenv("NESTJS_SERVER_URL", "http://127.0.0.1:8000")
     webhook_endpoint = f"{main_server_url}/api/v1/webhooks/call-summary"
     
     try:

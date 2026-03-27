@@ -118,40 +118,47 @@ class Assistant(Agent):
             await job_ctx.delete_room()
 
 
-async def _fetch_assistant_config(assistant_id: str, assistant_phone_number: str, caller_phone: str) -> dict | None:
-    """Fetch full assistant config from NestJS backend. Returns None on 404 or error."""
-    # BACKEND_BASE_URL points to NestJS server (port 8000) where /api/v1/phone/make_inbound_call lives
-    backend_url = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
-    print(f"DEBUG: Fetching assistant config for {assistant_id} from {backend_url}...", flush=True)
+async def _fetch_assistant_config(
+    assistant_id: str, assistant_phone_number: str, caller_phone: str
+) -> dict | None:
+    """Fetch full assistant config from dispatcher backend. Returns None on 404 or error."""
+    # Use 127.0.0.1 to avoid localhost resolution issues on Windows
+    backend_url = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000")
     try:
-        # Use room_name from context if available through globals or parameters
-        job_ctx = get_job_context()
-        room_name = job_ctx.room.name if job_ctx else "unknown"
-
         async with httpx.AsyncClient(timeout=3.0) as client:
+            job_ctx = get_job_context()
+            room_name = job_ctx.room.name if job_ctx else "unknown"
+            
             payload = {
-                "phoneNumber": caller_phone,
+                "phoneNumber": caller_phone or "+0000000000",
                 "fromPhoneNumber": assistant_phone_number,
                 "selectedAssistant": assistant_id,
+                "sessionId": room_name,
             }
-            resp = await client.post(f"{backend_url}/api/v1/phone/make_inbound_call", json=payload)
+            logger.info(f"DEBUG: Initializing inbound call log in NestJS: {payload}")
+            resp = await client.post(
+                f"{backend_url}/api/v1/phone/make_inbound_call",
+                json=payload,
+            )
             if resp.status_code == 201:
-                logger.info(f"payload:{resp.json().get('config', {})}")
                 return resp.json().get("config", {})
             else:
                 logger.warning(f"make_inbound_call returned {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
-        logger.warning(f"Could not fetch assistant config for {assistant_id}: {e}")
+        logger.error(f"❌ Connection error during assistant config fetch from {backend_url}: {e}")
     return None
 
 
 async def _fetch_caller_override(assistant_id: str, caller_phone: str) -> dict | None:
     """Fetch per-caller override from dispatcher backend. Returns None on 404 or error."""
     phone_key = caller_phone.replace("+", "").replace("-", "")
-    backend_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
+    # FASTAPI_BASE_URL points to Dispatcher (port 8003) where /caller-override lives
+    backend_url = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8003")
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(f"{backend_url}/caller-override/{assistant_id}/{phone_key}")
+            resp = await client.get(
+                f"{backend_url}/caller-override/{assistant_id}/{phone_key}"
+            )
             if resp.status_code == 200:
                 return resp.json().get("override", {})
     except Exception as e:
@@ -164,54 +171,51 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
-    print(f"DEBUG: ENTRYPOINT TRIGGERED for room {ctx.room.name}", flush=True)
-    logger.info(f"DEBUG: ENTRYPOINT TRIGGERED for room {ctx.room.name}")
     entrypoint_start = time.time()
     ctx.log_context_fields = {"room": ctx.room.name}
 
     # Connect first
     connect_start = time.time()
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
-    print(f"DEBUG: Connection established in {time.time() - connect_start:.2f}s", flush=True)
     logger.info(f"Connection established in {time.time() - connect_start:.2f}s")
 
-    # Wait for participant with a bit more buffer
+    # Wait for SIP participant BEFORE model init so we can extract caller phone
+    # and fetch per-caller config before choosing LLM/STT/TTS settings.
+    # (SIP participant is already in the room by the time the agent joins — usually instant.)
     await _wait_for_participant(ctx.room)
-    await asyncio.sleep(1.0) # Allow SIP RTP path to settle
 
-    # Extract caller phone early
+    # Extract caller phone early — needed for per-caller config lookup before model init
     caller_phone: str | None = None
     for p in ctx.room.remote_participants.values():
-        print(f"DEBUG: Participant {p.identity} kind: {p.kind}", flush=True)
         if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
             caller_phone = p.attributes.get("sip.phoneNumber", "") or None
             if caller_phone:
-                print(f"DEBUG: Inbound caller phone: {caller_phone}", flush=True)
                 logger.info(f"Inbound caller phone: {caller_phone}")
             break
 
-    # --- Metadata loading ---
+    # --- Metadata loading (3-layer merge: job → assistant config → caller override) ---
     metadata_start = time.time()
     metadata: dict = {}
 
-    # Layer 1: job metadata
+    # Layer 1: job metadata from RoomAgentDispatch (highest precedence for dispatch-level config)
     raw_meta = ctx.job.metadata or "{}"
-    print(f"DEBUG: Raw job metadata: {raw_meta}", flush=True)
     try:
         job_meta = json.loads(raw_meta) if isinstance(raw_meta, str) else raw_meta
         if job_meta:
             metadata = {**job_meta}
-            print("DEBUG: 📦 Loaded metadata from job dispatch", flush=True)
             logger.info("📦 Loaded metadata from job dispatch")
     except Exception as e:
         logger.warning(f"Failed to parse job metadata: {e}")
 
-    # Layer 1b: room metadata fallback
+    # Layer 1b: room metadata fallback (for older dispatch rules without job metadata)
     if not metadata:
         room_meta_str = ctx.room.metadata or "{}"
-        print(f"DEBUG: Raw room metadata: {room_meta_str}", flush=True)
         try:
-            room_meta = json.loads(room_meta_str) if isinstance(room_meta_str, str) else room_meta_str
+            room_meta = (
+                json.loads(room_meta_str)
+                if isinstance(room_meta_str, str)
+                else room_meta_str
+            )
             if "agent_metadata" in room_meta:
                 metadata = room_meta["agent_metadata"]
                 logger.info("📦 Loaded metadata from room configuration")
@@ -226,17 +230,25 @@ async def entrypoint(ctx: JobContext):
     assistant_id_from_dispatch = metadata.get("assistant_id")
     assistant_phone_number = metadata.get("phone_number")
     if assistant_id_from_dispatch:
-        assistant_cfg = await _fetch_assistant_config(assistant_id_from_dispatch, assistant_phone_number, caller_phone)
+        assistant_cfg = await _fetch_assistant_config(
+            assistant_id_from_dispatch, assistant_phone_number, caller_phone
+        )
         if assistant_cfg:
             metadata = {**metadata, **assistant_cfg}
-            logger.info(f"📦 Loaded assistant config for {assistant_id_from_dispatch} ({list(assistant_cfg.keys())})")
+            logger.info(
+                f"📦 Loaded assistant config for {assistant_id_from_dispatch} ({list(assistant_cfg.keys())})"
+            )
         else:
-            logger.debug(f"No assistant config found for {assistant_id_from_dispatch}, using dispatch defaults")
+            logger.debug(
+                f"No assistant config found for {assistant_id_from_dispatch}, using dispatch defaults"
+            )
 
     # Layer 3: per-caller override — optional, highest priority.
     # Allows each client to personalise greetings and pre-fill tool fields per caller.
     if assistant_id_from_dispatch and caller_phone:
-        caller_override = await _fetch_caller_override(assistant_id_from_dispatch, caller_phone)
+        caller_override = await _fetch_caller_override(
+            assistant_id_from_dispatch, caller_phone
+        )
         if caller_override:
             metadata = {**metadata, **caller_override}
             logger.info(f"📦 Loaded caller override for {caller_phone}")
@@ -263,6 +275,7 @@ async def entrypoint(ctx: JobContext):
     tts_config = metadata.get("tts_config")
     assistant_id = metadata.get("assistant_id")
     knowledgebase_content = metadata.get("knowledgebase_content")
+    call_log_id = metadata.get("call_log_id")
 
     # Merge instructions (Personality + Metadata + Tools)
     final_instructions = DEFAULT_INBOUND_PERSONALITY
@@ -353,9 +366,6 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(log_usage)
 
-    # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
-    call_timing = {"start_time": None, "end_time": None}
-
     # Transcript Sync
     @session.on("agent_state_changed")
     def _on_state_change(state):
@@ -371,6 +381,9 @@ async def entrypoint(ctx: JobContext):
                     or handler.transcript[-1] != f"{role}: {content}"
                 ):
                     asyncio.create_task(handler.add_to_transcript(role, content))
+
+    # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
+    call_timing = {"start_time": None, "end_time": None}
 
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
@@ -392,7 +405,6 @@ async def entrypoint(ctx: JobContext):
             logger.warning(
                 "Call start time was never recorded (participant may not have connected)"
             )
-
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
 
@@ -400,7 +412,6 @@ async def entrypoint(ctx: JobContext):
         try:
             if hasattr(session, "history"):
                 fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8003")
-                backend_url = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     # Transcript
                     await client.post(
@@ -411,9 +422,8 @@ async def entrypoint(ctx: JobContext):
                             "captured_at": datetime.now(timezone.utc).isoformat(),
                         },
                     )
-                    # Call Summary Webhook (NestJS)
                     await client.post(
-                        f"{backend_url}/api/v1/webhooks/call-summary",
+                        "http://localhost:8000/api/v1/webhooks/call-summary",
                         json={
                             "room_name": ctx.room.name,
                             "history": session.history.to_dict(),
@@ -424,6 +434,8 @@ async def entrypoint(ctx: JobContext):
                             if call_timing["end_time"]
                             else None,
                             "call_duration_seconds": call_duration_seconds,
+                            "call_log_id": call_log_id,
+                            "type": "inbound",
                         },
                     )
                     # Call Completion Webhook
@@ -463,23 +475,15 @@ async def entrypoint(ctx: JobContext):
                     if param_name not in handler.collected_data:
                         handler.collected_data[param_name] = phone_number
 
-    # Record call start time BEFORE greeting
+    # Greet (participant already connected — wait was done before model init)
     call_timing["start_time"] = datetime.now(timezone.utc)
     logger.info(f"📞 Call start time recorded: {call_timing['start_time'].isoformat()}")
-
-    # Greet using session.say for better reliability on first message
     try:
-        logger.info(f"🎤 Saying initial greeting: {custom_first_message}")
-        await session.say(custom_first_message, allow_interruptions=False)
+        await session.generate_reply(
+            instructions=f"Start by saying: '{custom_first_message}'"
+        )
     except Exception as e:
         logger.warning(f"Initial greeting failed: {e}")
-        # Fallback to generate_reply if say fails
-        try:
-            await session.generate_reply(
-                instructions=f"Start by saying: '{custom_first_message}'"
-            )
-        except Exception:
-            pass
 
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
 
@@ -545,5 +549,6 @@ if __name__ == "__main__":
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
             agent_name="inbound-agent",
+            port=8081,
         )
     )
