@@ -10,7 +10,9 @@ const apiKey = process.env.LIVEKIT_API_KEY;
 const apiSecret = process.env.LIVEKIT_API_SECRET;
 
 async function listDispatchRules() {
-    const sipClient = new SipClient(url, apiKey, apiSecret);
+    const httpsUrl = url.replace('wss://', 'https://').replace('ws://', 'http://');
+    console.log('Connecting to:', httpsUrl);
+    const sipClient = new SipClient(httpsUrl, apiKey, apiSecret);
     try {
         const rules = await sipClient.listSipDispatchRule();
         console.log(JSON.stringify(rules, null, 2));

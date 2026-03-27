@@ -573,7 +573,6 @@ After collecting all required information, the system will automatically process
         type: "inbound",
         callStatus: "In Progress",
         startTime: new Date(),
-        sessionId: dto.sessionId, // 🟢 Associate with the room name
       });
       callLogId = initialCallLog.id;
 
@@ -584,25 +583,18 @@ After collecting all required information, the system will automatically process
       );
 
 
-      // Fallback to config trunk ID if registered number not found or missing trunk ID
-      const fallbackTrunkIdInbound = this.configService.get<string>('SIP_OUTBOUND_TRUNK_ID') || '';
-      const outboundTrunkIdInbound = registeredNumber?.livekitOutboundTrunkId || fallbackTrunkIdInbound;
-
-      if (!outboundTrunkIdInbound) {
+      if (!registeredNumber || !registeredNumber.livekitInboundTrunkId) {
         this.logger.error(
-          `❌ Outbound trunk ID missing for phone number: ${fromPhoneNumber}`,
+          `❌ Inbound trunk ID missing for phone number: ${fromPhoneNumber}`,
         );
         throw new HttpException(
-          "Outbound trunk ID missing. Please configure SIP_OUTBOUND_TRUNK_ID in server .env or register the phone number.",
+          `Inbound trunk ID missing for the selected phone number ${fromPhoneNumber}`,
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
+      const inboundTrunkIdPayload = registeredNumber.livekitInboundTrunkId;
 
-      if (!registeredNumber) {
-        this.logger.warn(
-          `⚠️ Phone number ${fromPhoneNumber} not found in registered_numbers. Using fallback trunk ID: ${fallbackTrunkIdInbound}`,
-        );
-      }
+
 
       let instructions = systemPrompt;
       if (toolConfig) {
@@ -655,7 +647,7 @@ After collecting all required information, the system will automatically process
         user_id: userId,
         phone_number: dto.phoneNumber,
         from_phone_number: fromPhoneNumber,
-        outbound_trunk_id: outboundTrunkIdInbound,
+        inbound_trunk_id: inboundTrunkIdPayload,
         ...(instructions && { instructions }),
         ...(firstMessage && { first_message: firstMessage }),
         ...(realtimeProviderName && {

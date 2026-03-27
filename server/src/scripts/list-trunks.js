@@ -23,10 +23,11 @@ async function listTrunks() {
         process.exit(1);
     }
 
-    console.log('Connecting to:', url);
+    const httpsUrl = url.replace('wss://', 'https://').replace('ws://', 'http://');
+    console.log('Connecting to:', httpsUrl);
     console.log('API Key:', apiKey);
 
-    const sipClient = new SipClient(url, apiKey, apiSecret);
+    const sipClient = new SipClient(httpsUrl, apiKey, apiSecret);
 
     const timer = setTimeout(() => {
         console.error('Request timed out after 15 seconds');

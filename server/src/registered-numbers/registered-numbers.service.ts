@@ -691,7 +691,6 @@ export class RegisteredNumbersService {
           },
         },
         trunkIds: [trunkId],
-        inboundNumbers: [phoneNumber], // ✅ CRITICAL: This allows multiple rules on one trunk
         name: `${assistantId}-${phoneNumber}`,
         roomConfig: {
           agents: [

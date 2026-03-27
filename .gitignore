@@ -64,3 +64,9 @@ Thumbs.db
 
 server/assistant_configs/
 voice_agent/agents/.venv/
+
+**/.env
+**/*.log
+**/node_modules
+**/dist
+**/.next

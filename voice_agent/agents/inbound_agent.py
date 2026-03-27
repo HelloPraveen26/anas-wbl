@@ -119,24 +119,27 @@ class Assistant(Agent):
 
 
 async def _fetch_assistant_config(assistant_id: str, assistant_phone_number: str, caller_phone: str) -> dict | None:
-    """Fetch full assistant config from dispatcher backend. Returns None on 404 or error."""
-    backend_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
+    """Fetch full assistant config from NestJS backend. Returns None on 404 or error."""
+    # BACKEND_BASE_URL points to NestJS server (port 8000) where /api/v1/phone/make_inbound_call lives
+    backend_url = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
+    print(f"DEBUG: Fetching assistant config for {assistant_id} from {backend_url}...", flush=True)
     try:
         # Use room_name from context if available through globals or parameters
         job_ctx = get_job_context()
         room_name = job_ctx.room.name if job_ctx else "unknown"
-        
+
         async with httpx.AsyncClient(timeout=3.0) as client:
             payload = {
-                "phoneNumber": caller_phone, 
-                "fromPhoneNumber": assistant_phone_number, 
+                "phoneNumber": caller_phone,
+                "fromPhoneNumber": assistant_phone_number,
                 "selectedAssistant": assistant_id,
-                "sessionId": room_name
             }
             resp = await client.post(f"{backend_url}/api/v1/phone/make_inbound_call", json=payload)
             if resp.status_code == 201:
                 logger.info(f"payload:{resp.json().get('config', {})}")
                 return resp.json().get("config", {})
+            else:
+                logger.warning(f"make_inbound_call returned {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
         logger.warning(f"Could not fetch assistant config for {assistant_id}: {e}")
     return None
@@ -161,47 +164,52 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
+    print(f"DEBUG: ENTRYPOINT TRIGGERED for room {ctx.room.name}", flush=True)
+    logger.info(f"DEBUG: ENTRYPOINT TRIGGERED for room {ctx.room.name}")
     entrypoint_start = time.time()
     ctx.log_context_fields = {"room": ctx.room.name}
 
     # Connect first
     connect_start = time.time()
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
+    print(f"DEBUG: Connection established in {time.time() - connect_start:.2f}s", flush=True)
     logger.info(f"Connection established in {time.time() - connect_start:.2f}s")
 
-    # Wait for SIP participant BEFORE model init so we can extract caller phone
-    # and fetch per-caller config before choosing LLM/STT/TTS settings.
-    # (SIP participant is already in the room by the time the agent joins — usually instant.)
     # Wait for participant with a bit more buffer
     await _wait_for_participant(ctx.room)
     await asyncio.sleep(1.0) # Allow SIP RTP path to settle
 
-    # Extract caller phone early — needed for per-caller config lookup before model init
+    # Extract caller phone early
     caller_phone: str | None = None
     for p in ctx.room.remote_participants.values():
+        print(f"DEBUG: Participant {p.identity} kind: {p.kind}", flush=True)
         if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
             caller_phone = p.attributes.get("sip.phoneNumber", "") or None
             if caller_phone:
+                print(f"DEBUG: Inbound caller phone: {caller_phone}", flush=True)
                 logger.info(f"Inbound caller phone: {caller_phone}")
             break
 
-    # --- Metadata loading (3-layer merge: job → assistant config → caller override) ---
+    # --- Metadata loading ---
     metadata_start = time.time()
     metadata: dict = {}
 
-    # Layer 1: job metadata from RoomAgentDispatch (highest precedence for dispatch-level config)
+    # Layer 1: job metadata
     raw_meta = ctx.job.metadata or "{}"
+    print(f"DEBUG: Raw job metadata: {raw_meta}", flush=True)
     try:
         job_meta = json.loads(raw_meta) if isinstance(raw_meta, str) else raw_meta
         if job_meta:
             metadata = {**job_meta}
+            print("DEBUG: 📦 Loaded metadata from job dispatch", flush=True)
             logger.info("📦 Loaded metadata from job dispatch")
     except Exception as e:
         logger.warning(f"Failed to parse job metadata: {e}")
 
-    # Layer 1b: room metadata fallback (for older dispatch rules without job metadata)
+    # Layer 1b: room metadata fallback
     if not metadata:
         room_meta_str = ctx.room.metadata or "{}"
+        print(f"DEBUG: Raw room metadata: {room_meta_str}", flush=True)
         try:
             room_meta = json.loads(room_meta_str) if isinstance(room_meta_str, str) else room_meta_str
             if "agent_metadata" in room_meta:
@@ -345,10 +353,9 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(log_usage)
 
-    # Start Session
-    session_start_time = time.time()
-    call_start_iso = datetime.now(timezone.utc).isoformat()
-    
+    # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
+    call_timing = {"start_time": None, "end_time": None}
+
     # Transcript Sync
     @session.on("agent_state_changed")
     def _on_state_change(state):
@@ -368,10 +375,24 @@ async def entrypoint(ctx: JobContext):
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
         logger.info("📞 Call ending - syncing webhooks...")
-        call_end_time = time.time()
-        call_end_iso = datetime.now(timezone.utc).isoformat()
-        call_duration = call_end_time - session_start_time
-        
+
+        # Compute call timing
+        call_timing["end_time"] = datetime.now(timezone.utc)
+        call_duration_seconds = None
+        if call_timing["start_time"]:
+            call_duration_seconds = round(
+                (call_timing["end_time"] - call_timing["start_time"]).total_seconds(), 2
+            )
+            logger.info(
+                f"📊 Call duration: {call_duration_seconds}s "
+                f"(start={call_timing['start_time'].isoformat()}, "
+                f"end={call_timing['end_time'].isoformat()})"
+            )
+        else:
+            logger.warning(
+                "Call start time was never recorded (participant may not have connected)"
+            )
+
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
 
@@ -379,6 +400,7 @@ async def entrypoint(ctx: JobContext):
         try:
             if hasattr(session, "history"):
                 fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8003")
+                backend_url = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
                 async with httpx.AsyncClient(timeout=5.0) as client:
                     # Transcript
                     await client.post(
@@ -386,7 +408,22 @@ async def entrypoint(ctx: JobContext):
                         json={
                             "room_name": ctx.room.name,
                             "history": session.history.to_dict(),
-                            "captured_at": call_end_iso,
+                            "captured_at": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
+                    # Call Summary Webhook (NestJS)
+                    await client.post(
+                        f"{backend_url}/api/v1/webhooks/call-summary",
+                        json={
+                            "room_name": ctx.room.name,
+                            "history": session.history.to_dict(),
+                            "start_time": call_timing["start_time"].isoformat()
+                            if call_timing["start_time"]
+                            else None,
+                            "end_time": call_timing["end_time"].isoformat()
+                            if call_timing["end_time"]
+                            else None,
+                            "call_duration_seconds": call_duration_seconds,
                         },
                     )
                     # Call Completion Webhook
@@ -395,9 +432,6 @@ async def entrypoint(ctx: JobContext):
                         json={
                             "room_name": ctx.room.name,
                             "event_type": "call_completed",
-                            "call_duration_seconds": call_duration,
-                            "call_start_time": call_start_iso,
-                            "call_end_time": call_end_iso,
                         },
                     )
         except Exception as e:
@@ -408,6 +442,8 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(shutdown_cleanup)
 
+    # Start Session
+    session_start_time = time.time()
     await session.start(
         agent=Assistant(instructions=final_instructions, tools=all_tools),
         room=ctx.room,
@@ -427,6 +463,10 @@ async def entrypoint(ctx: JobContext):
                     if param_name not in handler.collected_data:
                         handler.collected_data[param_name] = phone_number
 
+    # Record call start time BEFORE greeting
+    call_timing["start_time"] = datetime.now(timezone.utc)
+    logger.info(f"📞 Call start time recorded: {call_timing['start_time'].isoformat()}")
+
     # Greet using session.say for better reliability on first message
     try:
         logger.info(f"🎤 Saying initial greeting: {custom_first_message}")
@@ -435,8 +475,10 @@ async def entrypoint(ctx: JobContext):
         logger.warning(f"Initial greeting failed: {e}")
         # Fallback to generate_reply if say fails
         try:
-            await session.generate_reply()
-        except:
+            await session.generate_reply(
+                instructions=f"Start by saying: '{custom_first_message}'"
+            )
+        except Exception:
             pass
 
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
