@@ -13,7 +13,7 @@ import {
 import { api, ApiError, SignUpRequest } from "@/lib/api"; // Ensure this path is correct
 
 import newlogo from "@/assets/newlogo.png";
-import wavewhite from "@/assets/Icons/wavewhite.jpeg";
+import wavewhite from "@/assets/Icons/wavewhite.png";
 import cristy from "@/assets/newlogo.png";
 
 
@@ -183,11 +183,11 @@ export default function SignUp() {
           <div className="flex-grow flex items-center justify-center">
             <div className="space-y-12 w-full max-w-lg">
               <div className="space-y-4">
-                <div className="mr-12">
+                <div>
                   <img
                     src={cristy.src}
                     alt="Company Logo"
-                    className="max-w-[250px] w-full h-auto -ml-3"
+                    className="max-w-[250px] w-full h-auto"
                   />
                 </div>
                 <h1 className="text-4xl font-extrabold text-gray-900 leading-snug">

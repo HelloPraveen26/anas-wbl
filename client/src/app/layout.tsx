@@ -45,14 +45,14 @@ import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "ZenVoice AI | Autonomous AI Voice Agents for Business",
+  title: "Hspsms| Autonomous AI Voice Agents for Business",
   description:
-    "ZenVoice provides human-like, autonomous AI voice agents for businesses. Automate customer support, telecalling, and more with our multilingual AI solutions.",
+    "Hspsmsprovides human-like, autonomous AI voice agents for businesses. Automate customer support, telecalling, and more with our multilingual AI solutions.",
 
   // 👇 ADD THIS
   openGraph: {
     siteName: "ZenVoice",
-    title: "ZenVoice AI | Autonomous AI Voice Agents for Business",
+    title: "Hspsms | Autonomous AI Voice Agents for Business",
     description:
       "ZenVoice provides human-like, autonomous AI voice agents for businesses. Automate customer support, telecalling, and more with our multilingual AI solutions.",
     url: "https://voice.zenxai.io",
