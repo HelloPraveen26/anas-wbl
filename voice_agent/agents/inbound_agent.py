@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
     NOT_GIVEN,
+    APIConnectOptions,
     Agent,
     AgentFalseInterruptionEvent,
     AgentSession,
@@ -27,6 +28,7 @@ from livekit.agents import (
     get_job_context,
     metrics,
 )
+from livekit.agents.voice.agent_session import SessionConnectOptions
 from livekit.plugins import silero
 from shared import (
     DEFAULT_INBOUND_PERSONALITY,
@@ -37,6 +39,10 @@ from shared import (
     ToolFactory,
     load_all_tools,
 )
+from shared.gemini_tool_call_fix import apply_gemini_3_1_patch
+
+# Apply Gemini 3.1 class-level patch (safe no-op if already applied or not using Google)
+apply_gemini_3_1_patch()
 
 logger = logging.getLogger("livekit.agents.inbound")
 load_dotenv(".env", override=True)
@@ -122,38 +128,29 @@ async def _fetch_assistant_config(
     assistant_id: str, assistant_phone_number: str, caller_phone: str
 ) -> dict | None:
     """Fetch full assistant config from dispatcher backend. Returns None on 404 or error."""
-    # Use 127.0.0.1 to avoid localhost resolution issues on Windows
-    backend_url = os.getenv("BACKEND_BASE_URL", "http://127.0.0.1:8000")
+    backend_url = os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            job_ctx = get_job_context()
-            room_name = job_ctx.room.name if job_ctx else "unknown"
-            
-            payload = {
-                "phoneNumber": caller_phone or "+0000000000",
-                "fromPhoneNumber": assistant_phone_number,
-                "selectedAssistant": assistant_id,
-                "sessionId": room_name,
-            }
-            logger.info(f"DEBUG: Initializing inbound call log in NestJS: {payload}")
             resp = await client.post(
                 f"{backend_url}/api/v1/phone/make_inbound_call",
-                json=payload,
+                json={
+                    "phoneNumber": caller_phone,
+                    "fromPhoneNumber": assistant_phone_number,
+                    "selectedAssistant": assistant_id,
+                },
             )
             if resp.status_code == 201:
+                logger.info(f"payload:{resp.json().get('config', {})}")
                 return resp.json().get("config", {})
-            else:
-                logger.warning(f"make_inbound_call returned {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
-        logger.error(f"❌ Connection error during assistant config fetch from {backend_url}: {e}")
+        logger.warning(f"Could not fetch assistant config for {assistant_id}: {e}")
     return None
 
 
 async def _fetch_caller_override(assistant_id: str, caller_phone: str) -> dict | None:
     """Fetch per-caller override from dispatcher backend. Returns None on 404 or error."""
     phone_key = caller_phone.replace("+", "").replace("-", "")
-    # FASTAPI_BASE_URL points to Dispatcher (port 8003) where /caller-override lives
-    backend_url = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8003")
+    backend_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.get(
@@ -225,14 +222,28 @@ async def entrypoint(ctx: JobContext):
         except Exception as e:
             logger.warning(f"Failed to parse room metadata: {e}")
 
-    # Layer 2: assistant config — fetched live from backend by assistant_id.
-    # Overrides dispatch-level values, so frontend can update config without recreating dispatch rules.
+    # Layer 2 + 3: Fetch assistant config and caller override concurrently.
+    # Also start tool loading in parallel (only needs assistant_id from dispatch metadata).
     assistant_id_from_dispatch = metadata.get("assistant_id")
     assistant_phone_number = metadata.get("phone_number")
     if assistant_id_from_dispatch:
-        assistant_cfg = await _fetch_assistant_config(
-            assistant_id_from_dispatch, assistant_phone_number, caller_phone
+        # Fire all HTTP requests concurrently
+        config_task = asyncio.create_task(
+            _fetch_assistant_config(
+                assistant_id_from_dispatch, assistant_phone_number, caller_phone
+            )
         )
+        override_task = (
+            asyncio.create_task(
+                _fetch_caller_override(assistant_id_from_dispatch, caller_phone)
+            )
+            if caller_phone
+            else None
+        )
+        tools_task = asyncio.create_task(load_all_tools(assistant_id_from_dispatch))
+
+        # Apply results in precedence order: assistant config, then caller override
+        assistant_cfg = await config_task
         if assistant_cfg:
             metadata = {**metadata, **assistant_cfg}
             logger.info(
@@ -243,17 +254,23 @@ async def entrypoint(ctx: JobContext):
                 f"No assistant config found for {assistant_id_from_dispatch}, using dispatch defaults"
             )
 
-    # Layer 3: per-caller override — optional, highest priority.
-    # Allows each client to personalise greetings and pre-fill tool fields per caller.
-    if assistant_id_from_dispatch and caller_phone:
-        caller_override = await _fetch_caller_override(
-            assistant_id_from_dispatch, caller_phone
-        )
-        if caller_override:
-            metadata = {**metadata, **caller_override}
-            logger.info(f"📦 Loaded caller override for {caller_phone}")
+        if override_task:
+            caller_override = await override_task
+            if caller_override:
+                metadata = {**metadata, **caller_override}
+                logger.info(f"📦 Loaded caller override for {caller_phone}")
+
+        tools_data = await tools_task
+    else:
+        tools_data = []
 
     logger.info(f"Metadata parsed in {time.time() - metadata_start:.2f}s")
+
+    # Handle nested config if present (from some dispatchers)
+    if "config" in metadata and isinstance(metadata["config"], dict):
+        logger.info("📦 Merging nested config into metadata")
+        config_data = metadata.pop("config")
+        metadata = {**config_data, **metadata}
 
     # Get dynamic parameters
     # Use caller_phone extracted from SIP participant above; fall back to metadata field
@@ -289,21 +306,18 @@ async def entrypoint(ctx: JobContext):
         )
         final_instructions += f"\n\n## Knowledge Base\nUse the following information to answer user questions:\n\n{knowledgebase_content}"
 
-    # Load tools
+    # Process pre-fetched tools
     tool_handlers = {}
-    if assistant_id:
-        logger.info("🔧 Loading tools for assistant...")
-        tools_data = await load_all_tools(assistant_id)
-        for cfg in tools_data:
-            name = cfg.get("toolName")
-            if name:
-                handler = DynamicToolHandler(cfg, assistant_id, metadata)
-                await handler.prepopulate_from_metadata()
-                tool_handlers[name] = handler
-                # Merge tool prompts into final instructions
-                tool_prompt = handler.get_tool_instructions()
-                if tool_prompt:
-                    final_instructions += tool_prompt
+    for cfg in tools_data:
+        name = cfg.get("toolName")
+        if name:
+            handler = DynamicToolHandler(cfg, assistant_id or assistant_id_from_dispatch, metadata)
+            await handler.prepopulate_from_metadata()
+            tool_handlers[name] = handler
+            # Merge tool prompts into final instructions
+            tool_prompt = handler.get_tool_instructions()
+            if tool_prompt:
+                final_instructions += tool_prompt
 
     # Initialize models via shared factory
     models_start = time.time()
@@ -345,7 +359,17 @@ async def entrypoint(ctx: JobContext):
             preemptive_generation=True,
         )
     else:
-        session = AgentSession(llm=llm)
+        gemini_conn_options = APIConnectOptions(
+            max_retry=5, retry_interval=2.0, timeout=15.0
+        )
+        session = AgentSession(
+            llm=llm,
+            vad=ctx.proc.userdata["vad"],
+            conn_options=SessionConnectOptions(
+                llm_conn_options=gemini_conn_options,
+                max_unrecoverable_errors=5,
+            ),
+        )
 
     @session.on("agent_false_interruption")
     def _on_agent_false_interruption(ev: AgentFalseInterruptionEvent):
@@ -410,42 +434,78 @@ async def entrypoint(ctx: JobContext):
 
         # 2. Transcript and Call Completion
         try:
-            if hasattr(session, "history"):
-                fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8003")
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    # Transcript
+            # Use session.history.to_dict() if available, fallback to chat_ctx
+            if hasattr(session, "history") and hasattr(session.history, "to_dict"):
+                history_items = session.history.to_dict().get("items", [])
+                logger.info(f"📊 Captured {len(history_items)} history items from session.history")
+            elif hasattr(session, "chat_ctx") and hasattr(session.chat_ctx, "messages"):
+                chat_ctx = session.chat_ctx
+                history_items = []
+                for m in chat_ctx.messages:
+                    role_str = str(m.role).lower()
+                    if "user" in role_str: role_str = "user"
+                    elif "assistant" in role_str: role_str = "assistant"
+                    history_items.append({
+                        "id": getattr(m, "id", f"msg_{int(time.time()*1000)}"),
+                        "type": "message",
+                        "role": role_str,
+                        "content": [str(m.content)] if not isinstance(m.content, list) else [str(c) for c in m.content],
+                        "interrupted": False
+                    })
+                logger.info(f"📊 Captured {len(history_items)} history items from session.chat_ctx")
+            else:
+                logger.warning("⚠️ Could not find session.history or session.chat_ctx")
+                history_items = []
+            # Write to temp file for debugging since terminal is not working
+            try:
+                import json
+                with open("d:/newfixed/debug_history.json", "w") as f:
+                    json.dump({
+                        "session_type": str(type(session)),
+                        "has_chat_ctx": hasattr(session, "chat_ctx"),
+                        "history_count": len(history_items),
+                        "history": history_items,
+                        "metadata": metadata
+                    }, f, indent=2)
+                logger.info("DEBUG: Wrote history to d:/newfixed/debug_history.json")
+            except Exception as e:
+                logger.error(f"DEBUG: Failed to write debug file: {e}")
+
+            # Always send summary to update duration/status, even if history is empty
+            fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8003")
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                # Transcript (only if there are messages)
+                if history_items:
                     await client.post(
                         f"{fastapi_url}/transcript/{ctx.room.name}",
                         json={
                             "room_name": ctx.room.name,
-                            "history": session.history.to_dict(),
+                            "history": {"items": history_items},
                             "captured_at": datetime.now(timezone.utc).isoformat(),
                         },
                     )
-                    await client.post(
-                        "http://localhost:8000/api/v1/webhooks/call-summary",
-                        json={
-                            "room_name": ctx.room.name,
-                            "history": session.history.to_dict(),
-                            "start_time": call_timing["start_time"].isoformat()
-                            if call_timing["start_time"]
-                            else None,
-                            "end_time": call_timing["end_time"].isoformat()
-                            if call_timing["end_time"]
-                            else None,
-                            "call_duration_seconds": call_duration_seconds,
-                            "call_log_id": call_log_id,
-                            "type": "inbound",
-                        },
-                    )
-                    # Call Completion Webhook
-                    await client.post(
-                        f"{fastapi_url}/webhook",
-                        json={
-                            "room_name": ctx.room.name,
-                            "event_type": "call_completed",
-                        },
-                    )
+                
+                # Call Summary Hook (Always)
+                await client.post(
+                    "http://localhost:8000/api/v1/webhooks/call-summary",
+                    json={
+                        "room_name": ctx.room.name,
+                        "history": {"items": history_items},
+                        "start_time": (call_timing["start_time"] or datetime.now(timezone.utc)).isoformat(),
+                        "end_time": (call_timing["end_time"] or datetime.now(timezone.utc)).isoformat(),
+                        "call_duration_seconds": call_duration_seconds or 0,
+                        "call_log_id": call_log_id,
+                        "type": "inbound",
+                    },
+                )
+                # Call Completion Webhook
+                await client.post(
+                    f"{fastapi_url}/webhook",
+                    json={
+                        "room_name": ctx.room.name,
+                        "event_type": "call_completed",
+                    },
+                )
         except Exception as e:
             logger.error(f"Persistence error: {e}")
 
@@ -456,6 +516,11 @@ async def entrypoint(ctx: JobContext):
 
     # Start Session
     session_start_time = time.time()
+    # Set start_time immediately for inbound as participant is already here
+    if not call_timing["start_time"]:
+        call_timing["start_time"] = datetime.now(timezone.utc)
+        logger.info(f"📞 Inbound call start time recorded: {call_timing['start_time'].isoformat()}")
+
     await session.start(
         agent=Assistant(instructions=final_instructions, tools=all_tools),
         room=ctx.room,
@@ -476,16 +541,12 @@ async def entrypoint(ctx: JobContext):
                         handler.collected_data[param_name] = phone_number
 
     # Greet (participant already connected — wait was done before model init)
-    call_timing["start_time"] = datetime.now(timezone.utc)
-    logger.info(f"📞 Call start time recorded: {call_timing['start_time'].isoformat()}")
-    try:
-        await session.generate_reply(
-            instructions=f"Start by saying: '{custom_first_message}'"
-        )
-    except Exception as e:
-        logger.warning(f"Initial greeting failed: {e}")
-
     logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
+
+    # Fire-and-forget greeting — generate_reply returns a SpeechHandle, not a coroutine
+    session.generate_reply(
+        instructions=f"Start by saying: '{custom_first_message}'"
+    )
 
     # Call Safeguards
     last_user_activity = time.time()
@@ -549,6 +610,7 @@ if __name__ == "__main__":
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
             agent_name="inbound-agent",
+            num_idle_processes=1,
             port=8081,
         )
     )

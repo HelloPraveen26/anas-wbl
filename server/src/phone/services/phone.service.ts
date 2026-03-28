@@ -312,6 +312,7 @@ After collecting all required information, the system will automatically process
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
         ...(dto.selectedAssistant && { assistant_id: dto.selectedAssistant }),
+        ...(callLogId && { call_log_id: callLogId }),
         ...(webhookUrl && { webhook_url: webhookUrl }),
         ...(Object.keys(customMetadata).length > 0 && {
           metadata: customMetadata,
@@ -343,6 +344,7 @@ After collecting all required information, the system will automatically process
       if (data.room_name && callLogId) {
         await this.callLogsService.update(callLogId, {
           sessionId: data.room_name,
+          roomName: data.room_name,
           callStatus: "In Progress",
         });
       }
@@ -359,7 +361,7 @@ After collecting all required information, the system will automatically process
       if (callLogId) {
         try {
           await this.callLogsService.update(callLogId, {
-            callStatus: "fail",
+            callStatus: "failed",
           });
         } catch (logError) {
           this.logger.error(
@@ -574,6 +576,7 @@ After collecting all required information, the system will automatically process
         callStatus: "In Progress",
         startTime: new Date(),
         sessionId: dto.sessionId,
+        roomName: dto.sessionId,
       });
       callLogId = initialCallLog.id;
 
@@ -662,6 +665,7 @@ After collecting all required information, the system will automatically process
         ...(sttConfig && { stt_config: sttConfig }),
         ...(ttsConfig && { tts_config: ttsConfig }),
         ...(dto.selectedAssistant && { assistant_id: dto.selectedAssistant }),
+        ...(callLogId && { call_log_id: callLogId }),
         ...(webhookUrl && { webhook_url: webhookUrl }),
         ...(Object.keys(sipHeaders).length > 0 && { sip_headers: sipHeaders }),
         ...(knowledgebaseFilePaths.length > 0 && {
@@ -687,7 +691,7 @@ After collecting all required information, the system will automatically process
       if (callLogId) {
         try {
           await this.callLogsService.update(callLogId, {
-            callStatus: "fail",
+            callStatus: "failed",
           });
         } catch (logError) {
           this.logger.error(

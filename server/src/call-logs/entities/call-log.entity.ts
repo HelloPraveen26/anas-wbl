@@ -22,6 +22,9 @@ export class CallLog {
   @Index({ unique: true, where: "session_id IS NOT NULL" })
   sessionId: string;
 
+  @Column({ name: "room_name", nullable: true })
+  roomName: string;
+
   @Column({ name: "assistant_id", type: "uuid" })
   assistantId: string;
 
@@ -48,8 +51,6 @@ export class CallLog {
   @Column({ name: "call_status", nullable: true })
   callStatus: string; // completed | failed | missed | In Progress
 
-  @Column({ name: "success_evaluation", nullable: true })
-  successEvaluation: string;
 
   @Column({ name: "start_time", type: "timestamp", nullable: true })
   startTime: Date;

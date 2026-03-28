@@ -19,7 +19,7 @@ from livekit.api import AccessToken, RoomAgentDispatch, RoomConfiguration, Video
 
 load_dotenv("agents/.env", override=True)
 
-AGENT_NAME = "outbound-caller"
+AGENT_NAME = "hexite-outbound-caller"
 
 PROVIDER_PRESETS: dict[str, dict] = {
     "nova-sonic": {
@@ -34,13 +34,37 @@ PROVIDER_PRESETS: dict[str, dict] = {
     },
     "elevenlabs": {
         "tts_provider_name": "ElevenLabs",
-        "tts_config": {"voice_id": "EXAVITQu4vr4xnSDxMaL", "model": "eleven_flash_v2_5"},
+        "tts_config": {
+            "voice_id": "EXAVITQu4vr4xnSDxMaL",
+            "model": "eleven_flash_v2_5",
+        },
         "instructions": "You are a helpful voice assistant. Be concise and friendly.",
         "first_message": "Hello! How can I help you?",
     },
-    "gemini": {
+    "gemini-2.5-09": {
         "realtime_provider_name": "Gemini Realtime",
-        "realtime_model_config": {"voice": "Puck"},
+        "realtime_model_config": {
+            "voice": "Puck",
+            "model": "gemini-2.5-flash-native-audio-preview-09-2025",
+        },
+        "instructions": "You are a helpful voice assistant. Be concise and friendly.",
+        "first_message": "Hello! How can I help you?",
+    },
+    "gemini-2.5-12": {
+        "realtime_provider_name": "Gemini Realtime",
+        "realtime_model_config": {
+            "voice": "Puck",
+            "model": "gemini-2.5-flash-native-audio-preview-12-2025",
+        },
+        "instructions": "You are a helpful voice assistant. Be concise and friendly.",
+        "first_message": "Hello! How can I help you?",
+    },
+    "gemini-3.1": {
+        "realtime_provider_name": "Gemini Realtime",
+        "realtime_model_config": {
+            "voice": "Puck",
+            "model": "gemini-3.1-flash-live-preview",
+        },
         "instructions": "You are a helpful voice assistant. Be concise and friendly.",
         "first_message": "Hello! How can I help you?",
     },
@@ -101,9 +125,17 @@ def main() -> None:
         choices=list(PROVIDER_PRESETS.keys()),
         help="Provider preset (default: nova-sonic)",
     )
-    parser.add_argument("--room", default=None, help="Room name (auto-generated if omitted)")
-    parser.add_argument("--identity", default=None, help="Participant identity (auto-generated if omitted)")
-    parser.add_argument("--ttl", type=int, default=24, help="Token TTL in hours (default: 24)")
+    parser.add_argument(
+        "--room", default=None, help="Room name (auto-generated if omitted)"
+    )
+    parser.add_argument(
+        "--identity",
+        default=None,
+        help="Participant identity (auto-generated if omitted)",
+    )
+    parser.add_argument(
+        "--ttl", type=int, default=24, help="Token TTL in hours (default: 24)"
+    )
     args = parser.parse_args()
 
     result = generate_token(
@@ -119,6 +151,3 @@ def main() -> None:
     print(f"Identity: {result['identity']}")
     print(f"\n{result['url']}\n")
 
-
-if __name__ == "__main__":
-    main()

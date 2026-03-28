@@ -29,6 +29,7 @@ interface Assistant {
 
 interface CallLog {
   id: string;
+  roomName?: string;
   sessionId?: string;
   assistantId: string;
   assistantName?: string;
@@ -36,9 +37,8 @@ interface CallLog {
   customerPhone: string;
   type: string;
   callStatus: string;
-  successEvaluation?: string;
   startTime: string;
-  duration: string; // Duration in milliseconds from API
+  duration: string;
   cost: number;
   createdAt: string;
 }
@@ -59,7 +59,6 @@ interface CallLogsResponse {
 
 export default function CallLogsPage() {
   const [statusFilter, setStatusFilter] = useState("");
-  const [evaluationFilter, setEvaluationFilter] = useState("");
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -205,8 +204,6 @@ export default function CallLogsPage() {
     if (statusFilter) {
       filters.callStatus = statusFilter;
     }
-    // Note: We're not using evaluationFilter for API calls as it's not a direct filter
-    // The evaluation filter will be applied client-side for now
     return filters;
   };
 
@@ -245,21 +242,10 @@ export default function CallLogsPage() {
     };
   }, [currentPage, statusFilter, fetchCallLogs]);
 
-  // Filter calls client-side by evaluation (since this isn't a server filter)
-  const filteredCalls = callLogs.filter((call) => {
-    const evaluationMatch =
-      !evaluationFilter ||
-      (call.successEvaluation
-        ? call.successEvaluation
-            .toLowerCase()
-            .includes(evaluationFilter.toLowerCase())
-        : false);
-    return evaluationMatch;
-  });
-
   // Use pagination from API response
   const totalPages = pagination?.totalPages || 1;
-  const paginatedCalls = filteredCalls;
+  const paginatedCalls = callLogs;
+  const filteredCalls = callLogs;
 
   // Reset to first page when status filter changes (evaluation filter is client-side only)
   useEffect(() => {
@@ -319,15 +305,15 @@ export default function CallLogsPage() {
 
   const exportToCSV = () => {
     const headers = [
-      "Call ID",
+      "Room Name",
+      "Assistant ID",
       "Assistant",
       "Assistant Phone",
       "Customer Phone",
       "Type",
       "Call Status",
-      "Success Evaluation",
       "Start Time",
-      "Duration (seconds)",
+      "Duration",
       "Cost",
     ];
 
@@ -335,13 +321,13 @@ export default function CallLogsPage() {
       headers.join(","),
       ...filteredCalls.map((call) =>
         [
-          `"${call.id}"`,
+          `"${call.roomName ?? call.sessionId ?? ""}"`,
+          `"${call.assistantId}"`,
           `"${call.assistantName ?? ""}"`,
           `"${call.assistantPhone}"`,
           `"${call.customerPhone}"`,
           `"${call.type}"`,
           `"${call.callStatus}"`,
-          `"${call.successEvaluation ? call.successEvaluation.replace(/"/g, '""') : ""}"`,
           `"${call.startTime}"`,
           `"${call.duration}"`,
           call.cost,
@@ -439,22 +425,6 @@ export default function CallLogsPage() {
           </select>
         </div>
 
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Success Evaluation
-          </label>
-          <select
-            value={evaluationFilter}
-            onChange={(e) => setEvaluationFilter(e.target.value)}
-            className="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
-          >
-            <option value="">All Evaluations</option>
-            <option value="pass">Pass</option>
-            <option value="fail">Fail</option>
-            <option value="timeout">Timeout</option>
-            <option value="n/a">N/A</option>
-          </select>
-        </div>
       </div>
 
       {/* Table */}
@@ -464,6 +434,9 @@ export default function CallLogsPage() {
             <tr>
               <th className="px-4 py-3 text-left border-b">
                 <input type="checkbox" className="rounded" />
+              </th>
+              <th className="px-4 py-3 text-left border-b font-medium">
+                Room Name
               </th>
               <th className="px-4 py-3 text-left border-b font-medium">
                 Assistant ID
@@ -482,9 +455,6 @@ export default function CallLogsPage() {
                 Call Status
               </th>
               <th className="px-4 py-3 text-left border-b font-medium">
-                Evaluation
-              </th>
-              <th className="px-4 py-3 text-left border-b font-medium">
                 Start Time
               </th>
               <th className="px-4 py-3 text-left border-b font-medium">
@@ -497,7 +467,7 @@ export default function CallLogsPage() {
             {paginatedCalls.length === 0 ? (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={10}
                   className="px-4 py-8 text-center text-gray-500"
                 >
                   No call logs match the selected filters.
@@ -511,6 +481,9 @@ export default function CallLogsPage() {
                 >
                   <td className="px-4 py-3 border-b">
                     <input type="checkbox" className="rounded" />
+                  </td>
+                  <td className="px-4 py-3 border-b font-mono text-xs">
+                    {call.roomName ?? call.sessionId ?? "N/A"}
                   </td>
                   <td
                     className="px-4 py-3 border-b font-mono text-xs"
@@ -542,9 +515,6 @@ export default function CallLogsPage() {
                     >
                       {call.callStatus}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 border-b">
-                    {call.successEvaluation ?? ""}
                   </td>
                   <td className="px-4 py-3 border-b text-xs">
                     {formatStartTime(call.startTime)}

@@ -13,43 +13,54 @@ export class GeminiRealtimeSeed {
     const realtimeModelRepository = dataSource.getRepository(RealtimeModel);
     const realtimeConfigRepository = dataSource.getRepository(RealtimeConfig);
 
-    // Check if Gemini Realtime provider already exists
-    const existingProvider = await realtimeProviderRepository.findOne({
+    // Get or create Gemini Realtime provider
+    let geminiRealtimeProvider = await realtimeProviderRepository.findOne({
       where: { name: "Gemini Realtime" },
     });
 
-    if (existingProvider) {
-      console.log("Gemini Realtime provider already exists, skipping seed...");
-      return;
-    }
-
-    // Create Gemini Realtime provider
-    const geminiRealtimeProvider = realtimeProviderRepository.create({
-      name: "Gemini Realtime",
-      isActive: true,
-    });
-    await realtimeProviderRepository.save(geminiRealtimeProvider);
-    console.log("Gemini Realtime provider created successfully!");
-
-    // Create Gemini Realtime models
-    const modelNames = [
-      "gemini-2.5-flash-native-audio-preview-09-2025",
-      "gemini-2.0-flash-live-001",
-      "gemini-live-2.5-flash-preview",
-      "gemini-2.0-flash-exp",
-      "gemini-2.5-flash-native-audio-preview-12-2025",
-    ];
-
-    const createdModels = [];
-    for (const modelName of modelNames) {
-      const geminiModel = realtimeModelRepository.create({
-        name: modelName,
-        realtimeProvider: geminiRealtimeProvider,
+    if (!geminiRealtimeProvider) {
+      geminiRealtimeProvider = realtimeProviderRepository.create({
+        name: "Gemini Realtime",
         isActive: true,
       });
-      await realtimeModelRepository.save(geminiModel);
-      createdModels.push(geminiModel);
-      console.log(`Gemini Realtime model '${modelName}' created successfully!`);
+      await realtimeProviderRepository.save(geminiRealtimeProvider);
+      console.log("Gemini Realtime provider created successfully!");
+    } else {
+      console.log("Gemini Realtime provider already exists, updating models...");
+    }
+
+    // Requested Model Whitelist
+    const modelNames = [
+      "gemini-2.5-flash-native-audio-preview-09-2025",
+      "gemini-2.5-flash-native-audio-preview-12-2025",
+      "gemini-3.1-flash-live-preview",
+    ];
+
+    // 1. Deactivate all existing models for this provider first to ensure a clean state
+    await realtimeModelRepository.update(
+      { realtimeProvider: { id: geminiRealtimeProvider.id } },
+      { isActive: false }
+    );
+
+    // 2. Ensure each model in the whitelist exists and is active
+    for (const modelName of modelNames) {
+      let geminiModel = await realtimeModelRepository.findOne({
+        where: { name: modelName, realtimeProvider: { id: geminiRealtimeProvider.id } },
+      });
+
+      if (geminiModel) {
+        geminiModel.isActive = true;
+        await realtimeModelRepository.save(geminiModel);
+        console.log(`Gemini Realtime model '${modelName}' reactivated.`);
+      } else {
+        geminiModel = realtimeModelRepository.create({
+          name: modelName,
+          realtimeProvider: geminiRealtimeProvider,
+          isActive: true,
+        });
+        await realtimeModelRepository.save(geminiModel);
+        console.log(`Gemini Realtime model '${modelName}' created successfully!`);
+      }
     }
 
     // Voice options for select type
@@ -86,7 +97,13 @@ export class GeminiRealtimeSeed {
       { displayName: "Sulafat (Warm)", value: "Sulafat" },
     ];
 
-    // Create Voice config
+    // Delete existing Voice configs to prevent duplicates
+    await realtimeConfigRepository.delete({
+      key: "voice",
+      realtimeProvider: { id: geminiRealtimeProvider.id },
+    });
+
+    // Create unique Voice config
     const voiceConfig = realtimeConfigRepository.create({
       label: "Voice",
       key: "voice",
@@ -97,7 +114,7 @@ export class GeminiRealtimeSeed {
       realtimeProvider: geminiRealtimeProvider,
     });
     await realtimeConfigRepository.save(voiceConfig);
-    console.log("Voice config created successfully!");
+    console.log("Voice config synchronized successfully!");
 
     const languageOptions = [
       { displayName: "Hindi", value: "hi-IN" },
@@ -107,7 +124,13 @@ export class GeminiRealtimeSeed {
       { displayName: "English (India)", value: "en-IN" },
     ];
 
-    // Create Language config
+    // Delete existing Language configs to prevent duplicates
+    await realtimeConfigRepository.delete({
+      key: "language",
+      realtimeProvider: { id: geminiRealtimeProvider.id },
+    });
+
+    // Create unique Language config
     const languageConfig = realtimeConfigRepository.create({
       label: "Language",
       key: "language",
@@ -118,7 +141,7 @@ export class GeminiRealtimeSeed {
       realtimeProvider: geminiRealtimeProvider,
     });
     await realtimeConfigRepository.save(languageConfig);
-    console.log("Language config created successfully!");
+    console.log("Language config synchronized successfully!");
 
     console.log("Gemini Realtime configs have been seeded successfully!");
     console.log("Created 1 realtime provider (Gemini Realtime)");

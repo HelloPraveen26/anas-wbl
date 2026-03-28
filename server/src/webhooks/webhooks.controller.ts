@@ -169,57 +169,47 @@ export class WebhooksController {
           .filter(
             (item) =>
               item.role !== undefined &&
-              item.content !== undefined &&
-              item.interrupted !== undefined,
+              item.content !== undefined,
           )
           .map((item) => ({
             role: item.role,
             content: Array.isArray(item.content)
               ? item.content.join(" ")
               : item.content,
-            interrupted: item.interrupted,
+            interrupted: item.interrupted ?? false,
           }));
 
         this.logger.log(
           `📊 Processed history count: ${processedHistory.length}`,
         );
-        if (processedHistory.length <= 1) {
-          const durationInSeconds = 0;
-          const costInRupees = 0;
+        this.logger.log(
+          `📊 Raw call_duration_seconds from agent: ${callSummary.call_duration_seconds}`,
+        );
+        let durationInSeconds = Math.round(
+          Number(callSummary.call_duration_seconds) || 0,
+        );
+        let costInRupees = (durationInSeconds * 3.85) / 60;
 
-          await this.callLogsService.update(callLog.id, {
-            duration: durationInSeconds,
-            cost: costInRupees,
-            callStatus: "failed",
-            sessionId: callSummary.room_name,
-          });
-          this.logger.log(
-            `⚠️ Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees}, status: failed (insufficient history)`,
-          );
+        // Mark as completed if we have some significant duration (> 2 seconds)
+        // This relies on the agent's start_time logic which only records after connection.
+        const finalStatus =
+          durationInSeconds > 2
+            ? "completed"
+            : "failed";
 
-          this.logger.log(
-            `ℹ️ Skipping credit deduction due to insufficient conversation history`,
-          );
+        await this.callLogsService.update(callLog.id, {
+          duration: durationInSeconds,
+          cost: costInRupees,
+          callStatus: finalStatus,
+          sessionId: callSummary.room_name,
+          roomName: callSummary.room_name,
+        });
 
-          this.logger.log(
-            `ℹ️ Skipping chat log save due to insufficient conversation history`,
-          );
-        } else {
-          const durationInSeconds = Math.round(
-            callSummary.call_duration_seconds,
-          );
-          const costInRupees = (durationInSeconds * 3.85) / 60;
+        this.logger.log(
+          `${finalStatus === "completed" ? "✅" : "⚠️"} Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees.toFixed(4)}, status: ${finalStatus}`,
+        );
 
-          await this.callLogsService.update(callLog.id, {
-            duration: durationInSeconds,
-            cost: costInRupees,
-            callStatus: "completed",
-            sessionId: callSummary.room_name,
-          });
-          this.logger.log(
-            `✅ Updated call log ${callLog.id} with duration: ${durationInSeconds}s, cost: ₹${costInRupees.toFixed(4)}, status: completed`,
-          );
-
+        if (finalStatus === "completed") {
           try {
             const user = await this.usersService.findById(callLog.userId);
             const currentCredits = Number(user.credits);
@@ -237,10 +227,11 @@ export class WebhooksController {
           } catch (creditError) {
             this.logger.error(
               `❌ Error deducting credits from user ${callLog.userId}: ${creditError.message}`,
-              creditError.stack,
             );
           }
+        }
 
+        if (processedHistory.length > 0) {
           try {
             await this.chatLogsService.create({
               callLogId: callLog.id,

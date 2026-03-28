@@ -3,6 +3,8 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
+from google.genai import types as gemini_types
+from livekit.agents import APIConnectOptions
 from livekit.plugins import (
     azure,
     deepgram,
@@ -73,22 +75,65 @@ class ModelProvider:
     def _create_gemini_realtime_llm(config: Optional[Dict], instructions: Optional[str]):
         voice = (config or {}).get("voice") or "Puck"
         logger.info(f"Realtime Voice: {voice}")
-        model = (config or {}).get(
-            "model"
-        ) or "gemini-2.5-flash-native-audio-preview-12-2025"
+        model = (config or {}).get("model") or "gemini-3.1-flash-live-preview"
+        allowed_models = [
+            "gemini-2.5-flash-native-audio-preview-09-2025",
+            "gemini-2.5-flash-native-audio-preview-12-2025",
+            "gemini-3.1-flash-live-preview",
+        ]
+        
+        # Fallback logic: if requested model is not in whitelist, default to 3.1
+        if model not in allowed_models:
+            logger.warning(f"Requested model '{model}' is not in whitelist. Falling back to 'gemini-3.1-flash-live-preview'.")
+            model = "gemini-3.1-flash-live-preview"
 
-        # Safety: Override failing model
-        if model == "gemini-2.0-flash-live-001":
-            logger.warning(f"⚠️ Model '{model}' failed previously. Overriding to preview version.")
-            model = "gemini-2.5-flash-native-audio-preview-12-2025"
+        language = (config or {}).get("language", "en-US")
+        logger.info(f"Realtime Model: {model}, Language: {language}")
 
-        logger.info(f"Realtime Model: {model}")
-        return google.realtime.RealtimeModel(
-            model=model,
-            voice=voice,
-            temperature=0.4,
-            instructions=instructions,
+        # Resilient connection options for Gemini Realtime (transient 1011 errors)
+        gemini_conn_options = APIConnectOptions(
+            max_retry=5, retry_interval=2.0, timeout=15.0
         )
+
+        is_3_1 = "3.1" in model
+
+        # Base kwargs shared by all Gemini realtime models
+        kwargs: Dict[str, Any] = {
+            "model": model,
+            "voice": voice,
+            "language": language,
+            "temperature": 0.4,
+            "instructions": instructions,
+            "input_audio_transcription": gemini_types.AudioTranscriptionConfig(),
+            # Gemini VAD tuning for customer calls:
+            # - HIGH start sensitivity: quickly detect customer speech
+            # - HIGH end sensitivity + 500ms silence: respond quickly in
+            #   fast-paced business calls without awkward pauses
+            "realtime_input_config": gemini_types.RealtimeInputConfig(
+                automatic_activity_detection=gemini_types.AutomaticActivityDetection(
+                    start_of_speech_sensitivity=gemini_types.StartSensitivity.START_SENSITIVITY_HIGH,
+                    end_of_speech_sensitivity=gemini_types.EndSensitivity.END_SENSITIVITY_HIGH,
+                    silence_duration_ms=500,
+                ),
+            ),
+            "conn_options": gemini_conn_options,
+        }
+
+        # 2.5 Flash supports these extended features; 3.1 Flash has not been
+        # confirmed to support them yet — start conservatively and add back
+        # once validated.
+        if not is_3_1:
+            kwargs["proactivity"] = True
+            kwargs["enable_affective_dialog"] = True
+            # Cap conversation context to prevent latency growth over time.
+            # System instructions are excluded from this limit.
+            # ~4k tokens ≈ last 2-3 Q&A exchanges for Gemini audio.
+            kwargs["context_window_compression"] = gemini_types.ContextWindowCompressionConfig(
+                sliding_window=gemini_types.SlidingWindow(target_tokens=4096),
+            )
+            kwargs["session_resumption"] = gemini_types.SessionResumptionConfig(transparent=True)
+
+        return google.realtime.RealtimeModel(**kwargs)
 
     @staticmethod
     def _create_groq_llm(config: Optional[Dict]):

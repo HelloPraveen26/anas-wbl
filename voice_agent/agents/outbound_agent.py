@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
     NOT_GIVEN,
+    APIConnectOptions,
     Agent,
     AgentFalseInterruptionEvent,
     AgentSession,
@@ -27,6 +28,7 @@ from livekit.agents import (
     get_job_context,
     metrics,
 )
+from livekit.agents.voice.agent_session import SessionConnectOptions
 from livekit.plugins import silero
 from shared import (
     DEFAULT_OUTBOUND_PERSONALITY,
@@ -37,6 +39,10 @@ from shared import (
     ToolFactory,
     load_all_tools,
 )
+from shared.gemini_tool_call_fix import apply_gemini_3_1_patch
+
+# Apply Gemini 3.1 class-level patch (safe no-op if already applied or not using Google)
+apply_gemini_3_1_patch()
 
 logger = logging.getLogger("outbound-agent")
 load_dotenv(".env", override=True)
@@ -158,6 +164,7 @@ async def entrypoint(ctx: JobContext):
     tts_config = metadata.get("tts_config")
     assistant_id = metadata.get("assistant_id")
     knowledgebase_content = metadata.get("knowledgebase_content")
+    call_log_id = metadata.get("call_log_id") or metadata.get("config", {}).get("call_log_id")
 
     # Merge instructions (Personality + Metadata + Tools)
     final_instructions = DEFAULT_OUTBOUND_PERSONALITY
@@ -227,7 +234,17 @@ async def entrypoint(ctx: JobContext):
             preemptive_generation=True,
         )
     else:
-        session = AgentSession(llm=llm)
+        gemini_conn_options = APIConnectOptions(
+            max_retry=5, retry_interval=2.0, timeout=15.0
+        )
+        session = AgentSession(
+            llm=llm,
+            vad=ctx.proc.userdata["vad"],
+            conn_options=SessionConnectOptions(
+                llm_conn_options=gemini_conn_options,
+                max_unrecoverable_errors=5,
+            ),
+        )
 
     @session.on("agent_false_interruption")
     def _on_agent_false_interruption(ev: AgentFalseInterruptionEvent):
@@ -248,10 +265,6 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(log_usage)
 
-    # Start Session
-    session_start_time = time.time()
-    call_start_iso = datetime.now(timezone.utc).isoformat()
-    
     # Transcript Sync
     @session.on("agent_state_changed")
     def _on_state_change(state):
@@ -268,42 +281,106 @@ async def entrypoint(ctx: JobContext):
                 ):
                     asyncio.create_task(handler.add_to_transcript(role, content))
 
+    # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
+    call_timing = {"start_time": None, "end_time": None}
+
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
-        logger.info(f"📞 DEBUG: Call ending for room {ctx.room.name} - syncing webhooks...")
-        call_end_time = time.time()
-        call_end_iso = datetime.now(timezone.utc).isoformat()
-        call_duration = call_end_time - session_start_time
-        
+        logger.info("📞 Call ending - syncing webhooks...")
+
+        # Compute call timing
+        call_timing["end_time"] = datetime.now(timezone.utc)
+        call_duration_seconds = None
+        if call_timing["start_time"]:
+            call_duration_seconds = round(
+                (call_timing["end_time"] - call_timing["start_time"]).total_seconds(), 2
+            )
+            logger.info(
+                f"📊 Call duration: {call_duration_seconds}s "
+                f"(start={call_timing['start_time'].isoformat()}, "
+                f"end={call_timing['end_time'].isoformat()})"
+            )
+        else:
+            logger.warning(
+                "Call start time was never recorded (participant may not have connected)"
+            )
         # 1. Tool-specific webhooks
         tool_tasks = [h.send_to_webhook(is_final=True) for h in tool_handlers.values()]
 
         # 2. Transcript and Call Completion
         try:
-            if hasattr(session, "history"):
-                # Use 127.0.0.1 to avoid localhost resolution issues on Windows
-                fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8003")
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    # Transcript
+            # Use session.history.to_dict() if available, fallback to chat_ctx
+            if hasattr(session, "history") and hasattr(session.history, "to_dict"):
+                history_items = session.history.to_dict().get("items", [])
+                logger.info(f"📊 Captured {len(history_items)} history items from session.history")
+            elif hasattr(session, "chat_ctx") and hasattr(session.chat_ctx, "messages"):
+                chat_ctx = session.chat_ctx
+                history_items = []
+                for m in chat_ctx.messages:
+                    role_str = str(m.role).lower()
+                    if "user" in role_str: role_str = "user"
+                    elif "assistant" in role_str: role_str = "assistant"
+                    history_items.append({
+                        "id": getattr(m, "id", f"msg_{int(time.time()*1000)}"),
+                        "type": "message",
+                        "role": role_str,
+                        "content": [str(m.content)] if not isinstance(m.content, list) else [str(c) for c in m.content],
+                        "interrupted": False
+                    })
+                logger.info(f"📊 Captured {len(history_items)} history items from session.chat_ctx")
+            else:
+                logger.warning("⚠️ Could not find session.history or session.chat_ctx")
+                history_items = []
+            # Write to temp file for debugging since terminal is not working
+            try:
+                import json
+                with open("d:/newfixed/debug_history_outbound.json", "w") as f:
+                    json.dump({
+                        "session_type": str(type(session)),
+                        "has_chat_ctx": hasattr(session, "chat_ctx"),
+                        "history_count": len(history_items),
+                        "history": history_items,
+                        "metadata": metadata
+                    }, f, indent=2)
+                logger.info("DEBUG: Wrote history to d:/newfixed/debug_history_outbound.json")
+            except Exception as e:
+                logger.error(f"DEBUG: Failed to write debug file: {e}")
+
+            # Always send summary to update duration/status, even if history is empty
+            fastapi_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8003")
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                # Transcript (only if messages exist)
+                if history_items:
                     await client.post(
                         f"{fastapi_url}/transcript/{ctx.room.name}",
                         json={
                             "room_name": ctx.room.name,
-                            "history": session.history.to_dict(),
-                            "captured_at": call_end_iso,
+                            "history": {"items": history_items},
+                            "captured_at": datetime.now(timezone.utc).isoformat(),
                         },
                     )
-                    # Call Completion Webhook
-                    await client.post(
-                        f"{fastapi_url}/webhook",
-                        json={
-                            "room_name": ctx.room.name,
-                            "event_type": "call_completed",
-                            "call_duration_seconds": call_duration,
-                            "call_start_time": call_start_iso,
-                            "call_end_time": call_end_iso,
-                        },
-                    )
+                
+                # Call Summary Hook (Always)
+                await client.post(
+                    "http://localhost:8000/api/v1/webhooks/call-summary",
+                    json={
+                        "room_name": ctx.room.name,
+                        "history": {"items": history_items},
+                        "start_time": (call_timing["start_time"] or datetime.now(timezone.utc)).isoformat(),
+                        "end_time": (call_timing["end_time"] or datetime.now(timezone.utc)).isoformat(),
+                        "call_duration_seconds": call_duration_seconds or 0,
+                        "call_log_id": call_log_id,
+                        "type": "outbound",
+                    },
+                )
+                # Call Completion Webhook
+                await client.post(
+                    f"{fastapi_url}/webhook",
+                    json={
+                        "room_name": ctx.room.name,
+                        "event_type": "call_completed",
+                    },
+                )
         except Exception as e:
             logger.error(f"Persistence error: {e}")
 
@@ -312,6 +389,22 @@ async def entrypoint(ctx: JobContext):
 
     ctx.add_shutdown_callback(shutdown_cleanup)
 
+    # Start session and wait for participant concurrently (no data dependency)
+    session_start_time = time.time()
+    participant_task = asyncio.create_task(_wait_for_participant(ctx.room))
+
+    # Set start_time when participant connects to ensure accurate timing
+    async def _on_participant_ready():
+        await participant_task
+        if not call_timing["start_time"]:
+            call_timing["start_time"] = datetime.now(timezone.utc)
+            logger.info(f"📞 Participant connected, start time recorded: {call_timing['start_time'].isoformat()}")
+
+    # Start timing task in background
+    asyncio.create_task(_on_participant_ready())
+
+    # Start session
+    logger.info("Starting agent session...")
     await session.start(
         agent=Assistant(instructions=final_instructions, tools=all_tools),
         room=ctx.room,
@@ -320,25 +413,16 @@ async def entrypoint(ctx: JobContext):
             delete_room_on_close=True,
         ),
     )
-    logger.info(f"Session started in {time.time() - session_start_time:.2f}s")
+    logger.info(f"Session started/finished. Boot time: {time.time() - entrypoint_start:.2f}s")
 
-    # Wait for participant and greet
-    # Wait for participant with a bit more buffer
-    await _wait_for_participant(ctx.room)
-    await asyncio.sleep(1.0) # Allow SIP RTP path to settle
-    # Greet using session.say for better reliability on first message
-    try:
-        logger.info(f"🎤 Saying initial greeting: {custom_first_message}")
-        await session.say(custom_first_message, allow_interruptions=False)
-    except Exception as e:
-        logger.warning(f"Initial greeting failed: {e}")
-        # Fallback to generate_reply if say fails
-        try:
-            await session.generate_reply()
-        except:
-            pass
-
-    logger.info(f"✨ Total Boot Time: {time.time() - entrypoint_start:.2f}s")
+    # The greeting logic should also wait for participant
+    # But generate_reply is non-blocking, so we can do it after session.start? 
+    # Actually, for AgentSession, you generate_reply AFTER starting.
+    # We should wait for participant before greeting.
+    await participant_task
+    session.generate_reply(
+        instructions=f"Start by saying: '{custom_first_message}'"
+    )
 
     # Call Safeguards
     last_user_activity = time.time()
@@ -402,5 +486,7 @@ if __name__ == "__main__":
             entrypoint_fnc=entrypoint,
             prewarm_fnc=prewarm,
             agent_name="hexite-outbound-caller",
+            num_idle_processes=1,
+            port=8082,
         )
     )

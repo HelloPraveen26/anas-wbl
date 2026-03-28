@@ -18,6 +18,13 @@ export class CallLogResponseDto {
   @Expose()
   sessionId?: string;
 
+  @ApiPropertyOptional({
+    description: "Room Name",
+    example: "sip-115b47b4",
+  })
+  @Expose()
+  roomName?: string;
+
   @ApiProperty({
     description: "Assistant ID",
     example: "ef088031-ffdc-4638-9f0c-bb7d5635b6ba",
@@ -70,12 +77,6 @@ export class CallLogResponseDto {
   @Expose()
   callStatus?: string;
 
-  @ApiPropertyOptional({
-    description: "Success evaluation of the call",
-    example: "successful",
-  })
-  @Expose()
-  successEvaluation?: string;
 
   @ApiPropertyOptional({
     description: "Call start time",

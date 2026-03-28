@@ -736,8 +736,8 @@ async def webhook_handler(
         }
         logger.info(f"Webhook data buffered in memory for room {room_name}")
 
-        # Trigger internal callback in background
-        background_tasks.add_task(notify_call_completed, room_name, final_webhook_data)
+        # Trigger internal callback in background - DISABLED to prevent overwriting accurate agent data
+        # background_tasks.add_task(notify_call_completed, room_name, final_webhook_data)
 
         # Periodically cleanup old memory entries
         background_tasks.add_task(cleanup_expired_data)
