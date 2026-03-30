@@ -216,7 +216,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Header */}
         <div className="h-20 flex items-center justify-between px-4 border-b border-emerald-100">
           <div className="flex-1">
-            <img src={cristy.src} alt="Company Logo" className="h-10 w-auto" />
+            <img src={cristy.src} alt="Company Logo" className="h-16 w-auto" />
           </div>
           {/* Mobile Close Button */}
           <button
@@ -428,7 +428,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          <img src={cristy.src} alt="ZenVoice Logo" className="h-8 w-auto" />
+          <img src={cristy.src} alt="ZenVoice Logo" className="h-12 w-auto" />
         </div>
 
         {/* Page Content */}

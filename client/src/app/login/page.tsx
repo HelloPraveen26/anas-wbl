@@ -15,7 +15,7 @@ import BlogLogo from "@/assets/logo1.png"; // ZenVoice text logo placeholder
 import favicon from "@/assets/favicon.png"; // ZenXai logo placeholder
 import newlogo from "@/assets/newlogo.png";
 import greeny from "@/assets/greeny.jpg";
-import wavewhite from "@/assets/Icons/wavewhite.png";
+import wavewhite from "@/assets/Icons/wavewhite.jpeg";
 import cristy from "@/assets/recover.png";
 
 interface FormData {
@@ -158,14 +158,14 @@ export default function SignIn() {
                   <img
                     src={cristy.src}
                     alt="Company Logo"
-                    className="max-w-[350px] w-full h-auto"
+                    className="max-w-[350px] w-full h-auto -ml-14 -mb-8"
                   />
                 </div>
 
                 <h1 className="text-4xl font-extrabold text-gray-900 leading-snug">
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">Unlock </span>
                   <span className="text-black-600">Powerful,</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">Hspsms Agents.</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">Recover Agents.</span>
                 </h1>
                 <p className="text-gray-600 text-lg">
                   Create your account to start managing your multilingual voice assistants instantly.

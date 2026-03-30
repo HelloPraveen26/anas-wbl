@@ -13,7 +13,7 @@ import {
 import { api, ApiError, SignUpRequest } from "@/lib/api"; // Ensure this path is correct
 
 import newlogo from "@/assets/newlogo.png";
-import wavewhite from "@/assets/Icons/wavewhite.png";
+import wavewhite from "@/assets/Icons/wavewhite.jpeg";
 import cristy from "@/assets/newlogo.png";
 
 
