@@ -41,6 +41,10 @@ export interface User {
   phone?: string;
   credits?: number;
   balance?: number;
+  role?: 'admin' | 'user';
+  adminId?: string;
+  adminCredits?: number;
+  costPerMinute?: number;
   isVerified: boolean;
 }
 

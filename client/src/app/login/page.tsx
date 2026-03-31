@@ -132,13 +132,13 @@ export default function SignIn() {
     <div className="h-screen w-full bg-white flex flex-col lg:flex-row overflow-hidden relative">
 
       {/* Admin Access Button - Top Right */}
-      <Link
+      {/* <Link
         href="/admin/login"
         className="fixed top-6 right-6 z-50 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 group"
         title="Admin Access"
       >
         <Shield className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
-      </Link>
+      </Link> */}
 
       {/* ========================================================= */}
       {/* LEFT SIDE - WELCOME SECTION (PREMIUM WHITE BACKGROUND)    */}
