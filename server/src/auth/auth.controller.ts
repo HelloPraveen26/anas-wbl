@@ -228,6 +228,8 @@ export class AuthController {
           role: user.role,
           adminId: user.adminId,
           costPerMinute: user.costPerMinute,
+          adminCredits: (user as any).adminCredits,
+          adminBalance: (user as any).adminBalance,
         },
       },
     };

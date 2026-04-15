@@ -63,6 +63,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
 
     try {
+      // Set from local auth state first for instant render
       setUser(authState.user);
     } catch (err) {
       console.error("Error loading user data:", err);
@@ -72,7 +73,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       return;
     }
 
-    setIsLoading(false);
+    // Then fetch live profile so dynamic fields like adminCredits are current
+    const token = authManager.getToken();
+    if (token) {
+      import("@/lib/api").then(({ api }) => {
+        api.getProfile(token)
+          .then((response) => {
+            if (response.success && response.data?.user) {
+              setUser(response.data.user);
+            }
+          })
+          .catch((err) => {
+            console.warn("Could not refresh profile from API:", err);
+            // Non-critical — local auth state is already set above
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      });
+    } else {
+      setIsLoading(false);
+    }
   }, [router]);
 
   const handleSignOut = () => {
@@ -140,18 +161,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <button
         key={item.id}
         onClick={() => handleNavigation(item.path)}
-        className={`group relative w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all rounded-xl ${
-          isActive
-            ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30"
-            : "text-gray-700 hover:bg-emerald-50 hover:text-emerald-700"
-        }`}
+        className={`group relative w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all rounded-xl ${isActive
+          ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30"
+          : "text-gray-700 hover:bg-emerald-50 hover:text-emerald-700"
+          }`}
       >
         <div
-          className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
-            isActive
-              ? "bg-white/20"
-              : "bg-gray-100 text-emerald-600 group-hover:bg-emerald-100"
-          }`}
+          className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${isActive
+            ? "bg-white/20"
+            : "bg-gray-100 text-emerald-600 group-hover:bg-emerald-100"
+            }`}
         >
           <Icon className="w-5 h-5" />
         </div>
@@ -208,15 +227,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarCollapsed ? "w-20" : "w-72"
-        } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl
+        className={`${sidebarCollapsed ? "w-20" : "w-72"
+          } bg-white/80 backdrop-blur-xl border-r border-emerald-100 transition-all duration-300 flex flex-col shadow-xl
         ${isMobileSidebarOpen ? "fixed inset-y-0 left-0 z-50" : "hidden"} md:flex`}
       >
         {/* Header */}
         <div className="h-20 flex items-center justify-between px-4 border-b border-emerald-100">
           <div className="flex-1">
-            <img src={cristy.src} alt="Company Logo" className="h-16 w-auto" />
+            <img src={cristy.src} alt="Company Logo" className="h-10 w-auto" />
           </div>
           {/* Mobile Close Button */}
           <button
@@ -311,7 +329,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="text-2xl font-bold text-gray-900 mb-3">
                 {(Number(user?.credits) || 0).toFixed(2)}
               </div>
-              <BuyCreditsDialog />
+              <BuyCreditsDialog user={user} />
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 shadow-sm border border-gray-200">
@@ -334,6 +352,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </button>
               </div>
               <BuyCreditsDialog
+                user={user}
                 trigger={
                   <Button
                     size="sm"
@@ -428,7 +447,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          <img src={cristy.src} alt="ZenVoice Logo" className="h-12 w-auto" />
+          <img src={cristy.src} alt="ZenVoice Logo" className="h-8 w-auto" />
         </div>
 
         {/* Page Content */}

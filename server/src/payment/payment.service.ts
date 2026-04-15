@@ -41,6 +41,21 @@ export class PaymentService {
       const role = user.role;
       this.logger.log(`User role: ${role}`);
 
+      // Block sub-users from exceeding admin's available credits
+      if (role === 'user' && (user as any).adminId) {
+        const baseAmount = createPaymentDto.baseAmount ?? createPaymentDto.amount;
+        const costPerMinute = Number(user.costPerMinute) || 5.0;
+        const requestedCredits = Math.floor(Number(baseAmount) / costPerMinute);
+        const adminCredits = (user as any).adminCredits ?? 0;
+
+        if (requestedCredits > adminCredits) {
+          throw new BadRequestException(
+            `Requested credits (${requestedCredits} min) exceed admin's available credits (${adminCredits} min). Please contact your admin.`,
+          );
+        }
+      }
+
+
       let key = this.configService.get<string>("PAYU_KEY");
       let salt = this.configService.get<string>("PAYU_SALT");
 

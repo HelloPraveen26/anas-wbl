@@ -183,6 +183,8 @@ export function BuyCreditsDialog({
   const costPerMinute = user?.costPerMinute || 5.0;
   const calculatedCredits = Math.floor(amountValue / costPerMinute);
   const isAdminPoolExceeded = user?.role === "user" && user?.adminCredits !== undefined && calculatedCredits > user.adminCredits;
+  const isAdminError = !!error && (error.toLowerCase().includes("admin") || error.toLowerCase().includes("contact"));
+  const isBlocked = isAdminPoolExceeded || isAdminError;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -348,8 +350,11 @@ export function BuyCreditsDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || !amount || parseInt(amount, 10) < 2000 || isAdminPoolExceeded}
-              className="flex-[2] h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold shadow-lg shadow-emerald-500/20 group transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading || !amount || parseInt(amount, 10) < 2000 || isBlocked}
+              className={`flex-[2] h-12 ${isBlocked
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/20"
+                } text-white font-bold group transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isLoading ? (
                 <>
@@ -359,8 +364,8 @@ export function BuyCreditsDialog({
               ) : (
                 <>
                   <CreditCard className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
-                  {isAdminPoolExceeded ? "Contact Admin" : "Proceed to Pay"}
-                  {amountValue > 0 && !isAdminPoolExceeded && <span className="ml-1 opacity-90">(₹{total.toLocaleString()})</span>}
+                  {isBlocked ? "Contact Admin" : "Proceed to Pay"}
+                  {amountValue > 0 && !isBlocked && <span className="ml-1 opacity-90">(₹{total.toLocaleString()})</span>}
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform opacity-50" />
                 </>
               )}

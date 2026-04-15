@@ -1,9 +1,7 @@
 // API configuration and utilities
 // Use localhost for development, AWS for production
 const API_BASE_URL =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:8000/api/v1"
-    : process.env.NEXT_PUBLIC_API_URL;
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 // Debug logging for API URL
 console.log("🔧 API Configuration:", {

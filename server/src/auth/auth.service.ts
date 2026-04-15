@@ -29,8 +29,10 @@ export class AuthService {
   ) { }
 
   async signUp(signUpDto: SignUpDto): Promise<AuthResponseDto> {
-    this.logger.log(`Sign up attempt for email: ${signUpDto.email}`);
+    this.logger.warn(`Public sign up attempt blocked for email: ${signUpDto.email}`);
+    throw new BadRequestException("Self-registration is currently disabled. Please contact your administrator to receive your account credentials.");
 
+    /* Original implementation preserved in comments
     try {
       // Generate verification token
       const verificationToken = crypto.randomBytes(32).toString("hex");
@@ -78,6 +80,7 @@ export class AuthService {
       this.logger.error(`Sign up failed for ${signUpDto.email}:`, error);
       throw new BadRequestException("Failed to create account");
     }
+    */
   }
 
   async signIn(signInDto: SignInDto): Promise<AuthResponseDto> {
@@ -86,6 +89,12 @@ export class AuthService {
     const user = await this.validateUser(signInDto.email, signInDto.password);
     if (!user) {
       throw new UnauthorizedException("Invalid email or password");
+    }
+
+    // Restrict access to sub-users created by admins
+    if (user.role === 'user' && !user.adminId) {
+      this.logger.warn(`Unauthorized login attempt (no adminId) for user: ${user.email}`);
+      throw new UnauthorizedException("This account is not authorized to access the dashboard. Please contact your administrator.");
     }
 
     // Update last login

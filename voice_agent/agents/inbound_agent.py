@@ -459,7 +459,7 @@ async def entrypoint(ctx: JobContext):
             # Write to temp file for debugging since terminal is not working
             try:
                 import json
-                with open("d:/newfixed/debug_history.json", "w") as f:
+                with open("./debug_history.json", "w") as f:
                     json.dump({
                         "session_type": str(type(session)),
                         "has_chat_ctx": hasattr(session, "chat_ctx"),

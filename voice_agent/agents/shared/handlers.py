@@ -73,6 +73,11 @@ class DynamicToolHandler:
 
         self.collected_data[actual_key] = value
         logger.info(f"✅ [{self.tool_name}] STORED: {actual_key} = {value}")
+        
+        # Trigger webhook in real-time
+        import asyncio
+        asyncio.create_task(self.send_to_webhook(is_final=False))
+
 
     def get_missing_parameters(self):
         """Get list of parameters that haven't been collected yet"""
