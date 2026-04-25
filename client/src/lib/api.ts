@@ -195,6 +195,13 @@ class ApiClient {
     });
   }
 
+  async resetPassword(token: string, password: string): Promise<ApiResponse> {
+    return this.request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    });
+  }
+
   async getProfile(token: string): Promise<ApiResponse<{ user: User }>> {
     return this.request<{ user: User }>("/auth/profile", {
       method: "GET",
@@ -249,6 +256,25 @@ class ApiClient {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(data),
+    });
+  }
+
+  async updateSubUser(token: string, userId: string, data: any): Promise<ApiResponse<User>> {
+    return this.request<User>(`/users/sub-user/${userId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSubUser(token: string, userId: string): Promise<ApiResponse<any>> {
+    return this.request<any>(`/users/sub-user/${userId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
   }
 }

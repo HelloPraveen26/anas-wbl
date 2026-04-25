@@ -89,11 +89,11 @@ def apply_gemini_3_1_patch() -> None:
 
         # --- Patch 2: generate_reply for 3.1 uses realtime input directly ---
         def _patched_generate_reply(
-            self: Any, *, instructions: Any = NOT_GIVEN
+            self: Any, *, instructions: Any = NOT_GIVEN, **kwargs: Any
         ) -> asyncio.Future:
             # Non-3.1 models: use original (send_client_content works fine)
             if not _is_3_1_model(self):
-                return original_generate_reply(self, instructions=instructions)
+                return original_generate_reply(self, instructions=instructions, **kwargs)
 
             # --- 3.1 path: replicate generate_reply but via send_realtime_input ---
             if self._pending_generation_fut and not self._pending_generation_fut.done():

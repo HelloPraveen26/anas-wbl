@@ -1,32 +1,32 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import * as nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter;
+  private resend: Resend;
 
   constructor(private configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get("EMAIL_HOST"),
-      port: this.configService.get("EMAIL_PORT"),
-      secure: false,
-      auth: {
-        user: this.configService.get("EMAIL_USER"),
-        pass: this.configService.get("EMAIL_PASS"),
-      },
-    });
+    const apiKey = this.configService.get<string>("RESEND_API_KEY");
+    if (apiKey) {
+      this.resend = new Resend(apiKey);
+    } else {
+      this.logger.warn("RESEND_API_KEY is not configured. Email features will not work.");
+    }
   }
 
   async sendVerificationEmail(email: string, token: string): Promise<void> {
+    if (!this.resend) return;
+
     const verificationUrl = `${this.configService.get("FRONTEND_URL")}/verify-email?token=${token}`;
 
-    const mailOptions = {
-      from: this.configService.get("EMAIL_FROM"),
-      to: email,
-      subject: "Verify Your Email - Voice Assistant Dashboard",
-      html: `
+    try {
+      await this.resend.emails.send({
+        from: this.configService.get("EMAIL_FROM") || "onboarding@resend.dev",
+        to: email,
+        subject: "Verify Your Email - Voice Assistant Dashboard",
+        html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #3b82f6; margin: 0;">Voice Assistant Dashboard</h1>
@@ -57,16 +57,10 @@ export class EmailService {
           </div>
         </div>
       `,
-    };
-
-    try {
-      await this.transporter.sendMail(mailOptions);
+      });
       this.logger.log(`Verification email sent to: ${email}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to send verification email to ${email}:`,
-        error,
-      );
+      this.logger.error(`Failed to send verification email to ${email}:`, error);
       throw error;
     }
   }
@@ -76,13 +70,19 @@ export class EmailService {
     token: string,
     firstName: string,
   ): Promise<void> {
+    if (!this.resend) {
+      this.logger.error("Attempted to send password reset email without Resend configured.");
+      throw new Error("Email service not configured.");
+    }
+
     const resetUrl = `${this.configService.get("FRONTEND_URL")}/reset-password?token=${token}`;
 
-    const mailOptions = {
-      from: this.configService.get("EMAIL_FROM"),
-      to: email,
-      subject: "Password Reset Request - Voice Assistant Dashboard",
-      html: `
+    try {
+      await this.resend.emails.send({
+        from: this.configService.get("EMAIL_FROM") || "onboarding@resend.dev",
+        to: email,
+        subject: "Password Reset Request - Voice Assistant Dashboard",
+        html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #3b82f6; margin: 0;">Voice Assistant Dashboard</h1>
@@ -116,16 +116,10 @@ export class EmailService {
           </div>
         </div>
       `,
-    };
-
-    try {
-      await this.transporter.sendMail(mailOptions);
+      });
       this.logger.log(`Password reset email sent to: ${email}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to send password reset email to ${email}:`,
-        error,
-      );
+      this.logger.error(`Failed to send password reset email to ${email}:`, error);
       throw error;
     }
   }

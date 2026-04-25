@@ -407,7 +407,7 @@ async def entrypoint(ctx: JobContext):
                     asyncio.create_task(handler.add_to_transcript(role, content))
 
     # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
-    call_timing = {"start_time": None, "end_time": None}
+    call_timing = {"start_time": None, "end_time": None, "connected": True}
 
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
@@ -496,6 +496,7 @@ async def entrypoint(ctx: JobContext):
                         "call_duration_seconds": call_duration_seconds or 0,
                         "call_log_id": call_log_id,
                         "type": "inbound",
+                        "participant_connected": True,
                     },
                 )
                 # Call Completion Webhook

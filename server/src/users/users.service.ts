@@ -383,6 +383,45 @@ export class UsersService {
     return costInRupees;
   }
 
+  async updateSubUser(adminId: string, subUserId: string, updateDto: UpdateUserDto): Promise<User> {
+    const admin = await this.findById(adminId);
+    if (admin.role !== UserRole.ADMIN) {
+      throw new ConflictException('Only admins can update sub-users');
+    }
+
+    const subUser = await this.findById(subUserId);
+    if (subUser.adminId !== admin.email.toLowerCase()) {
+      throw new ConflictException('You can only update your own sub-users');
+    }
+
+    // Only allow updating specific fields
+    const { firstName, lastName, costPerMinute, password } = updateDto;
+
+    if (firstName) subUser.firstName = firstName;
+    if (lastName) subUser.lastName = lastName;
+    if (costPerMinute) subUser.costPerMinute = costPerMinute;
+
+    if (password) {
+      subUser.password = await bcrypt.hash(password, 12);
+    }
+
+    return await this.userRepository.save(subUser);
+  }
+
+  async deleteSubUser(adminId: string, subUserId: string): Promise<void> {
+    const admin = await this.findById(adminId);
+    if (admin.role !== UserRole.ADMIN) {
+      throw new ConflictException('Only admins can delete sub-users');
+    }
+
+    const subUser = await this.findById(subUserId);
+    if (subUser.adminId !== admin.email.toLowerCase()) {
+      throw new ConflictException('You can only delete your own sub-users');
+    }
+
+    await this.userRepository.remove(subUser);
+  }
+
   async validateAdminWithHub(email: string, password: string): Promise<any> {
     return this.hubService.validateAdmin(email, password);
   }

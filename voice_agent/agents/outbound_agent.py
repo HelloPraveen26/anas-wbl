@@ -49,11 +49,11 @@ load_dotenv(".env", override=True)
 
 
 # Helper function
-async def _wait_for_participant(room: rtc.Room, timeout: float = 10.0):
-    """Wait for a remote participant to connect"""
+async def _wait_for_participant(room: rtc.Room, timeout: float = 10.0) -> bool:
+    """Wait for a remote participant to connect. Returns True if connected, False if timeout."""
     if room.remote_participants:
         logger.info("Participant already connected")
-        return
+        return True
 
     logger.info("Waiting for participant to connect...")
     future = asyncio.Future()
@@ -67,13 +67,15 @@ async def _wait_for_participant(room: rtc.Room, timeout: float = 10.0):
     if room.remote_participants:
         if not future.done():
             future.set_result(None)
-        return
+        return True
 
     try:
         await asyncio.wait_for(future, timeout=timeout)
         logger.info("Participant connection confirmed")
+        return True
     except asyncio.TimeoutError:
         logger.warning(f"Timeout waiting for participant to connect after {timeout}s")
+        return False
 
 
 # Assistant class with end_call function
@@ -282,7 +284,7 @@ async def entrypoint(ctx: JobContext):
                     asyncio.create_task(handler.add_to_transcript(role, content))
 
     # Call timing tracking (mutable dict so shutdown_cleanup closure can read updates)
-    call_timing = {"start_time": None, "end_time": None}
+    call_timing = {"start_time": None, "end_time": None, "connected": False}
 
     # SHUTDOWN CALLBACK: WEBHOOKS & PERSISTENCE
     async def shutdown_cleanup():
@@ -371,6 +373,7 @@ async def entrypoint(ctx: JobContext):
                         "call_duration_seconds": call_duration_seconds or 0,
                         "call_log_id": call_log_id,
                         "type": "outbound",
+                        "participant_connected": call_timing.get("connected", False),
                     },
                 )
                 # Call Completion Webhook
@@ -395,8 +398,9 @@ async def entrypoint(ctx: JobContext):
 
     # Set start_time when participant connects to ensure accurate timing
     async def _on_participant_ready():
-        await participant_task
-        if not call_timing["start_time"]:
+        connected = await participant_task
+        if connected and not call_timing["start_time"]:
+            call_timing["connected"] = True
             call_timing["start_time"] = datetime.now(timezone.utc)
             logger.info(f"📞 Participant connected, start time recorded: {call_timing['start_time'].isoformat()}")
 
@@ -419,10 +423,14 @@ async def entrypoint(ctx: JobContext):
     # But generate_reply is non-blocking, so we can do it after session.start? 
     # Actually, for AgentSession, you generate_reply AFTER starting.
     # We should wait for participant before greeting.
-    await participant_task
-    session.generate_reply(
-        instructions=f"Start by saying: '{custom_first_message}'"
-    )
+    connected = await participant_task
+    if connected:
+        session.generate_reply(
+            instructions=f"Start by saying: '{custom_first_message}'"
+        )
+    else:
+        logger.warning("No participant connected, skipping greeting and shutting down.")
+        await ctx.delete_room()
 
     # Call Safeguards
     last_user_activity = time.time()

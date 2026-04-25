@@ -188,14 +188,29 @@ export class WebhooksController {
         let durationInSeconds = Math.round(
           Number(callSummary.call_duration_seconds) || 0,
         );
-        let costInRupees = (durationInSeconds * 3.85) / 60;
 
-        // Mark as completed if we have some significant duration (> 2 seconds)
-        // This relies on the agent's start_time logic which only records after connection.
-        const finalStatus =
-          durationInSeconds > 2
-            ? "completed"
-            : "failed";
+        // 🧠 Smarter status determination
+        const hasUserMessages = processedHistory.some(
+          (item) => item.role === "user",
+        );
+        const isConnected = callSummary.participant_connected !== false;
+
+        let finalStatus: string = "completed";
+
+        if (!isConnected) {
+          finalStatus = "unanswered";
+        } else if (!hasUserMessages) {
+          // ❌ No user speech detected -> Mark as unanswered/unbilled
+          // This ensures that silent calls, voicemails, or short pickup/hangups without interaction
+          // are not charged to the user.
+          finalStatus = "unanswered";
+        }
+
+        // 💰 Calculate cost ONLY for completed calls
+        let costInRupees = 0;
+        if (finalStatus === "completed") {
+          costInRupees = (durationInSeconds * 3.85) / 60;
+        }
 
         await this.callLogsService.update(callLog.id, {
           duration: durationInSeconds,

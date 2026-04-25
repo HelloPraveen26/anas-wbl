@@ -188,6 +188,14 @@ export class CallSummaryDto {
   @IsOptional()
   type?: "inbound" | "outbound";
 
+  @ApiProperty({
+    description: "Whether the participant actually connected to the call",
+    example: true,
+    required: false,
+  })
+  @IsOptional()
+  participant_connected?: boolean;
+
   // Allow any other properties for future extensibility
   [key: string]: any;
 }

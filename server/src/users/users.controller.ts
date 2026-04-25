@@ -123,6 +123,23 @@ export class UsersController {
     };
   }
 
+  @Patch('sub-user/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Update a sub-user details' })
+  async updateSubUser(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) subUserId: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ): Promise<any> {
+    const user = await this.usersService.updateSubUser(req.user.id, subUserId, updateUserDto);
+    return {
+      success: true,
+      message: 'Sub-user updated successfully',
+      data: new UserResponseDto(user),
+    };
+  }
+
   @Patch('adjust-credits/:id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
@@ -137,6 +154,21 @@ export class UsersController {
       success: true,
       message: 'Credits adjusted successfully',
       data: new UserResponseDto(user),
+    };
+  }
+
+  @Delete('sub-user/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Delete a sub-user' })
+  async deleteSubUser(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) subUserId: string,
+  ): Promise<any> {
+    await this.usersService.deleteSubUser(req.user.id, subUserId);
+    return {
+      success: true,
+      message: 'Sub-user deleted successfully',
     };
   }
 }

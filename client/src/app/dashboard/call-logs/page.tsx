@@ -247,13 +247,17 @@ export default function CallLogsPage() {
   const paginatedCalls = callLogs;
   const filteredCalls = callLogs;
 
-  // Reset to first page when status filter changes (evaluation filter is client-side only)
+  // Track previous filters to only reset page when they actually change
+  const prevStatusFilterRef = useRef(statusFilter);
+
+  // Reset to first page ONLY when filters change
   useEffect(() => {
-    if (isMountedRef.current && currentPage !== 1) {
+    if (prevStatusFilterRef.current !== statusFilter) {
       console.log("[CallLogs] Resetting to page 1 due to filter change");
       setCurrentPage(1);
+      prevStatusFilterRef.current = statusFilter;
     }
-  }, [statusFilter, currentPage]);
+  }, [statusFilter]);
 
   const formatDuration = (duration: string) => {
     if (!duration) return "00:00";

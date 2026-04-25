@@ -40,8 +40,12 @@ export default function AdminDashboard() {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const [showAdjustModal, setShowAdjustModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isAdjusting, setIsAdjusting] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [adjustFormData, setAdjustFormData] = useState({
         amount: 100,
         action: 'add' as 'add' | 'deduct',
@@ -55,6 +59,13 @@ export default function AdminDashboard() {
         password: '',
         amount: 500,
         costPerMinute: 5.0,
+    });
+
+    const [editFormData, setEditFormData] = useState({
+        firstName: '',
+        lastName: '',
+        costPerMinute: 5.0,
+        password: '',
     });
 
     const calculatedCredits = Math.floor(formData.amount / (formData.costPerMinute || 1));
@@ -181,6 +192,66 @@ export default function AdminDashboard() {
             setError(err.message || 'Failed to adjust credits');
         } finally {
             setIsAdjusting(false);
+        }
+    };
+
+    const handleUpdateSubUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedUser) return;
+
+        try {
+            setIsUpdating(true);
+            setError(null);
+            const token = authManager.getToken();
+            if (!token) return;
+
+            const updateData: any = {
+                firstName: editFormData.firstName,
+                lastName: editFormData.lastName,
+                costPerMinute: editFormData.costPerMinute
+            };
+
+            if (editFormData.password && editFormData.password.trim() !== '') {
+                updateData.password = editFormData.password;
+            }
+
+            const response = await api.updateSubUser(token, selectedUser.id, updateData);
+
+            if (response.success) {
+                setSuccessMessage(`Updated ${selectedUser.firstName} successfully!`);
+                setShowEditModal(false);
+                await fetchData();
+                setTimeout(() => setSuccessMessage(null), 3000);
+            }
+        } catch (err: any) {
+            console.error('Error updating sub-user:', err);
+            setError(err.message || 'Failed to update sub-user');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleDeleteSubUser = async () => {
+        if (!selectedUser) return;
+        try {
+            setIsDeleting(true);
+            setError(null);
+            const token = authManager.getToken();
+            if (!token) return;
+
+            const response = await api.deleteSubUser(token, selectedUser.id);
+            if (response.success) {
+                setSuccessMessage(`${selectedUser.firstName} deleted successfully.`);
+                setShowDeleteConfirm(false);
+                setSelectedUser(null);
+                await fetchData();
+                setTimeout(() => setSuccessMessage(null), 3000);
+            }
+        } catch (err: any) {
+            console.error('Error deleting sub-user:', err);
+            setError(err.message || 'Failed to delete sub-user');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -347,7 +418,30 @@ export default function AdminDashboard() {
                                             >
                                                 Adjust Credits
                                             </button>
-                                            <button className="text-gray-600 hover:text-gray-700 font-medium">Edit</button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedUser(user);
+                                                    setEditFormData({
+                                                        firstName: user.firstName,
+                                                        lastName: user.lastName,
+                                                        costPerMinute: user.costPerMinute || 5.0,
+                                                        password: '',
+                                                    });
+                                                    setShowEditModal(true);
+                                                }}
+                                                className="text-gray-600 hover:text-gray-700 font-medium mr-4"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedUser(user);
+                                                    setShowDeleteConfirm(true);
+                                                }}
+                                                className="text-red-500 hover:text-red-700 font-medium"
+                                            >
+                                                Delete
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -489,6 +583,101 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Edit Sub-User Modal */}
+            {showEditModal && selectedUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">Edit Sub-User</h3>
+                        <p className="text-sm text-gray-600 mb-6 font-medium">{selectedUser.email}</p>
+
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start">
+                                <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 mr-2" />
+                                <span className="text-sm text-red-700">{error}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleUpdateSubUser} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 font-bold">First Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editFormData.firstName}
+                                    onChange={(e) => setEditFormData({ ...editFormData, firstName: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-900"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 font-bold">Last Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editFormData.lastName}
+                                    onChange={(e) => setEditFormData({ ...editFormData, lastName: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-900"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 font-bold">Cost / Minute (₹)</label>
+                                <input
+                                    type="number"
+                                    required
+                                    step="0.1"
+                                    min="0.1"
+                                    value={editFormData.costPerMinute}
+                                    onChange={(e) => setEditFormData({ ...editFormData, costPerMinute: Number(e.target.value) })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-900"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2 font-bold">New Password (optional)</label>
+                                <input
+                                    type="password"
+                                    minLength={6}
+                                    value={editFormData.password}
+                                    onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-900"
+                                    placeholder="Leave blank to keep current"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setError(null);
+                                    }}
+                                    disabled={isUpdating}
+                                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-bold disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isUpdating}
+                                    className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg transition-all font-bold shadow-sm disabled:opacity-50 flex items-center justify-center"
+                                >
+                                    {isUpdating ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        'Save Changes'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Adjust Credits Modal */}
             {showAdjustModal && selectedUser && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -641,6 +830,49 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && selectedUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+                            <AlertCircle className="w-6 h-6 text-red-600" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 text-center mb-1">Delete Sub-User</h3>
+                        <p className="text-sm text-gray-500 text-center mb-2">
+                            Are you sure you want to delete <span className="font-semibold text-gray-800">{selectedUser.firstName} {selectedUser.lastName}</span>?
+                        </p>
+                        <p className="text-xs text-red-500 text-center mb-6">This action cannot be undone. All data associated with this user will be permanently removed.</p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteConfirm(false);
+                                    setSelectedUser(null);
+                                }}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteSubUser}
+                                disabled={isDeleting}
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm disabled:opacity-50 flex items-center justify-center"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    'Yes, Delete'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+
