@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleSignOut = () => {
     authManager.clearAuth();
-    router.push("/");
+    router.replace("/");
   };
 
   const handleNavigation = (path: string) => {

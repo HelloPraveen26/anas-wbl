@@ -63,7 +63,9 @@ Thumbs.db
 *.wmv
 
 server/assistant_configs/
-voice_agent/agents/.venv/
+voice_agent/.venv/
+voice_agent/agents/debug_history.json
+debug_history_outbound.json
 
 **/.env
 **/*.log

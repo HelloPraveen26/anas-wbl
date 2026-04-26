@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -43,6 +43,13 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const router = useRouter();
+
+  // Clear any existing session when landing on login page to prevent forward-button entry
+  useEffect(() => {
+    if (authManager.isAuthenticated()) {
+      authManager.clearAuth();
+    }
+  }, []);
 
   // --- Form Logic (Keeping original logic for functionality) ---
 

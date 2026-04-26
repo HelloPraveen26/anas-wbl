@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, AlertCircle, Loader2, Shield, ArrowLeft } from 'lucide-react';
@@ -27,6 +27,13 @@ export default function AdminSignIn() {
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState<FormErrors>({});
     const router = useRouter();
+
+    // Clear any existing session when landing on login page to prevent forward-button entry
+    useEffect(() => {
+        if (authManager.isAuthenticated()) {
+            authManager.clearAuth();
+        }
+    }, []);
 
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};

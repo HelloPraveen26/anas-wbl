@@ -28,6 +28,9 @@ class AuthManager {
       }
       localStorage.setItem(this.TOKEN_KEY, token);
       localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+
+      // Also set a secure cookie for middleware access
+      document.cookie = `${this.TOKEN_KEY}=${token}; path=/; max-age=604800; samesite=lax`;
     }
   }
 
@@ -103,6 +106,9 @@ class AuthManager {
     if (typeof window !== "undefined") {
       localStorage.removeItem(this.TOKEN_KEY);
       localStorage.removeItem(this.USER_KEY);
+
+      // Clear cookie as well
+      document.cookie = `${this.TOKEN_KEY}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax`;
     }
   }
 

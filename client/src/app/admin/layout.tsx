@@ -34,7 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const handleSignOut = () => {
         authManager.clearAuth();
-        router.push('/admin/login');
+        router.replace('/admin/login');
     };
 
     const navItems = [
