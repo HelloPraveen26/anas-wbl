@@ -1,10 +1,12 @@
 """
 Call Dispatcher Backend - UPDATED FOR STABILITY
 """
+import base64
 import json
 import logging
 import os
 import re
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -12,7 +14,8 @@ from uuid import uuid4
 
 import pymupdf4llm
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, status
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from pydantic import BaseModel, Field, validator
@@ -28,6 +31,9 @@ app = FastAPI(
     description="API for dispatching phone calls through LiveKit",
     version="1.0.0",
 )
+
+# HTTP Basic Auth scheme (shows Username/Password fields in Swagger UI)
+basic_scheme = HTTPBasic()
 
 
 class CallRequest(BaseModel):
@@ -252,6 +258,7 @@ outbound_trunk_id = os.getenv("SIP_OUTBOUND_TRUNK_ID", "")
 lk_url = os.getenv("LIVEKIT_URL", "")
 lk_api_secret = os.getenv("LIVEKIT_API_SECRET", "")
 lk_api_key = os.getenv("LIVEKIT_API_KEY", "")
+main_server_url_cfg = os.getenv("NESTJS_SERVER_URL", "http://127.0.0.1:8000")
 
 # In-memory storage for transcripts and webhooks
 # Using dictionaries to temporarily hold data until retrieved or combined
@@ -300,6 +307,87 @@ def cleanup_expired_data():
 
 import httpx
 
+
+async def verify_basic_auth(
+    authorization: Optional[str] = Header(None),
+) -> str:
+    """
+    Validate Authentication against the NestJS auth server.
+    Supports both:
+        1. Authorization: Basic <base64(email:password)>
+        2. Authorization: Bearer <jwt_token>
+    """
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header is missing",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    auth_type, credentials = (
+        authorization.split(" ", 1) if " " in authorization else (None, None)
+    )
+
+    if auth_type == "Basic":
+        try:
+            decoded = base64.b64decode(credentials).decode("utf-8")
+            email, password = decoded.split(":", 1)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Basic Auth format",
+            )
+
+        signin_url = f"{main_server_url_cfg}/api/v1/auth/signin"
+        payload = {"email": email, "password": password}
+        
+    elif auth_type == "Bearer":
+        # Validate JWT by calling the NestJS profile endpoint
+        signin_url = f"{main_server_url_cfg}/api/v1/auth/profile"
+        payload = {} # GET request usually, but let's check NestJS
+        
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unsupported authentication type. Use Basic or Bearer.",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            if auth_type == "Basic":
+                resp = await client.post(signin_url, json=payload)
+            else:
+                resp = await client.get(signin_url, headers={"Authorization": authorization})
+                
+    except httpx.RequestError as exc:
+        logger.error(f"Auth server unreachable: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service is unavailable.",
+        )
+
+    if resp.status_code == 200:
+        data = resp.json()
+        # Extract email from response data if available
+        user_email = "authenticated_user"
+        if auth_type == "Basic":
+             user_email = data.get("data", {}).get("user", {}).get("email", email)
+        else:
+             user_email = data.get("data", {}).get("user", {}).get("email", "jwt_user")
+             
+        logger.info(f"Auth: accepted for {user_email}")
+        return user_email
+
+    logger.warning(
+        f"Auth failed: NestJS returned {resp.status_code}"
+    )
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid credentials or token",
+        headers={"WWW-Authenticate": "Basic"},
+    )
+
+
 async def notify_call_completed(room_name: str, webhook_data: Dict[str, Any]):
     """Internal callback for call completion notification - forwards to main server"""
     logger.info(f"DEBUG: Processing call completion for room {room_name}")
@@ -333,8 +421,7 @@ async def notify_call_completed(room_name: str, webhook_data: Dict[str, Any]):
         logger.debug(f"History empty in webhook data for {room_name}, checking if we have cached transcript")
 
     # 4. Forward to NestJS server
-    main_server_url = os.getenv("NESTJS_SERVER_URL", "http://127.0.0.1:8000")
-    webhook_endpoint = f"{main_server_url}/api/v1/webhooks/call-summary"
+    webhook_endpoint = f"{main_server_url_cfg}/api/v1/webhooks/call-summary"
     
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -453,6 +540,10 @@ async def make_call(
             "description": "Bad Request - Invalid phone number format or missing required fields",
             "model": ErrorResponse,
         },
+        401: {
+            "description": "Unauthorized — missing or invalid Basic Auth credentials (email:password)",
+            "model": ErrorResponse,
+        },
         500: {
             "description": "Internal Server Error - Failed to initiate call",
             "model": ErrorResponse,
@@ -460,7 +551,10 @@ async def make_call(
     },
     summary="Initiate Outbound Phone Call",
 )
-async def make_call_endpoint(request: CallRequest):
+async def make_call_endpoint(
+    request: CallRequest,
+    _caller: str = Depends(verify_basic_auth),
+):
     """Endpoint to initiate a call to the provided phone number"""
     # Extract parameters from request
     outbound_trunk_id = request.outbound_trunk_id

@@ -14,6 +14,7 @@ import {
   ApiResponse,
   ApiBody,
   ApiBearerAuth,
+  ApiBasicAuth,
 } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { PhoneService } from "./services/phone.service";
@@ -28,6 +29,7 @@ export class PhoneController {
   @Post("make_call")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
+  @ApiBasicAuth("basic-auth")
   @ApiOperation({
     summary: "Initiate a phone call",
     description:
@@ -56,7 +58,11 @@ export class PhoneController {
       );
     }
 
-    const result = await this.phoneService.makeCall(makeCallDto, req.user.id);
+    const result = await this.phoneService.makeCall(
+      makeCallDto,
+      req.user.id,
+      req.headers.authorization,
+    );
     return result;
   }
 

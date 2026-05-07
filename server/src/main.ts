@@ -36,6 +36,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       const allowedOrigins = [
         "http://localhost:3000",
+        "http://localhost:8000",
         "http://localhost:8001",
         "http://127.0.0.1:8001",
         "https://voice.recoveragent.ai", // ✅ YOUR FRONTEND
@@ -90,6 +91,15 @@ async function bootstrap() {
         bearerFormat: "JWT",
       },
       "JWT-auth",
+    )
+    .addBasicAuth(
+      {
+        type: "http",
+        scheme: "basic",
+        description:
+          "HTTP Basic Auth — enter your email as the username and your account password. The browser/client will base64-encode them as Authorization: Basic <base64(email:password)>.",
+      },
+      "basic-auth",
     )
     .addServer("http://localhost:8000", "Development")
     .addServer(

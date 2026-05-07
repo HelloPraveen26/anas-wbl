@@ -58,7 +58,7 @@ export class Payment {
   udf10?: string;
 
   // Hash field is required (not nullable)
-  @Column({ nullable: false })
+  @Column({ nullable: true })
   hash: string;
 
   // Field 1-9
@@ -108,7 +108,7 @@ export class Payment {
   cardnum?: string;
 
   // Foreign key to users table
-  @Column({ name: "user_id", type: "uuid" })
+  @Column({ name: "user_id", type: "uuid", nullable: true })
   userId: string;
 
   @ManyToOne(() => User, (user) => user.payments)

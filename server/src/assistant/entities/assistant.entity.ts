@@ -25,13 +25,13 @@ export class Assistant {
   @Column({ name: "system_prompt", type: "text" })
   systemPrompt: string;
 
-  @Column({ name: "llm_model_id", type: "uuid" })
+  @Column({ name: "llm_model_id", type: "uuid", nullable: true })
   llmModelId: string;
 
-  @Column({ name: "transcriber_model_id", type: "uuid" })
+  @Column({ name: "transcriber_model_id", type: "uuid", nullable: true })
   transcriberModelId: string;
 
-  @Column({ name: "synthesizer_model_id", type: "uuid" })
+  @Column({ name: "synthesizer_model_id", type: "uuid", nullable: true })
   synthesizerModelId: string;
 
   @Column({ name: "realtime_model_id", type: "uuid", nullable: true })

@@ -65,7 +65,11 @@ export class PhoneService {
     }
   }
 
-  async makeCall(dto: MakeCallDto, userId: string): Promise<any> {
+  async makeCall(
+    dto: MakeCallDto,
+    userId: string,
+    authorization?: string,
+  ): Promise<any> {
     let callLogId: string | null = null;
 
     // 🔍 DEBUG: Log incoming DTO
@@ -294,6 +298,8 @@ After collecting all required information, the system will automatically process
         };
       }
 
+      this.logger.log(`🎯 Using outboundTrunkId: ${outboundTrunkId}`);
+
       const payload = {
         user_id: userId,
         phone_number: dto.phoneNumber,
@@ -334,7 +340,11 @@ After collecting all required information, the system will automatically process
       this.logger.log("=".repeat(80));
 
       const { data } = await firstValueFrom(
-        this.httpService.post(`${this.baseUrl}/make_call`, payload),
+        this.httpService.post(`${this.baseUrl}/make_call`, payload, {
+          headers: {
+            ...(authorization && { Authorization: authorization }),
+          },
+        }),
       );
 
       this.logger.log(
@@ -371,8 +381,15 @@ After collecting all required information, the system will automatically process
         }
       }
 
+      let errorMessage = "Failed to initiate call";
+      if (error.response?.data?.detail) {
+        errorMessage = `Failed to initiate call: ${error.response.data.detail}`;
+      } else if (error.message) {
+        errorMessage = `Failed to initiate call: ${error.message}`;
+      }
+
       throw new HttpException(
-        "Failed to initiate call",
+        errorMessage,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
