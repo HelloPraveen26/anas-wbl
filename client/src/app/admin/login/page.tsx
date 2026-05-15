@@ -113,7 +113,7 @@ export default function AdminSignIn() {
 
                 <div className="relative z-10 flex flex-col h-full justify-center space-y-8">
                     <div className="flex justify-center lg:justify-start">
-                        <img src={cristy.src} alt="Logo" className="max-w-[350px] w-full h-auto -ml-16 -mb-4" />
+                        <img src={cristy.src} alt="Logo" className="max-w-[350px] w-full h-auto" />
                     </div>
 
                     <div className="space-y-4">
@@ -122,7 +122,7 @@ export default function AdminSignIn() {
                             Whitelabel Administrator
                         </div>
                         <h1 className="text-5xl font-black text-gray-900 leading-tight">
-                            Control Your <span className="text-emerald-600">Recover</span> Hub
+                            Control Your <span className="text-emerald-600">Anas</span> Hub
                         </h1>
                         <p className="text-gray-600 text-xl max-w-md">
                             Access the central hub to provision users, manage balances, and monitor your AI voice infrastructure.

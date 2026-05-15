@@ -60,14 +60,10 @@ export class PaymentService {
       let salt = this.configService.get<string>("PAYU_SALT");
 
       // Use admin keys if user is an admin
+      // Admin wallet recharge is disabled
       if (role === 'admin') {
-        const adminKey = this.configService.get<string>("ADMIN_PAYU_KEY");
-        const adminSalt = this.configService.get<string>("ADMIN_PAYU_SALT");
-        if (adminKey && adminSalt) {
-          key = adminKey;
-          salt = adminSalt;
-          this.logger.log('Using admin PayU credentials');
-        }
+        this.logger.warn('Admin wallet recharge attempted but is disabled');
+        throw new Error('Admin wallet recharge is currently disabled. Please contact support.');
       }
 
       if (!key || !salt) {

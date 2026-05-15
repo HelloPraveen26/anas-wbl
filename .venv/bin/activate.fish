@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV '/home/dell/Downloads/march 12 /zenvoice-visual-flow/.venv'
+set -gx VIRTUAL_ENV /home/dell/Documents/anis-wl/Recover-Agent/.venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

@@ -110,7 +110,7 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
 
-  SwaggerModule.setup("api/docs", app, document);
+  SwaggerModule.setup("api-docs", app, document);
 
   const port = configService.get("PORT") || 8000;
   const host = "0.0.0.0";

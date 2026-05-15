@@ -139,13 +139,13 @@ export default function SignIn() {
     <div className="h-screen w-full bg-white flex flex-col lg:flex-row overflow-hidden relative">
 
       {/* Admin Access Button - Top Right */}
-      {/* <Link
+      <Link
         href="/admin/login"
-        className="fixed top-6 right-6 z-50 w-14 h-14 bg-emerald-600 hover:bg-emerald-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 group"
+        className="fixed top-6 right-6 z-50 w-14 h-14 bg-[#102F73] hover:bg-[#162B52] rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 group"
         title="Admin Access"
       >
         <Shield className="w-6 h-6 text-white group-hover:scale-110 transition-transform" />
-      </Link> */}
+      </Link>
 
       {/* ========================================================= */}
       {/* LEFT SIDE - WELCOME SECTION (PREMIUM WHITE BACKGROUND)    */}
@@ -165,14 +165,14 @@ export default function SignIn() {
                   <img
                     src={cristy.src}
                     alt="Company Logo"
-                    className="max-w-[350px] w-full h-auto -ml-14 -mb-8"
+                    className="max-w-[280px] w-full h-auto"
                   />
                 </div>
 
                 <h1 className="text-4xl font-extrabold text-gray-900 leading-snug">
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">Unlock </span>
                   <span className="text-black-600">Powerful,</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600">Recover Agents.</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"> Anas Agents.</span>
                 </h1>
                 <p className="text-gray-600 text-lg">
                   Create your account to start managing your multilingual voice assistants instantly.

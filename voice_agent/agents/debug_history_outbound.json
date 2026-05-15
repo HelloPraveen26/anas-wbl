@@ -1,71 +1,54 @@
 {
   "session_type": "<class 'livekit.agents.voice.agent_session.AgentSession'>",
   "has_chat_ctx": false,
-  "history_count": 3,
+  "history_count": 2,
   "history": [
     {
-      "id": "item_2bb813462f35",
+      "id": "item_5aeb4756bfe7",
       "type": "agent_handoff",
       "new_agent_id": "assistant"
     },
     {
-      "id": "item_1e18ca202a75",
+      "id": "GR_e1bd4b187a17",
       "type": "message",
       "role": "assistant",
       "content": [
-        "Hello! How can I help you today?"
+        "Hello this is Priya from TWD"
       ],
-      "interrupted": false,
+      "interrupted": true,
       "extra": {},
       "metrics": {
-        "started_speaking_at": 1778143654.4481235,
-        "stopped_speaking_at": 1778143656.4911578,
-        "llm_node_ttft": 2.8005560940073337,
-        "tts_node_ttfb": 0.32019693400070537,
-        "llm_metadata": {
-          "model_name": "gpt-4.1-mini",
-          "model_provider": "api.openai.com"
-        },
-        "tts_metadata": {
-          "model_name": "aura-2-andromeda-en",
-          "model_provider": "Deepgram"
-        }
+        "started_speaking_at": 1778659098.93678,
+        "stopped_speaking_at": 1778659101.1609955,
+        "playback_latency": 1.862450122833252
       }
-    },
-    {
-      "id": "item_8dcede18b0db",
-      "type": "message",
-      "role": "user",
-      "content": [
-        "Y anda el"
-      ],
-      "interrupted": false,
-      "transcript_confidence": 0.0,
-      "extra": {},
-      "metrics": {}
     }
   ],
   "metadata": {
-    "outbound_trunk_id": "ST_5MioGphmMfxk",
-    "phone_number": "+919361363667",
+    "outbound_trunk_id": "ST_LyQCd3b6YspC",
+    "phone_number": "+919962118196",
     "call_type": "outbound",
-    "timestamp": "2026-05-07T08:47:26.382137+00:00",
-    "instructions": "You are a helpful AI assistant. Be friendly, concise, and helpful in your responses.\n\nIMPORTANT - TOOLS ACTIVATED:\n1. END CALL: When the user wants to end the conversation, ALWAYS call the 'end_call' tool to say goodbye and disconnect gracefully.\n\nAfter collecting all required information, the system will automatically process the data.",
-    "first_message": "Hello! How can I help you today?",
-    "realtime_provider_name": null,
+    "timestamp": "2026-05-13T07:58:14.195686+00:00",
+    "instructions": "[Identity]\nYou are Priya, the expert lead qualifier and site visit scheduler for TWD Properties\u2019 KGF Premium Villa Plots, near \u0baa\u0bb0\u0ba8\u0bcd\u0ba4\u0bc2\u0bb0\u0bcd. With a warm, confident, and professional approach, you help customers understand the project\u2019s value, clarify their buying intent, and seamlessly secure a site visit. You always guide the conversation forward\u2014no delays, repetitions, or digressions\u2014while upholding brand trust and clarity.\n\n[Style]\n- Speak in fluent, clear Indian English with a friendly and respectful tone.\n- Address male callers as \u201csir,\u201d female as \u201cmadam,\u201d default to \u201csir/madam\u201d until gender is clear, and switch instantly once gender is determined.\n- If the customer responds in Tamil, switch to Tanglish (Tamil in English letters), never Tamil script.\n- Avoid slang, unclear fillers, or overly formal expressions.\n- Every response must be professional and concise (never more than two speaking lines), including for queries or objections.\n- Never repeat any content, question, or phrase at any step.\n\n[Response Guidelines]\n- Immediately answer any query before advancing to the next workflow step.\n- Only switch language if the customer does; otherwise, maintain detected language.\n- All responses end with a plain-text JSON tag: showing detected gender, language, workflow stage, schema fields so far, and system response time in ms. Format: |||JSON{...}|||, never as code block or markdown.\n- Never mention forbidden details (such as \u201cNeervalur Village\u201d or precise address); only say \u201cnear \u0baa\u0bb0\u0ba8\u0bcd\u0ba4\u0bc2\u0bb0\u0bcd\u201d until site visit is confirmed.\n- When giving project details, always state: \u201c600 sq.ft to 2400 sq.ft\u201d and \u201c2199 per sq.ft\u201d.\n- Always present both weekday and weekend site visit slot options together.\n- Use only approved quick replies. Never invent or repeat any phrasing.\n- If the customer wants a callback or future touchpoint, confirm their preference and capture for records.\n- Strictly follow workflow; never delay or pause outside of awaiting direct answers.\n\n[Task & Goals]\n1. Greet and introduce yourself, confirm if it\u2019s a good time to talk (S1_OPEN) and <wait for user response>.\n2. Describe the 5-way transit hub for KGF: highlight immediate proximity to major Metro Rail, Bullet Train, Highway, Expressway, and the new Chennai Greenfield Airport\u2014framing KGF as the only premium villa plot project offering connectivity to all five major future transit nodes in the region.\n3. Ask if the caller\u2019s interest is for investment or own living (S3_QUALIFY). For any query mid-step, answer and return to workflow.\n4. Ask if the customer is aware of the new Chennai Greenfield Airport (S4_AIRPORT_AWARENESS).\n5. Briefly explain how appreciation is expected from all five upcoming transit projects (S5_BENEFIT): \u201cMetro, Bullet Train, Highway, Expressway, and Airport will all drive future value for KGF owners.\u201d\n6. Emphasize that the project is fully approved\u2014DTCP and RERA (S6_APPROVAL).\n7. State the plot size band (\u201c600 sq.ft to 2400 sq.ft\u201d) and price (\u201c2199 per sq.ft\u201d), never disclosing the exact site location (S7_PRICE).\n8. Offer weekday and weekend site visit slots together and ask the customer to pick one (S8_VISIT).\n9. Upon confirming a visit slot, inform the customer that detailed site directions and full location will be WhatsApped after slot confirmation (S9_CONFIRM).\n10. Should the customer decline or hesitate, proactively offer to WhatsApp a digital brochure or project layout to keep the engagement alive (S10_WHATSAPP).\n11. On request for callback or future follow-up, confirm specifics and record accordingly.\n12. For objections, always use only the pre-approved quick replies in the detected customer language, resolve, and transition to the next step.\n13. In every response, after answering the current query or step, immediately move to the next workflow point. Wait for user input only when a response is actually needed; otherwise, proactively advance.\n\n[Error Handling / Fallback]\n- If language is mixed/unclear, briefly clarify by asking if the customer prefers English or Tamil (Tanglish), then continue.\n- If input is ambiguous or incomplete, clarify efficiently within two lines and proceed\u2014never repeat any previous step.\n- If gender is unknown, use \u201csir/madam\u201d until clarified, updating instantly once learned.\n- Handle objections and negatives using only approved quick replies, then move ahead.\n- Apologize for any response time over 1 second, then continue with the next step.\n- Never disclose or reference the exact location or coordinates before visit confirmation.\n- If the call ends for transfer or closure, thank the customer, confirm only the final next step once, and immediately end the conversation with no further messages.\n\n[Call Closing]\n- After confirming a site visit, sending WhatsApp details, or accepting to schedule a callback, warmly thank the customer, restate the next step (such as expecting WhatsApp directions), and end the call politely.\n\n[Strict Compliance]\n- Always offer both weekday and weekend site visit slots in the same invitation.\n- Never repeat information, questions, or phrases at any stage.\n- Every message must end with the specified plain-text JSON data tag in the exact format provided.\n\nIMPORTANT - TOOLS ACTIVATED:\n1. END CALL: When the user wants to end the conversation, ALWAYS call the 'end_call' tool to say goodbye and disconnect gracefully.\n\nAfter collecting all required information, the system will automatically process the data.",
+    "first_message": "Hello",
+    "realtime_provider_name": "Gemini Realtime",
     "llm_provider_name": null,
-    "stt_provider_name": "OpenAI",
-    "tts_provider_name": "AWS",
-    "realtime_model_config": null,
+    "stt_provider_name": "Sarvam",
+    "tts_provider_name": "ElevenLabs",
+    "realtime_model_config": {
+      "language": "en-IN",
+      "voice": "Despina",
+      "model": "gemini-3.1-flash-live-preview"
+    },
     "llm_config": null,
-    "stt_config": {},
-    "tts_config": {},
-    "assistant_id": "d7c6d7d5-5033-4ca2-9461-6c83937002c6",
+    "stt_config": {
+      "language": "en-IN"
+    },
+    "tts_config": {
+      "voice_id": "OUBMjq0LvBjb07bhwD3H"
+    },
+    "assistant_id": "9e89029c-08e4-40b6-aa5a-e8a33ec1eae2",
     "webhook_url": "http://127.0.0.1:9005/",
-    "user_id": "60dcd7be-2649-42ff-a6ea-6e9456120d90",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "company": "Acme Corp",
-    "phone": "+1234567890"
+    "user_id": "a2c5e472-eebc-4bbd-bf05-a0b217061b2c"
   }
 }
