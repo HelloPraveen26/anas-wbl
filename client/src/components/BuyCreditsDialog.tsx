@@ -122,11 +122,13 @@ export function BuyCreditsDialog({
 
         // Add all parameters as hidden fields
         for (const key in paymentData.formData) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = paymentData.formData[key];
-          form.appendChild(input);
+          if (typeof paymentData.formData[key] === "string") {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = key;
+            input.value = paymentData.formData[key];
+            form.appendChild(input);
+          }
         }
 
         // Add the form to the document and submit it

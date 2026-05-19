@@ -14,6 +14,7 @@ import { PaymentInitiationResponseDto } from "./dto/payment-response.dto";
 import { Payment } from "./entities/payment.entity";
 import { User } from "../users/entities/user.entity";
 import * as crypto from "crypto";
+const Razorpay = require('razorpay');
 
 @Injectable()
 export class PaymentService {
@@ -56,93 +57,126 @@ export class PaymentService {
       }
 
 
-      let key = this.configService.get<string>("PAYU_KEY");
-      let salt = this.configService.get<string>("PAYU_SALT");
-
-      // Use admin keys if user is an admin
-      // Admin wallet recharge is disabled
       if (role === 'admin') {
-        this.logger.warn('Admin wallet recharge attempted but is disabled');
-        throw new Error('Admin wallet recharge is currently disabled. Please contact support.');
+        const key_id = this.configService.get<string>("RAZORPAY_KEY_ID");
+        const key_secret = this.configService.get<string>("RAZORPAY_KEY_SECRET");
+
+        if (!key_id || !key_secret) {
+          throw new Error("Razorpay credentials not configured.");
+        }
+
+        const amountInPaise = Math.round(Number(createPaymentDto.amount) * 100);
+
+        const razorpay = new Razorpay({
+          key_id,
+          key_secret,
+        });
+
+        const options = {
+          amount: amountInPaise,
+          currency: "INR",
+          receipt: `rcpt_${Date.now()}`,
+          notes: {
+            reference: createPaymentDto.reference || "",
+            baseAmount: createPaymentDto.baseAmount?.toString() || "",
+          }
+        };
+
+        const order = await razorpay.orders.create(options);
+
+        const txnid = order.id;
+
+        // Save payment record to database
+        const payment = this.paymentRepository.create({
+          txnid,
+          amount: createPaymentDto.amount.toString(),
+          hash: "razorpay_dummy_hash",
+          userId,
+          status: "created",
+          udf1: options.notes.reference,
+          udf2: options.notes.baseAmount,
+        });
+        await this.paymentRepository.save(payment);
+
+        this.logger.log(`Payment initiated successfully with Razorpay order_id: ${txnid}`);
+
+        return new PaymentInitiationResponseDto({
+          success: true,
+          message: "Payment initiated",
+          txnid,
+          paymentUrl: "",
+          formData: {
+            key: key_id,
+            amount: amountInPaise.toString(),
+            order_id: txnid,
+            name: "Zenvoice",
+            description: "Credits Top-up",
+            prefill: {
+              name: user.firstName || "User",
+              email: user.email,
+              contact: user.phone || "",
+            }
+          },
+        });
       }
+
+      // Regular/Sub-user flow uses PayU
+      const key = this.configService.get<string>("PAYU_KEY");
+      const salt = this.configService.get<string>("PAYU_SALT");
 
       if (!key || !salt) {
-        throw new Error(
-          "PayU credentials not configured. Set PAYU_KEY/SALT or ADMIN_PAYU_KEY/SALT environment variables.",
-        );
+        throw new Error("PayU credentials not configured.");
       }
 
-      const isTestEnv =
-        (
-          this.configService.get<string>("PAYU_TEST_MODE") || "true"
-        ).toLowerCase() === "true";
-      const testPaymentUrl =
-        this.configService.get<string>("TEST_PAYMENT_URL") ||
-        "https://test.payu.in/_payment";
-      const prodPaymentUrl =
-        this.configService.get<string>("PROD_PAYMENT_URL") ||
-        "https://secure.payu.in/_payment";
-      const paymentUrl = isTestEnv ? testPaymentUrl : prodPaymentUrl;
+      const isTestMode = this.configService.get<string>("PAYU_TEST_MODE") === "true";
+      const paymentUrl = isTestMode
+        ? this.configService.get<string>("TEST_PAYMENT_URL") || "https://test.payu.in/_payment"
+        : this.configService.get<string>("PROD_PAYMENT_URL") || "https://secure.payu.in/_payment";
 
-      if (!createPaymentDto.amount) {
-        throw new BadRequestException("Payment amount is required");
-      }
+      const txnid = `TXN${Date.now()}${Math.random().toString(36).substring(2, 7)}`;
+      const backendUrl = this.configService.get<string>("BACKEND_URL") || "http://localhost:8000/api/v1";
 
-      const productinfo = "zenvoice";
-      const amount = createPaymentDto.amount.toString();
-      const firstname = user.firstName || "User";
-      const email = user.email;
-      const phone = user.phone || "";
-
-      if (!productinfo || !amount || !firstname || !email) {
-        throw new BadRequestException(
-          "Missing required user fields (firstName, email are required)",
-        );
-      }
-
-      const txnid = "txn" + Date.now();
-
-      const baseUrl = this.configService.get<string>("APP_BASE_URL");
-      const surl = `${baseUrl}/api/v1/payment/success`;
-      const furl = `${baseUrl}/api/v1/payment/failure`;
-
-      const params = {
+      const params: any = {
         key,
         txnid,
-        amount,
-        productinfo,
-        firstname,
-        email,
-        phone,
-        surl,
-        furl,
-        udf1: createPaymentDto.reference || "", // Optional - can be used for order reference
-        udf2: createPaymentDto.baseAmount?.toString() || "", // Base amount for credit calculation
+        amount: createPaymentDto.amount.toString(),
+        productinfo: "Credits Top-up",
+        firstname: user.firstName || "User",
+        email: user.email,
+        phone: user.phone || "",
+        surl: `${backendUrl}/payment/success`,
+        furl: `${backendUrl}/payment/failure`,
+        curl: `${backendUrl}/payment/cancel`,
+        udf1: createPaymentDto.reference || "",
+        udf2: (createPaymentDto.baseAmount ?? createPaymentDto.amount).toString(),
       };
 
       const hash = this.generatePayuHash(params, salt);
-      const formData = { ...params, hash };
+      params.hash = hash;
 
       // Save payment record to database
       const payment = this.paymentRepository.create({
         txnid,
-        amount,
+        amount: createPaymentDto.amount.toString(),
         hash,
         userId,
+        status: "pending",
+        udf1: params.udf1,
+        udf2: params.udf2,
       });
       await this.paymentRepository.save(payment);
 
-      this.logger.log(`Payment initiated successfully with txnid: ${txnid}`);
+      this.logger.log(`Payment initiated successfully with PayU txnid: ${txnid}`);
 
       return new PaymentInitiationResponseDto({
         success: true,
         message: "Payment initiated",
         txnid,
         paymentUrl,
-        formData,
+        formData: params,
       });
     } catch (error) {
-      this.logger.error(`PayU payment error: ${error.message}`, error.stack);
+      this.logger.error(`Payment creation error: ${error.message}`, error.stack);
 
       if (error instanceof BadRequestException) {
         throw error;
@@ -400,4 +434,57 @@ export class PaymentService {
       order: { createdAt: "DESC" },
     });
   }
+
+  async verifyRazorpayPayment(userId: string, body: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }): Promise<{ success: boolean; message: string }> {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+    const key_secret = this.configService.get<string>("RAZORPAY_KEY_SECRET");
+    
+    if (!key_secret) {
+      throw new InternalServerErrorException("Razorpay secret not configured");
+    }
+
+    const generated_signature = crypto.createHmac("sha256", key_secret)
+      .update(razorpay_order_id + "|" + razorpay_payment_id)
+      .digest("hex");
+
+    if (generated_signature !== razorpay_signature) {
+      throw new BadRequestException("Invalid payment signature");
+    }
+
+    const existingPayment = await this.paymentRepository.findOne({
+      where: { txnid: razorpay_order_id, userId: userId },
+    });
+
+    if (!existingPayment) {
+      throw new NotFoundException("Payment record not found");
+    }
+
+    if (existingPayment.status === "success") {
+      return { success: true, message: "Payment already verified" };
+    }
+
+    await this.paymentRepository.update(
+      { id: existingPayment.id },
+      {
+        status: "success",
+        mihpayid: razorpay_payment_id,
+        hash: razorpay_signature,
+      }
+    );
+
+    const rawAmount = existingPayment.udf2 || existingPayment.amount || "0";
+    const creditAmount = parseFloat(rawAmount);
+
+    if (creditAmount > 0) {
+      await this.userRepository.increment(
+        { id: existingPayment.userId },
+        "credits",
+        creditAmount,
+      );
+      this.logger.log(`Added ${creditAmount} credits to user ${existingPayment.userId}`);
+    }
+
+    return { success: true, message: "Payment verified successfully" };
+  }
+
 }

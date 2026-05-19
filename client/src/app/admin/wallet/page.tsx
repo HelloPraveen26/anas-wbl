@@ -94,33 +94,73 @@ function WalletContent() {
             const token = authManager.getToken();
             if (!token) throw new Error('Not authenticated');
 
-            // Call backend to create PayU payment
             const res = await api.createPayment(token, amount) as any;
 
-            // Backend returns { success, message, txnid, paymentUrl, formData } at root level
-            const paymentUrl = res.paymentUrl || res.data?.paymentUrl;
             const formData = res.formData || res.data?.formData;
 
-            if (!res.success || !paymentUrl || !formData) {
+            if (!res.success || !formData) {
                 throw new Error(res.message || 'Failed to initiate payment');
             }
 
-            // Build and auto-submit a hidden form to PayU
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = paymentUrl;
-            form.target = '_self';
+            const loadRazorpay = () => {
+                return new Promise((resolve) => {
+                    if ((window as any).Razorpay) return resolve(true);
+                    const script = document.createElement('script');
+                    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                    script.onload = () => resolve(true);
+                    script.onerror = () => resolve(false);
+                    document.body.appendChild(script);
+                });
+            };
 
-            Object.entries(formData).forEach(([key, value]) => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = String(value);
-                form.appendChild(input);
+            const isLoaded = await loadRazorpay();
+            if (!isLoaded) {
+                throw new Error('Razorpay SDK failed to load.');
+            }
+
+            const options = {
+                key: formData.key,
+                amount: formData.amount,
+                currency: "INR",
+                name: formData.name,
+                description: formData.description,
+                order_id: formData.order_id,
+                handler: async function (response: any) {
+                    setIsProcessing(true);
+                    try {
+                        const verifyRes = await api.verifyRazorpayPayment(token, {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature
+                        });
+                        if (verifyRes.success) {
+                            setPaymentStatus('success');
+                            fetchWalletData();
+                        } else {
+                            setPaymentStatus('failed');
+                        }
+                    } catch (error) {
+                        setPaymentStatus('failed');
+                    } finally {
+                        setIsProcessing(false);
+                    }
+                },
+                prefill: formData.prefill,
+                theme: {
+                    color: "#0d9488"
+                }
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+            rzp.on('payment.failed', function (response: any) {
+                setPaymentStatus('failed');
             });
-
-            document.body.appendChild(form);
-            form.submit();
+            
+            // Handle when the Razorpay modal is closed without success or failure
+            // This event is not strictly defined in Razorpay docs sometimes, but we can reset processing.
+            // Actually it's best to set processing to false immediately after opening, since it blocks UI
+            setIsProcessing(false);
+            rzp.open();
         } catch (err: any) {
             setError(err.message || 'Payment initiation failed. Please try again.');
             setIsProcessing(false);
@@ -219,7 +259,7 @@ function WalletContent() {
                                                 <ArrowUpRight size={24} />
                                             </div>
                                             <div>
-                                                <p className="font-bold text-gray-900">Top-up via PayU</p>
+                                                <p className="font-bold text-gray-900">Top-up via Razorpay</p>
                                                 <p className="text-sm text-gray-400 font-medium">
                                                     {new Date(tx.createdAt).toLocaleString('en-IN')}
                                                     {tx.txnid && <span className="ml-2 text-gray-300">· {tx.txnid}</span>}
@@ -288,7 +328,7 @@ function WalletContent() {
                                 {isProcessing ? (
                                     <>
                                         <Loader2 className="animate-spin" size={20} />
-                                        Redirecting to PayU...
+                                        Opening Checkout...
                                     </>
                                 ) : (
                                     <>
@@ -301,8 +341,7 @@ function WalletContent() {
 
                         <div className="mt-8 pt-6 border-t border-white/10">
                             <p className="text-xs text-center text-gray-500 font-medium">
-                                Secured via PayU Payment Gateway.
-                                You will be redirected to PayU to complete payment.
+                                Secured via Razorpay Payment Gateway.
                             </p>
                         </div>
                     </div>

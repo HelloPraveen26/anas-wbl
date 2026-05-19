@@ -59,6 +59,7 @@
     "passport-local": "^1.0.0",
     "pg": "^8.11.3",
     "plivo": "^4.75.3",
+    "razorpay": "^2.9.6",
     "reflect-metadata": "^0.1.13",
     "resend": "^6.12.2",
     "rxjs": "^7.8.1",

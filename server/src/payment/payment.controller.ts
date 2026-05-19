@@ -152,4 +152,19 @@ export class PaymentController {
       data: history,
     };
   }
+
+  @Post("verify-razorpay")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Verify Razorpay Payment" })
+  async verifyRazorpayPayment(
+    @Request() req,
+    @Body() body: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }
+  ): Promise<any> {
+    const result = await this.paymentService.verifyRazorpayPayment(req.user.id, body);
+    return {
+      success: result.success,
+      message: result.message,
+    };
+  }
 }

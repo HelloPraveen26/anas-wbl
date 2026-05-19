@@ -221,6 +221,16 @@ class ApiClient {
     });
   }
 
+  async verifyRazorpayPayment(token: string, data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }): Promise<ApiResponse> {
+    return this.request("/payment/verify-razorpay", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
   async getPaymentHistory(token: string): Promise<ApiResponse<any[]>> {
     return this.request<any[]>("/payment/history", {
       method: "GET",
